@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Pencil, Trash2, PlusCircle, MinusCircle } from "lucide-react"; // Ensure PlusCircle and MinusCircle are imported
+import { Pencil, Trash2, PlusCircle, MinusCircle, Search } from "lucide-react"; // Ensure Search icon is imported
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +37,7 @@ import { SelectOption } from "@/types/attendance";
 import { getOptions, saveOptions } from "@/lib/options-storage";
 import { showSuccess, showError } from "@/utils/toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"; // Import Collapsible components
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface OptionManagerProps {
   optionTypeKey: string;
@@ -56,7 +56,8 @@ export function OptionManager({ optionTypeKey, optionTypeName }: OptionManagerPr
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentEditingOption, setCurrentEditingOption] = useState<SelectOption | null>(null);
-  const [isCollapsibleOpen, setIsCollapsibleOpen] = useState(false); // State for collapsible
+  const [isCollapsibleOpen, setIsCollapsibleOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(""); // New state for search term
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -131,6 +132,11 @@ export function OptionManager({ optionTypeKey, optionTypeName }: OptionManagerPr
     setIsEditDialogOpen(true);
   };
 
+  // Filtered options based on search term
+  const filteredOptions = options.filter(option =>
+    option.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-4 p-4 border rounded-lg bg-white shadow-sm">
       <Collapsible open={isCollapsibleOpen} onOpenChange={setIsCollapsibleOpen} className="w-full space-y-2">
@@ -143,7 +149,18 @@ export function OptionManager({ optionTypeKey, optionTypeName }: OptionManagerPr
             </Button>
           </CollapsibleTrigger>
         </div>
-        <CollapsibleContent className="space-y-4"> {/* Apply space-y-4 here for consistent spacing */}
+        <CollapsibleContent className="space-y-4">
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder={`Buscar ${optionTypeName.toLowerCase()}...`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+
           {/* Add New Option Form */}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleAddOption)} className="flex space-x-2">
@@ -167,7 +184,7 @@ export function OptionManager({ optionTypeKey, optionTypeName }: OptionManagerPr
           </Form>
 
           {/* Options Table */}
-          {options.length > 0 ? (
+          {filteredOptions.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -176,7 +193,7 @@ export function OptionManager({ optionTypeKey, optionTypeName }: OptionManagerPr
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {options.map((option) => (
+                {filteredOptions.map((option) => (
                   <TableRow key={option.value}>
                     <TableCell className="font-medium">{option.label}</TableCell>
                     <TableCell className="text-right">
@@ -218,7 +235,7 @@ export function OptionManager({ optionTypeKey, optionTypeName }: OptionManagerPr
               </TableBody>
             </Table>
           ) : (
-            <p className="text-center text-gray-500">Nenhuma opção cadastrada.</p>
+            <p className="text-center text-gray-500">Nenhuma opção encontrada.</p>
           )}
         </CollapsibleContent>
       </Collapsible>
