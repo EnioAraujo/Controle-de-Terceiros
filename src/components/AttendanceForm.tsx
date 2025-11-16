@@ -33,15 +33,15 @@ import {
 } from "@/components/ui/select";
 import { AttendanceRecord, SelectOption } from "@/types/attendance";
 import { addAttendanceRecord } from "@/lib/attendance-storage";
-import { getOptions } from "@/lib/options-storage";
+import { getOptions, saveOptions } from "@/lib/options-storage"; // Import saveOptions
 import { showSuccess, showError } from "@/utils/toast";
-import { MultiSelect } from "@/components/MultiSelect"; // Import MultiSelect
+import { MultiSelect } from "@/components/MultiSelect";
 
 const formSchema = z.object({
   date: z.date({
     required_error: "A data da presença é obrigatória.",
   }),
-  fullName: z.array(z.string()).min(1, "Pelo menos um nome é obrigatório."), // Changed to array for multi-select
+  fullName: z.array(z.string()).min(1, "Pelo menos um nome é obrigatório."),
   shift: z.string().min(1, "O turno é obrigatório."),
   timeIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido (HH:MM)."),
   timeOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido (HH:MM)."),
@@ -98,21 +98,22 @@ const defaultSupplierOptions: SelectOption[] = [
 ];
 
 interface AttendanceFormProps {
-  onOptionsUpdated: () => void; // Callback to trigger re-fetching options
+  onOptionsUpdated: () => void;
 }
 
 export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
   const [totalHours, setTotalHours] = useState("00:00");
-  const [fullNameOptions, setFullNameOptions] = useState<SelectOption[]>(defaultFullNameOptions); // New state for full name options
+  const [fullNameOptions, setFullNameOptions] = useState<SelectOption[]>(defaultFullNameOptions);
   const [shiftOptions, setShiftOptions] = useState<SelectOption[]>(defaultShiftOptions);
   const [positionOptions, setPositionOptions] = useState<SelectOption[]>(defaultPositionOptions);
   const [unitOptions, setUnitOptions] = useState<SelectOption[]>(defaultUnitOptions);
   const [costCenterOptions, setCostCenterOptions] = useState<SelectOption[]>(defaultCostCenterOptions);
   const [reasonOptions, setReasonOptions] = useState<SelectOption[]>(defaultReasonOptions);
   const [supplierOptions, setSupplierOptions] = useState<SelectOption[]>(defaultSupplierOptions);
+  const [newManualFullName, setNewManualFullName] = useState(""); // State for manual full name input
 
   const loadOptions = useCallback(() => {
-    setFullNameOptions(getOptions("fullNameOptions").length > 0 ? getOptions("fullNameOptions") : defaultFullNameOptions); // Load full name options
+    setFullNameOptions(getOptions("fullNameOptions").length > 0 ? getOptions("fullNameOptions") : defaultFullNameOptions);
     setShiftOptions(getOptions("shiftOptions").length > 0 ? getOptions("shiftOptions") : defaultShiftOptions);
     setPositionOptions(getOptions("positionOptions").length > 0 ? getOptions("positionOptions") : defaultPositionOptions);
     setUnitOptions(getOptions("unitOptions").length > 0 ? getOptions("unitOptions") : defaultUnitOptions);
@@ -123,12 +124,12 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
 
   useEffect(() => {
     loadOptions();
-  }, [loadOptions, onOptionsUpdated]); // Re-load options when onOptionsUpdated is called
+  }, [loadOptions, onOptionsUpdated]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: [], // Default to empty array for multi-select
+      fullName: [],
       shift: "",
       timeIn: "",
       timeOut: "",
@@ -150,13 +151,12 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
         const [inHours, inMinutes] = timeIn.split(":").map(Number);
         const [outHours, outMinutes] = timeOut.split(":").map(Number);
 
-        const date = new Date(); // Use a dummy date for time calculations
+        const date = new Date();
         const entryTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), inHours, inMinutes);
         let exitTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), outHours, outMinutes);
 
-        // Handle overnight shifts
         if (exitTime < entryTime) {
-          exitTime = new Date(exitTime.getTime() + 24 * 60 * 60 * 1000); // Add 24 hours
+          exitTime = new Date(exitTime.getTime() + 24 * 60 * 60 * 1000);
         }
 
         const diffMinutes = differenceInMinutes(exitTime, entryTime);
@@ -177,6 +177,32 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
     }
   }, [timeIn, timeOut]);
 
+  const handleAddManualFullName = () => {
+    const trimmedName = newManualFullName.trim();
+    if (!trimmedName) {
+      showError("O nome não pode ser vazio.");
+      return;
+    }
+
+    const existingOptions = getOptions("fullNameOptions");
+    const isAlreadyAdded = existingOptions.some(
+      (option) => option.value.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (isAlreadyAdded) {
+      showError("Este nome já existe na lista.");
+      return;
+    }
+
+    const newOption: SelectOption = { value: trimmedName, label: trimmedName };
+    const updatedOptions = [...existingOptions, newOption];
+    saveOptions("fullNameOptions", updatedOptions);
+    setFullNameOptions(updatedOptions); // Update local state
+    setNewManualFullName(""); // Clear input field
+    showSuccess(`Nome "${trimmedName}" adicionado com sucesso!`);
+    onOptionsUpdated(); // Trigger re-fetch in case other components depend on it
+  };
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       if (values.fullName.length === 0) {
@@ -186,9 +212,9 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
 
       for (const name of values.fullName) {
         const newRecord: AttendanceRecord = {
-          id: crypto.randomUUID(), // Generate a unique ID for each record
+          id: crypto.randomUUID(),
           date: values.date,
-          fullName: name, // Each record gets one name
+          fullName: name,
           shift: values.shift,
           timeIn: values.timeIn,
           timeOut: values.timeOut,
@@ -202,7 +228,7 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
         addAttendanceRecord(newRecord);
       }
       showSuccess("Registro(s) de presença adicionado(s) com sucesso!");
-      form.reset({ // Reset form after successful submission, keeping date if desired
+      form.reset({
         fullName: [],
         shift: "",
         timeIn: "",
@@ -212,9 +238,9 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
         costCenter: "",
         reason: "",
         supplier: "",
-        date: values.date, // Keep the date selected for convenience
+        date: values.date,
       });
-      setTotalHours("00:00"); // Reset total hours
+      setTotalHours("00:00");
     } catch (error) {
       showError("Erro ao adicionar registro(s) de presença.");
       console.error("Submission error:", error);
@@ -283,6 +309,24 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
             </FormItem>
           )}
         />
+
+        {/* Manual Full Name Input */}
+        <div className="flex items-end space-x-2">
+          <div className="flex-grow">
+            <FormItem>
+              <FormLabel htmlFor="new-full-name">Adicionar Novo Nome</FormLabel>
+              <Input
+                id="new-full-name"
+                placeholder="Digite um novo nome completo"
+                value={newManualFullName}
+                onChange={(e) => setNewManualFullName(e.target.value)}
+              />
+            </FormItem>
+          </div>
+          <Button type="button" onClick={handleAddManualFullName}>
+            Adicionar
+          </Button>
+        </div>
 
         <FormField
           control={form.control}
