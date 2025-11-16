@@ -3,32 +3,20 @@ import { AttendanceForm } from "@/components/AttendanceForm";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Button } from "@/components/ui/button";
 import { ImportOptionsDialog } from "@/components/ImportOptionsDialog";
-import { Link } from "react-router-dom";
+import { OptionsSheet } from "@/components/OptionsSheet"; // Importando o novo componente
 
 const AttendancePage = () => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [optionsUpdatedKey, setOptionsUpdatedKey] = useState(0); // Used to force AttendanceForm to re-fetch options
+  const [optionsUpdatedKey, setOptionsUpdatedKey] = useState(0); // Usado para forçar o AttendanceForm a recarregar as opções
 
   const handleImportSuccess = useCallback(() => {
-    setOptionsUpdatedKey(prev => prev + 1); // Increment key to trigger re-fetch in AttendanceForm
+    setOptionsUpdatedKey(prev => prev + 1); // Incrementa a chave para disparar o re-fetch no AttendanceForm
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10">
-      <div className="max-w-4xl mx-auto mb-6 flex justify-end gap-4 px-6"> {/* Increased max-width and added horizontal padding */}
-        <Link to="/manual-options-input">
-          <Button variant="outline">
-            Inserir Opções Manualmente
-          </Button>
-        </Link>
-        <Button onClick={() => setIsImportDialogOpen(true)}>
-          Importar Opções
-        </Button>
-        <Link to="/manage-options">
-          <Button variant="secondary">
-            Gerenciar Opções
-          </Button>
-        </Link>
+    <div className="min-h-screen bg-gray-50 py-10 relative">
+      <div className="absolute top-4 left-4 z-10"> {/* Posiciona o gatilho do menu retrátil */}
+        <OptionsSheet onImportClick={() => setIsImportDialogOpen(true)} />
       </div>
       <AttendanceForm onOptionsUpdated={handleImportSuccess} key={optionsUpdatedKey} />
       <MadeWithDyad />
