@@ -1,11 +1,32 @@
+import React, { useState, useCallback } from "react";
 import { AttendanceForm } from "@/components/AttendanceForm";
 import { MadeWithDyad } from "@/components/made-with-dyad";
+import { Button } from "@/components/ui/button";
+import { ImportOptionsDialog } from "@/components/ImportOptionsDialog";
 
 const AttendancePage = () => {
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [optionsUpdatedKey, setOptionsUpdatedKey] = useState(0); // Used to force AttendanceForm to re-fetch options
+
+  const handleImportSuccess = useCallback(() => {
+    setOptionsUpdatedKey(prev => prev + 1); // Increment key to trigger re-fetch in AttendanceForm
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 py-10">
-      <AttendanceForm />
+      <div className="max-w-2xl mx-auto mb-6 text-right">
+        <Button onClick={() => setIsImportDialogOpen(true)}>
+          Importar Opções
+        </Button>
+      </div>
+      <AttendanceForm onOptionsUpdated={handleImportSuccess} key={optionsUpdatedKey} />
       <MadeWithDyad />
+
+      <ImportOptionsDialog
+        isOpen={isImportDialogOpen}
+        onClose={() => setIsImportDialogOpen(false)}
+        onImportSuccess={handleImportSuccess}
+      />
     </div>
   );
 };

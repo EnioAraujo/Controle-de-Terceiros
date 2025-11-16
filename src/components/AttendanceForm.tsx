@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format, parse, differenceInMinutes } from "date-fns";
+import { format, differenceInMinutes } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { AttendanceRecord, SelectOption } from "@/types/attendance";
 import { addAttendanceRecord } from "@/lib/attendance-storage";
+import { getOptions } from "@/lib/options-storage";
 import { showSuccess, showError } from "@/utils/toast";
 
 const formSchema = z.object({
@@ -50,46 +51,70 @@ const formSchema = z.object({
   supplier: z.string().min(1, "O fornecedor é obrigatório."),
 });
 
-const shiftOptions: SelectOption[] = [
+// Default options if none are loaded from storage
+const defaultShiftOptions: SelectOption[] = [
   { value: "Manhã", label: "Manhã" },
   { value: "Tarde", label: "Tarde" },
   { value: "Noite", label: "Noite" },
 ];
 
-const positionOptions: SelectOption[] = [
+const defaultPositionOptions: SelectOption[] = [
   { value: "Operador", label: "Operador" },
   { value: "Supervisor", label: "Supervisor" },
   { value: "Técnico", label: "Técnico" },
   { value: "Engenheiro", label: "Engenheiro" },
 ];
 
-const unitOptions: SelectOption[] = [
+const defaultUnitOptions: SelectOption[] = [
   { value: "Unidade A", label: "Unidade A" },
   { value: "Unidade B", label: "Unidade B" },
   { value: "Unidade C", label: "Unidade C" },
 ];
 
-const costCenterOptions: SelectOption[] = [
+const defaultCostCenterOptions: SelectOption[] = [
   { value: "CC-001", label: "CC-001" },
   { value: "CC-002", label: "CC-002" },
   { value: "CC-003", label: "CC-003" },
 ];
 
-const reasonOptions: SelectOption[] = [
+const defaultReasonOptions: SelectOption[] = [
   { value: "Manutenção", label: "Manutenção" },
   { value: "Produção", label: "Produção" },
   { value: "Limpeza", label: "Limpeza" },
   { value: "Instalação", label: "Instalação" },
 ];
 
-const supplierOptions: SelectOption[] = [
+const defaultSupplierOptions: SelectOption[] = [
   { value: "Empresa X", label: "Empresa X" },
   { value: "Empresa Y", label: "Empresa Y" },
   { value: "Empresa Z", label: "Empresa Z" },
 ];
 
-export function AttendanceForm() {
+interface AttendanceFormProps {
+  onOptionsUpdated: () => void; // Callback to trigger re-fetching options
+}
+
+export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
   const [totalHours, setTotalHours] = useState("00:00");
+  const [shiftOptions, setShiftOptions] = useState<SelectOption[]>(defaultShiftOptions);
+  const [positionOptions, setPositionOptions] = useState<SelectOption[]>(defaultPositionOptions);
+  const [unitOptions, setUnitOptions] = useState<SelectOption[]>(defaultUnitOptions);
+  const [costCenterOptions, setCostCenterOptions] = useState<SelectOption[]>(defaultCostCenterOptions);
+  const [reasonOptions, setReasonOptions] = useState<SelectOption[]>(defaultReasonOptions);
+  const [supplierOptions, setSupplierOptions] = useState<SelectOption[]>(defaultSupplierOptions);
+
+  const loadOptions = useCallback(() => {
+    setShiftOptions(getOptions("shiftOptions").length > 0 ? getOptions("shiftOptions") : defaultShiftOptions);
+    setPositionOptions(getOptions("positionOptions").length > 0 ? getOptions("positionOptions") : defaultPositionOptions);
+    setUnitOptions(getOptions("unitOptions").length > 0 ? getOptions("unitOptions") : defaultUnitOptions);
+    setCostCenterOptions(getOptions("costCenterOptions").length > 0 ? getOptions("costCenterOptions") : defaultCostCenterOptions);
+    setReasonOptions(getOptions("reasonOptions").length > 0 ? getOptions("reasonOptions") : defaultReasonOptions);
+    setSupplierOptions(getOptions("supplierOptions").length > 0 ? getOptions("supplierOptions") : defaultSupplierOptions);
+  }, []);
+
+  useEffect(() => {
+    loadOptions();
+  }, [loadOptions, onOptionsUpdated]); // Re-load options when onOptionsUpdated is called
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -106,7 +131,7 @@ export function AttendanceForm() {
     },
   });
 
-  const { watch, setValue } = form;
+  const { watch } = form;
   const timeIn = watch("timeIn");
   const timeOut = watch("timeOut");
 
