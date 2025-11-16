@@ -6,7 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AttendancePage from "./pages/AttendancePage";
-import ManualOptionsInputPage from "./pages/ManualOptionsInputPage"; // Import the new page
+import ManualOptionsInputPage from "./pages/ManualOptionsInputPage";
+import OptionsManagementPage from "./pages/OptionsManagementPage"; // Import the new page
 
 const queryClient = new QueryClient();
 
@@ -19,7 +20,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/attendance" element={<AttendancePage />} />
-          <Route path="/manual-options-input" element={<ManualOptionsInputPage />} /> {/* New route for Manual Options Input */}
+          <Route path="/manual-options-input" element={<ManualOptionsInputPage />} />
+          <Route path="/manage-options" element={<OptionsManagementPage />} /> {/* New route for Options Management */}
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

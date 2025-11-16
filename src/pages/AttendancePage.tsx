@@ -24,6 +24,11 @@ const AttendancePage = () => {
         <Button onClick={() => setIsImportDialogOpen(true)}>
           Importar Opções
         </Button>
+        <Link to="/manage-options"> {/* New button to navigate to Options Management Page */}
+          <Button variant="secondary">
+            Gerenciar Opções
+          </Button>
+        </Link>
       </div>
       <AttendanceForm onOptionsUpdated={handleImportSuccess} key={optionsUpdatedKey} />
       <MadeWithDyad />
