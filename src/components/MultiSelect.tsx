@@ -44,6 +44,26 @@ export function MultiSelect({
     onChange(newSelected);
   };
 
+  const displaySelected = () => {
+    if (selected.length === 0) {
+      return placeholder;
+    }
+
+    const selectedLabels = selected
+      .map((s) => options.find((o) => o.value === s)?.label)
+      .filter(Boolean) as string[];
+
+    const maxDisplay = 2; // Número máximo de itens para exibir diretamente
+
+    if (selectedLabels.length <= maxDisplay) {
+      return selectedLabels.join(", ");
+    } else {
+      const firstTwo = selectedLabels.slice(0, maxDisplay);
+      const remainingCount = selectedLabels.length - maxDisplay;
+      return `${firstTwo.join(", ")} +${remainingCount} mais`;
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -53,12 +73,7 @@ export function MultiSelect({
           aria-expanded={open}
           className={cn("w-full justify-between", className)}
         >
-          {selected.length > 0
-            ? selected
-                .map((s) => options.find((o) => o.value === s)?.label)
-                .filter(Boolean) // Filter out undefined labels
-                .join(", ")
-            : placeholder}
+          <span className="truncate">{displaySelected()}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
