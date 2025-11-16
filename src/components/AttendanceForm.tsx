@@ -251,8 +251,8 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-6 bg-white rounded-lg shadow-md max-w-4xl mx-auto"> {/* Increased max-width */}
-        <h2 className="text-2xl font-bold text-center mb-6">Controle de Presença de Terceirizados</h2>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-6 bg-white rounded-lg shadow-md max-w-4xl mx-auto">
+        {/* <h2 className="text-2xl font-bold text-center mb-6">Controle de Presença de Terceirizados</h2> */} {/* Removed the title */}
 
         <FormField
           control={form.control}
