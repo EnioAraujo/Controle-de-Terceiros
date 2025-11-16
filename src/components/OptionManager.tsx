@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Pencil, Trash2, PlusCircle } from "lucide-react";
+import { Pencil, Trash2, PlusCircle, MinusCircle } from "lucide-react"; // Ensure PlusCircle and MinusCircle are imported
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ import { SelectOption } from "@/types/attendance";
 import { getOptions, saveOptions } from "@/lib/options-storage";
 import { showSuccess, showError } from "@/utils/toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"; // Import Collapsible components
 
 interface OptionManagerProps {
   optionTypeKey: string;
@@ -55,6 +56,7 @@ export function OptionManager({ optionTypeKey, optionTypeName }: OptionManagerPr
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentEditingOption, setCurrentEditingOption] = useState<SelectOption | null>(null);
+  const [isCollapsibleOpen, setIsCollapsibleOpen] = useState(false); // State for collapsible
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -131,86 +133,97 @@ export function OptionManager({ optionTypeKey, optionTypeName }: OptionManagerPr
 
   return (
     <div className="space-y-4 p-4 border rounded-lg bg-white shadow-sm">
-      <h3 className="text-xl font-semibold">{optionTypeName}</h3>
+      <Collapsible open={isCollapsibleOpen} onOpenChange={setIsCollapsibleOpen} className="w-full space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-semibold">{optionTypeName}</h3>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="w-9 p-0">
+              {isCollapsibleOpen ? <MinusCircle className="h-4 w-4" /> : <PlusCircle className="h-4 w-4" />}
+              <span className="sr-only">Toggle {optionTypeName}</span>
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+        <CollapsibleContent className="space-y-4"> {/* Apply space-y-4 here for consistent spacing */}
+          {/* Add New Option Form */}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleAddOption)} className="flex space-x-2">
+              <FormField
+                control={form.control}
+                name="newOption"
+                render={({ field }) => (
+                  <FormItem className="flex-grow">
+                    <FormControl>
+                      <Input placeholder={`Adicionar novo ${optionTypeName.toLowerCase().slice(0, -1)}`} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" size="icon">
+                <PlusCircle className="h-4 w-4" />
+                <span className="sr-only">Adicionar</span>
+              </Button>
+            </form>
+          </Form>
 
-      {/* Add New Option Form */}
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleAddOption)} className="flex space-x-2">
-          <FormField
-            control={form.control}
-            name="newOption"
-            render={({ field }) => (
-              <FormItem className="flex-grow">
-                <FormControl>
-                  <Input placeholder={`Adicionar novo ${optionTypeName.toLowerCase().slice(0, -1)}`} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button type="submit" size="icon">
-            <PlusCircle className="h-4 w-4" />
-            <span className="sr-only">Adicionar</span>
-          </Button>
-        </form>
-      </Form>
-
-      {/* Options Table */}
-      {options.length > 0 ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Opção</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {options.map((option) => (
-              <TableRow key={option.value}>
-                <TableCell className="font-medium">{option.label}</TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => openEditDialog(option)}
-                    className="mr-2"
-                  >
-                    <Pencil className="h-4 w-4" />
-                    <span className="sr-only">Editar</span>
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Excluir</span>
+          {/* Options Table */}
+          {options.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Opção</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {options.map((option) => (
+                  <TableRow key={option.value}>
+                    <TableCell className="font-medium">{option.label}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEditDialog(option)}
+                        className="mr-2"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        <span className="sr-only">Editar</span>
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta ação não pode ser desfeita. Isso removerá a opção "{option.label}"
-                          permanentemente.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDeleteOption(option.value)}>
-                          Continuar
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      ) : (
-        <p className="text-center text-gray-500">Nenhuma opção cadastrada.</p>
-      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Excluir</span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação não pode ser desfeita. Isso removerá a opção "{option.label}"
+                              permanentemente.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteOption(option.value)}>
+                              Continuar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-center text-gray-500">Nenhuma opção cadastrada.</p>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
 
-      {/* Edit Option Dialog */}
+      {/* Edit Option Dialog (outside collapsible as it's a modal) */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
