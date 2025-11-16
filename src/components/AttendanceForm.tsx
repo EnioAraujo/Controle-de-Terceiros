@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format, differenceInMinutes } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, ChevronsUpDown, PlusCircle, MinusCircle } from "lucide-react"; // Added PlusCircle and MinusCircle icons
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -33,9 +33,10 @@ import {
 } from "@/components/ui/select";
 import { AttendanceRecord, SelectOption } from "@/types/attendance";
 import { addAttendanceRecord } from "@/lib/attendance-storage";
-import { getOptions, saveOptions } from "@/lib/options-storage"; // Import saveOptions
+import { getOptions, saveOptions } from "@/lib/options-storage";
 import { showSuccess, showError } from "@/utils/toast";
 import { MultiSelect } from "@/components/MultiSelect";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"; // Import Collapsible components
 
 const formSchema = z.object({
   date: z.date({
@@ -110,7 +111,8 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
   const [costCenterOptions, setCostCenterOptions] = useState<SelectOption[]>(defaultCostCenterOptions);
   const [reasonOptions, setReasonOptions] = useState<SelectOption[]>(defaultReasonOptions);
   const [supplierOptions, setSupplierOptions] = useState<SelectOption[]>(defaultSupplierOptions);
-  const [newManualFullName, setNewManualFullName] = useState(""); // State for manual full name input
+  const [newManualFullName, setNewManualFullName] = useState("");
+  const [isAddingNameOpen, setIsAddingNameOpen] = useState(false); // State for collapsible
 
   const loadOptions = useCallback(() => {
     setFullNameOptions(getOptions("fullNameOptions").length > 0 ? getOptions("fullNameOptions") : defaultFullNameOptions);
@@ -197,10 +199,10 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
     const newOption: SelectOption = { value: trimmedName, label: trimmedName };
     const updatedOptions = [...existingOptions, newOption];
     saveOptions("fullNameOptions", updatedOptions);
-    setFullNameOptions(updatedOptions); // Update local state
-    setNewManualFullName(""); // Clear input field
+    setFullNameOptions(updatedOptions);
+    setNewManualFullName("");
     showSuccess(`Nome "${trimmedName}" adicionado com sucesso!`);
-    onOptionsUpdated(); // Trigger re-fetch in case other components depend on it
+    onOptionsUpdated();
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -310,23 +312,41 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
           )}
         />
 
-        {/* Manual Full Name Input */}
-        <div className="flex items-end space-x-2">
-          <div className="flex-grow">
-            <FormItem>
-              <FormLabel htmlFor="new-full-name">Adicionar Novo Nome</FormLabel>
-              <Input
-                id="new-full-name"
-                placeholder="Digite um novo nome completo"
-                value={newManualFullName}
-                onChange={(e) => setNewManualFullName(e.target.value)}
-              />
-            </FormItem>
+        {/* Collapsible for Manual Full Name Input */}
+        <Collapsible
+          open={isAddingNameOpen}
+          onOpenChange={setIsAddingNameOpen}
+          className="w-full space-y-2"
+        >
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold">
+              Adicionar novo nome manualmente
+            </h4>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-9 p-0">
+                {isAddingNameOpen ? <MinusCircle className="h-4 w-4" /> : <PlusCircle className="h-4 w-4" />}
+                <span className="sr-only">Toggle</span>
+              </Button>
+            </CollapsibleTrigger>
           </div>
-          <Button type="button" onClick={handleAddManualFullName}>
-            Adicionar
-          </Button>
-        </div>
+          <CollapsibleContent className="space-y-2">
+            <div className="flex items-end space-x-2">
+              <div className="flex-grow">
+                <FormItem>
+                  <Input
+                    id="new-full-name"
+                    placeholder="Digite um novo nome completo"
+                    value={newManualFullName}
+                    onChange={(e) => setNewManualFullName(e.target.value)}
+                  />
+                </FormItem>
+              </div>
+              <Button type="button" onClick={handleAddManualFullName}>
+                Adicionar
+              </Button>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         <FormField
           control={form.control}
