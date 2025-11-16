@@ -15,7 +15,7 @@ const AttendancePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-10">
-      <div className="max-w-2xl mx-auto mb-6 flex justify-end gap-4">
+      <div className="max-w-4xl mx-auto mb-6 flex justify-end gap-4 px-6"> {/* Increased max-width and added horizontal padding */}
         <Link to="/manual-options-input">
           <Button variant="outline">
             Inserir Opções Manualmente
@@ -24,7 +24,7 @@ const AttendancePage = () => {
         <Button onClick={() => setIsImportDialogOpen(true)}>
           Importar Opções
         </Button>
-        <Link to="/manage-options"> {/* New button to navigate to Options Management Page */}
+        <Link to="/manage-options">
           <Button variant="secondary">
             Gerenciar Opções
           </Button>
