@@ -42,6 +42,7 @@ interface ImportOptionsDialogProps {
 }
 
 const optionTypes: SelectOption[] = [
+  { value: "fullNameOptions", label: "Nome Completo do Terceiro" }, // Added new option type
   { value: "shiftOptions", label: "Turno" },
   { value: "positionOptions", label: "Cargo" },
   { value: "unitOptions", label: "Unidade" },

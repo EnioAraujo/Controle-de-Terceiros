@@ -35,12 +35,13 @@ import { AttendanceRecord, SelectOption } from "@/types/attendance";
 import { addAttendanceRecord } from "@/lib/attendance-storage";
 import { getOptions } from "@/lib/options-storage";
 import { showSuccess, showError } from "@/utils/toast";
+import { MultiSelect } from "@/components/MultiSelect"; // Import MultiSelect
 
 const formSchema = z.object({
   date: z.date({
     required_error: "A data da presença é obrigatória.",
   }),
-  fullName: z.string().min(1, "O nome completo é obrigatório."),
+  fullName: z.array(z.string()).min(1, "Pelo menos um nome é obrigatório."), // Changed to array for multi-select
   shift: z.string().min(1, "O turno é obrigatório."),
   timeIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido (HH:MM)."),
   timeOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido (HH:MM)."),
@@ -52,6 +53,12 @@ const formSchema = z.object({
 });
 
 // Default options if none are loaded from storage
+const defaultFullNameOptions: SelectOption[] = [
+  { value: "João Silva", label: "João Silva" },
+  { value: "Maria Souza", label: "Maria Souza" },
+  { value: "Pedro Santos", label: "Pedro Santos" },
+];
+
 const defaultShiftOptions: SelectOption[] = [
   { value: "Manhã", label: "Manhã" },
   { value: "Tarde", label: "Tarde" },
@@ -96,6 +103,7 @@ interface AttendanceFormProps {
 
 export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
   const [totalHours, setTotalHours] = useState("00:00");
+  const [fullNameOptions, setFullNameOptions] = useState<SelectOption[]>(defaultFullNameOptions); // New state for full name options
   const [shiftOptions, setShiftOptions] = useState<SelectOption[]>(defaultShiftOptions);
   const [positionOptions, setPositionOptions] = useState<SelectOption[]>(defaultPositionOptions);
   const [unitOptions, setUnitOptions] = useState<SelectOption[]>(defaultUnitOptions);
@@ -104,6 +112,7 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
   const [supplierOptions, setSupplierOptions] = useState<SelectOption[]>(defaultSupplierOptions);
 
   const loadOptions = useCallback(() => {
+    setFullNameOptions(getOptions("fullNameOptions").length > 0 ? getOptions("fullNameOptions") : defaultFullNameOptions); // Load full name options
     setShiftOptions(getOptions("shiftOptions").length > 0 ? getOptions("shiftOptions") : defaultShiftOptions);
     setPositionOptions(getOptions("positionOptions").length > 0 ? getOptions("positionOptions") : defaultPositionOptions);
     setUnitOptions(getOptions("unitOptions").length > 0 ? getOptions("unitOptions") : defaultUnitOptions);
@@ -119,7 +128,7 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: "",
+      fullName: [], // Default to empty array for multi-select
       shift: "",
       timeIn: "",
       timeOut: "",
@@ -170,26 +179,44 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      const newRecord: AttendanceRecord = {
-        id: crypto.randomUUID(), // Generate a unique ID
-        date: values.date,
-        fullName: values.fullName,
-        shift: values.shift,
-        timeIn: values.timeIn,
-        timeOut: values.timeOut,
-        totalHours: totalHours,
-        position: values.position,
-        unit: values.unit,
-        costCenter: values.costCenter,
-        reason: values.reason,
-        supplier: values.supplier,
-      };
-      addAttendanceRecord(newRecord);
-      showSuccess("Registro de presença adicionado com sucesso!");
-      form.reset(); // Reset form after successful submission
+      if (values.fullName.length === 0) {
+        showError("Selecione pelo menos um nome completo do terceiro.");
+        return;
+      }
+
+      for (const name of values.fullName) {
+        const newRecord: AttendanceRecord = {
+          id: crypto.randomUUID(), // Generate a unique ID for each record
+          date: values.date,
+          fullName: name, // Each record gets one name
+          shift: values.shift,
+          timeIn: values.timeIn,
+          timeOut: values.timeOut,
+          totalHours: totalHours,
+          position: values.position,
+          unit: values.unit,
+          costCenter: values.costCenter,
+          reason: values.reason,
+          supplier: values.supplier,
+        };
+        addAttendanceRecord(newRecord);
+      }
+      showSuccess("Registro(s) de presença adicionado(s) com sucesso!");
+      form.reset({ // Reset form after successful submission, keeping date if desired
+        fullName: [],
+        shift: "",
+        timeIn: "",
+        timeOut: "",
+        position: "",
+        unit: "",
+        costCenter: "",
+        reason: "",
+        supplier: "",
+        date: values.date, // Keep the date selected for convenience
+      });
       setTotalHours("00:00"); // Reset total hours
     } catch (error) {
-      showError("Erro ao adicionar registro de presença.");
+      showError("Erro ao adicionar registro(s) de presença.");
       console.error("Submission error:", error);
     }
   }
@@ -245,7 +272,12 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
             <FormItem>
               <FormLabel>Nome Completo do Terceiro</FormLabel>
               <FormControl>
-                <Input placeholder="Nome completo" {...field} />
+                <MultiSelect
+                  options={fullNameOptions}
+                  selected={field.value}
+                  onChange={field.onChange}
+                  placeholder="Selecione os nomes"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
