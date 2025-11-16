@@ -3,6 +3,7 @@ import { AttendanceForm } from "@/components/AttendanceForm";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Button } from "@/components/ui/button";
 import { ImportOptionsDialog } from "@/components/ImportOptionsDialog";
+import { Link } from "react-router-dom";
 
 const AttendancePage = () => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -14,7 +15,12 @@ const AttendancePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-10">
-      <div className="max-w-2xl mx-auto mb-6 text-right">
+      <div className="max-w-2xl mx-auto mb-6 flex justify-end gap-4">
+        <Link to="/manual-options-input">
+          <Button variant="outline">
+            Inserir Opções Manualmente
+          </Button>
+        </Link>
         <Button onClick={() => setIsImportDialogOpen(true)}>
           Importar Opções
         </Button>
