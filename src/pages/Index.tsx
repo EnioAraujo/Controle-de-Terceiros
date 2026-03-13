@@ -1,18 +1,42 @@
 import { useState, useMemo, useCallback, ReactNode, InputHTMLAttributes, SelectHTMLAttributes, CSSProperties } from "react";
 import { Registro } from "@/types/attendance";
 
-// ─── CONSTANTES ──────────────────────────────────────────────────
-const TURNOS       = ["1ª TURNO", "2ª TURNO", "3ª TURNO", "INTERMEDIÁRIO"];
-const UNIDADES     = ["HUB", "COD DIURNO", "COD NOTURNO", "Administrativo"];
-const FORNECEDORES = ["LIDER MASTER", "TRANSLOG", "SERVILOG", "LOGFLEX", "OUTRO"];
-const MOTIVOS      = ["OPERAÇÃO BAT HUB BRASIL", "REFORÇO TURNO", "COBERTURA FALTA", "PROJETO ESPECIAL", "OUTRO"];
-const CARGOS       = ["AUXILIAR DE DEPÓSITO", "CONFERENTE JR", "CONFERENTE SR", "OPERADOR DE EMPILHADEIRA", "LÍDER OPERACIONAL", "SUPERVISOR", "ANALISTA", "COORDENADOR"];
-const CC_LIST      = ["100001 - SOUZA CRUZ-COD", "100002 - SOUZA CRUZ-HUB", "100003 - ADMINISTRATIVO"];
-const SETORES      = ["RECEBIMENTO", "EXPEDIÇÃO", "SEPARAÇÃO", "CONFERÊNCIA", "ENDEREÇAMENTO", "ADMINISTRATIVO", "PÁTIO"];
+// ─── CONSTANTES DEFAULT ──────────────────────────────────────────
+const D_TURNOS       = ["1ª TURNO", "2ª TURNO", "3ª TURNO", "INTERMEDIÁRIO"];
+const D_UNIDADES     = ["HUB", "COD DIURNO", "COD NOTURNO", "Administrativo"];
+const D_FORNECEDORES = ["LIDER MASTER", "TRANSLOG", "SERVILOG", "LOGFLEX", "OUTRO"];
+const D_MOTIVOS      = ["OPERAÇÃO BAT HUB BRASIL", "REFORÇO TURNO", "COBERTURA FALTA", "PROJETO ESPECIAL", "OUTRO"];
+const D_CARGOS       = ["AUXILIAR DE DEPÓSITO", "CONFERENTE JR", "CONFERENTE SR", "OPERADOR DE EMPILHADEIRA", "LÍDER OPERACIONAL", "SUPERVISOR", "ANALISTA", "COORDENADOR"];
+const D_CC_LIST      = ["100001 - SOUZA CRUZ-COD", "100002 - SOUZA CRUZ-HUB", "100003 - ADMINISTRATIVO"];
+const D_SETORES      = ["RECEBIMENTO", "EXPEDIÇÃO", "SEPARAÇÃO", "CONFERÊNCIA", "ENDEREÇAMENTO", "ADMINISTRATIVO", "PÁTIO"];
 
-const hoje    = () => new Date().toISOString().slice(0, 10);
-const fmt     = (d: string) => d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "—";
-const fmtMes  = (ym: string) => { const [y, m] = ym.split("-"); return ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"][+m-1] + "/" + y; };
+// ─── TIPOS ───────────────────────────────────────────────────────
+interface Opcoes {
+  turnos:       string[];
+  unidades:     string[];
+  fornecedores: string[];
+  motivos:      string[];
+  cargos:       string[];
+  ccList:       string[];
+  setores:      string[];
+  nomes:        string[];
+}
+
+const OPCOES_DEFAULT: Opcoes = {
+  turnos:       D_TURNOS,
+  unidades:     D_UNIDADES,
+  fornecedores: D_FORNECEDORES,
+  motivos:      D_MOTIVOS,
+  cargos:       D_CARGOS,
+  ccList:       D_CC_LIST,
+  setores:      D_SETORES,
+  nomes:        [],
+};
+
+// ─── UTILITÁRIOS ─────────────────────────────────────────────────
+const hoje     = () => new Date().toISOString().slice(0, 10);
+const fmt      = (d: string) => d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "—";
+const fmtMes   = (ym: string) => { const [y, m] = ym.split("-"); return ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"][+m-1] + "/" + y; };
 const mesAtual = () => new Date().toISOString().slice(0, 7);
 const calcHoras = (e: string, s: string) => {
   if (!e || !s) return "";
@@ -23,15 +47,17 @@ const calcHoras = (e: string, s: string) => {
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 };
 const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+const FORN_PALETTE = ["#D97706","#1A56DB","#0E9F6E","#6C63FF","#E02424","#0891B2","#CA8A04","#7C3AED","#0F766E","#64748B"];
+const fornCor = (forn: string, lista: string[]) => FORN_PALETTE[lista.indexOf(forn) % FORN_PALETTE.length] || "#64748B";
 
-// Seed
+// ─── SEED ────────────────────────────────────────────────────────
 const SEED: Registro[] = [
   { id: uuid(), data: hoje(), turno: "1ª TURNO", horaEntrada: "05:20", horaSaida: "13:40", totalHoras: "08:20", nome: "WILSON CERQUEIRA", cargo: "AUXILIAR DE DEPÓSITO", setor: "RECEBIMENTO", unidade: "HUB", cc: "100002 - SOUZA CRUZ-HUB", motivo: "OPERAÇÃO BAT HUB BRASIL", fornecedor: "LIDER MASTER", obs: "" },
   { id: uuid(), data: hoje(), turno: "1ª TURNO", horaEntrada: "05:30", horaSaida: "13:50", totalHoras: "08:20", nome: "PATRICIA SOUZA LIMA", cargo: "CONFERENTE JR", setor: "EXPEDIÇÃO", unidade: "HUB", cc: "100002 - SOUZA CRUZ-HUB", motivo: "REFORÇO TURNO", fornecedor: "TRANSLOG", obs: "" },
   { id: uuid(), data: hoje(), turno: "2ª TURNO", horaEntrada: "13:50", horaSaida: "22:10", totalHoras: "08:20", nome: "ROBERTO ALVES NETO", cargo: "OPERADOR DE EMPILHADEIRA", setor: "SEPARAÇÃO", unidade: "COD DIURNO", cc: "100001 - SOUZA CRUZ-COD", motivo: "COBERTURA FALTA", fornecedor: "SERVILOG", obs: "" },
 ];
 
-// ─── STORAGE ────────────────────────────────────────────────────
+// ─── HOOKS ───────────────────────────────────────────────────────
 const useStorage = (key: string, seed: Registro[]): [Registro[], (val: Registro[]) => void] => {
   const [data, setData] = useState<Registro[]>(() => {
     try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : seed; }
@@ -44,6 +70,21 @@ const useStorage = (key: string, seed: Registro[]): [Registro[], (val: Registro[
   return [data, save];
 };
 
+const useOpcoes = (): [Opcoes, (val: Opcoes) => void] => {
+  const [data, setData] = useState<Opcoes>(() => {
+    try {
+      const s = localStorage.getItem("ct-opcoes-v1");
+      if (s) return { ...OPCOES_DEFAULT, ...JSON.parse(s) };
+      return OPCOES_DEFAULT;
+    } catch { return OPCOES_DEFAULT; }
+  });
+  const save = useCallback((val: Opcoes) => {
+    setData(val);
+    try { localStorage.setItem("ct-opcoes-v1", JSON.stringify(val)); } catch {}
+  }, []);
+  return [data, save];
+};
+
 // ─── UI ATOMS ────────────────────────────────────────────────────
 const Icon = ({ d, size = 16 }: { d: string; size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>
@@ -53,10 +94,6 @@ interface ChipProps { label: string; color?: string; bg?: string; size?: "sm" | 
 const Chip = ({ label, color = "#1A56DB", bg, size = "sm" }: ChipProps) => (
   <span style={{ display:"inline-flex", alignItems:"center", padding: size === "lg" ? "4px 12px" : "2px 8px", borderRadius:99, fontSize: size === "lg" ? 12 : 11, fontWeight:700, color, background: bg || color + "1A", whiteSpace:"nowrap", letterSpacing:.2 }}>{label}</span>
 );
-
-const Badge = ({ n, color = "#E02424" }: { n: number; color?: string }) => n > 0 ? (
-  <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:18, height:18, borderRadius:"50%", background:color, color:"#fff", fontSize:10, fontWeight:800, marginLeft:4 }}>{n}</span>
-) : null;
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> { label?: string; }
 const Input = ({ label, ...props }: InputProps) => (
@@ -77,16 +114,7 @@ const Select = ({ label, children, ...props }: SelectProps) => (
 );
 
 type BtnVariant = "primary" | "ghost" | "danger" | "success" | "warning" | "outline";
-interface BtnProps {
-  children: ReactNode;
-  onClick?: () => void;
-  variant?: BtnVariant;
-  small?: boolean;
-  icon?: ReactNode;
-  disabled?: boolean;
-  full?: boolean;
-  style?: CSSProperties;
-}
+interface BtnProps { children: ReactNode; onClick?: () => void; variant?: BtnVariant; small?: boolean; icon?: ReactNode; disabled?: boolean; full?: boolean; style?: CSSProperties; }
 const Btn = ({ children, onClick, variant = "primary", small, icon, disabled, full, style: s }: BtnProps) => {
   const V: Record<BtnVariant, { bg: string; c: string; border?: string }> = {
     primary: { bg:"#1A56DB", c:"#fff" },
@@ -124,30 +152,29 @@ const Modal = ({ title, subtitle, onClose, children, wide, xl }: ModalProps) => 
 
 // ─── FORM DE LANÇAMENTO ─────────────────────────────────────────
 interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; }
-interface FormLancamentoProps { inicial?: Registro | null; onSave: (registros: Registro[]) => void; onCancel: () => void; }
+interface FormLancamentoProps { inicial?: Registro | null; onSave: (registros: Registro[]) => void; onCancel: () => void; opcoes: Opcoes; }
 
-const FormLancamento = ({ inicial, onSave, onCancel }: FormLancamentoProps) => {
+const FormLancamento = ({ inicial, onSave, onCancel, opcoes }: FormLancamentoProps) => {
   const isEdit = !!inicial;
 
   const [comum, setComum] = useState({
-    data:       inicial?.data       || hoje(),
-    turno:      inicial?.turno      || TURNOS[0],
+    data:        inicial?.data        || hoje(),
+    turno:       inicial?.turno       || opcoes.turnos[0]       || "",
     horaEntrada: inicial?.horaEntrada || "05:00",
-    horaSaida:  inicial?.horaSaida  || "13:20",
-    cargo:      inicial?.cargo      || CARGOS[0],
-    setor:      inicial?.setor      || SETORES[0],
-    unidade:    inicial?.unidade    || UNIDADES[0],
-    cc:         inicial?.cc         || CC_LIST[0],
-    motivo:     inicial?.motivo     || MOTIVOS[0],
-    fornecedor: inicial?.fornecedor || FORNECEDORES[0],
-    obs:        inicial?.obs        || "",
+    horaSaida:   inicial?.horaSaida   || "13:20",
+    cargo:       inicial?.cargo       || opcoes.cargos[0]       || "",
+    setor:       inicial?.setor       || opcoes.setores[0]      || "",
+    unidade:     inicial?.unidade     || opcoes.unidades[0]     || "",
+    cc:          inicial?.cc          || opcoes.ccList[0]       || "",
+    motivo:      inicial?.motivo      || opcoes.motivos[0]      || "",
+    fornecedor:  inicial?.fornecedor  || opcoes.fornecedores[0] || "",
+    obs:         inicial?.obs         || "",
   });
 
   const [pessoas, setPessoas] = useState<PessoaRow[]>([
     { nome: inicial?.nome || "", horaEntrada: inicial?.horaEntrada || "05:00", horaSaida: inicial?.horaSaida || "13:20" }
   ]);
 
-  // Atualiza campo comum; se for horaEntrada/horaSaida propaga para linhas que ainda usam o valor anterior
   const setC = (k: string, v: string) => {
     setComum(prev => {
       if (k === "horaEntrada") setPessoas(ps => ps.map(p => p.horaEntrada === prev.horaEntrada ? { ...p, horaEntrada: v } : p));
@@ -156,7 +183,6 @@ const FormLancamento = ({ inicial, onSave, onCancel }: FormLancamentoProps) => {
     });
   };
 
-  // Ajusta quantidade de linhas
   const handleQtd = (n: number) => {
     const cap = Math.max(1, Math.min(20, n));
     setPessoas(prev => {
@@ -195,18 +221,15 @@ const FormLancamento = ({ inicial, onSave, onCancel }: FormLancamentoProps) => {
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
 
-      {/* Bloco 0 — Quantidade (apenas no modo novo) */}
+      {/* Bloco 0 — Quantidade */}
       {!isEdit && (
         <div style={{ background:"#F0F6FF", border:"1.5px solid #BFDBFE", borderRadius:12, padding:"12px 18px", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
           <div style={{ fontSize:11, fontWeight:700, color:"#1A56DB", textTransform:"uppercase", letterSpacing:.8 }}>Quantidade de Pessoas</div>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-            <button onClick={() => handleQtd(pessoas.length - 1)}
-              style={{ width:28, height:28, borderRadius:7, border:"1.5px solid #BFDBFE", background:"#fff", cursor:"pointer", fontWeight:800, fontSize:15, color:"#1A56DB", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>−</button>
-            <input type="number" min={1} max={20} value={pessoas.length}
-              onChange={e => handleQtd(Number(e.target.value))}
+            <button onClick={() => handleQtd(pessoas.length - 1)} style={{ width:28, height:28, borderRadius:7, border:"1.5px solid #BFDBFE", background:"#fff", cursor:"pointer", fontWeight:800, fontSize:15, color:"#1A56DB", display:"flex", alignItems:"center", justifyContent:"center" }}>−</button>
+            <input type="number" min={1} max={20} value={pessoas.length} onChange={e => handleQtd(Number(e.target.value))}
               style={{ width:48, textAlign:"center", border:"1.5px solid #BFDBFE", borderRadius:7, padding:"5px 6px", fontSize:15, fontWeight:800, color:"#1A56DB", fontFamily:"inherit", background:"#fff", outline:"none" }} />
-            <button onClick={() => handleQtd(pessoas.length + 1)}
-              style={{ width:28, height:28, borderRadius:7, border:"none", background:"#1A56DB", cursor:"pointer", fontWeight:800, fontSize:15, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>+</button>
+            <button onClick={() => handleQtd(pessoas.length + 1)} style={{ width:28, height:28, borderRadius:7, border:"none", background:"#1A56DB", cursor:"pointer", fontWeight:800, fontSize:15, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
           </div>
           <div style={{ fontSize:12, color:"#64748B" }}>pessoa{pessoas.length !== 1 ? "s" : ""} neste lançamento</div>
         </div>
@@ -219,8 +242,8 @@ const FormLancamento = ({ inicial, onSave, onCancel }: FormLancamentoProps) => {
           Identificação
         </div>
         <G cols={2}>
-          <Select label="Cargo" value={comum.cargo} onChange={e => setC("cargo", e.target.value)}>{CARGOS.map(c => <option key={c}>{c}</option>)}</Select>
-          <Select label="Fornecedor" value={comum.fornecedor} onChange={e => setC("fornecedor", e.target.value)}>{FORNECEDORES.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label="Cargo" value={comum.cargo} onChange={e => setC("cargo", e.target.value)}>{opcoes.cargos.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label="Fornecedor" value={comum.fornecedor} onChange={e => setC("fornecedor", e.target.value)}>{opcoes.fornecedores.map(c => <option key={c}>{c}</option>)}</Select>
         </G>
       </div>
 
@@ -231,9 +254,9 @@ const FormLancamento = ({ inicial, onSave, onCancel }: FormLancamentoProps) => {
           Lotação
         </div>
         <G cols={3}>
-          <Select label="Unidade" value={comum.unidade} onChange={e => setC("unidade", e.target.value)}>{UNIDADES.map(c => <option key={c}>{c}</option>)}</Select>
-          <Select label="Setor" value={comum.setor} onChange={e => setC("setor", e.target.value)}>{SETORES.map(c => <option key={c}>{c}</option>)}</Select>
-          <Select label="Centro de Custo" value={comum.cc} onChange={e => setC("cc", e.target.value)}>{CC_LIST.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label="Unidade" value={comum.unidade} onChange={e => setC("unidade", e.target.value)}>{opcoes.unidades.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label="Setor" value={comum.setor} onChange={e => setC("setor", e.target.value)}>{opcoes.setores.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label="Centro de Custo" value={comum.cc} onChange={e => setC("cc", e.target.value)}>{opcoes.ccList.map(c => <option key={c}>{c}</option>)}</Select>
         </G>
       </div>
 
@@ -246,7 +269,7 @@ const FormLancamento = ({ inicial, onSave, onCancel }: FormLancamentoProps) => {
         </div>
         <G cols={4}>
           <Input label="Data" type="date" value={comum.data} onChange={e => setC("data", e.target.value)} />
-          <Select label="Turno" value={comum.turno} onChange={e => setC("turno", e.target.value)}>{TURNOS.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label="Turno" value={comum.turno} onChange={e => setC("turno", e.target.value)}>{opcoes.turnos.map(c => <option key={c}>{c}</option>)}</Select>
           <Input label={isEdit ? "Hora Entrada" : "Entrada Padrão"} type="time" value={comum.horaEntrada} onChange={e => setC("horaEntrada", e.target.value)} />
           <Input label={isEdit ? "Hora Saída" : "Saída Padrão"} type="time" value={comum.horaSaida} onChange={e => setC("horaSaida", e.target.value)} />
         </G>
@@ -265,7 +288,7 @@ const FormLancamento = ({ inicial, onSave, onCancel }: FormLancamentoProps) => {
           Motivo e Observações
         </div>
         <G cols={1}>
-          <Select label="Motivo" value={comum.motivo} onChange={e => setC("motivo", e.target.value)}>{MOTIVOS.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label="Motivo" value={comum.motivo} onChange={e => setC("motivo", e.target.value)}>{opcoes.motivos.map(c => <option key={c}>{c}</option>)}</Select>
           <Input label="Observação" value={comum.obs} onChange={e => setC("obs", e.target.value)} placeholder="Informações adicionais (opcional)" />
         </G>
       </div>
@@ -277,20 +300,26 @@ const FormLancamento = ({ inicial, onSave, onCancel }: FormLancamentoProps) => {
           {isEdit ? "Colaborador" : `Colaboradores — ${pessoas.length} pessoa${pessoas.length !== 1 ? "s" : ""}`}
         </div>
         <div style={{ border:"1px solid #E2E6EC", borderRadius:10, overflow:"hidden" }}>
-          {/* Cabeçalho */}
           <div style={{ display:"grid", gridTemplateColumns:"36px 1fr 124px 124px 72px", background:"#F8FAFC", borderBottom:"1px solid #E2E6EC", padding:"9px 14px", gap:8 }}>
             {["#", "Nome Completo *", "Hora Entrada", "Hora Saída", "Total"].map(h => (
               <div key={h} style={{ fontSize:10, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:.6 }}>{h}</div>
             ))}
           </div>
-          {/* Linhas */}
           {pessoas.map((p, i) => {
             const total = calcHoras(p.horaEntrada, p.horaSaida);
+            const listId = `nomes-list-${i}`;
             return (
               <div key={i} style={{ display:"grid", gridTemplateColumns:"36px 1fr 124px 124px 72px", gap:8, padding:"8px 14px", borderBottom: i < pessoas.length - 1 ? "1px solid #F1F5F9" : "none", alignItems:"center", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                 <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textAlign:"center" }}>{i + 1}</div>
-                <input value={p.nome} onChange={e => setP(i, "nome", e.target.value.toUpperCase())} placeholder="NOME COMPLETO"
-                  style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", fontWeight:600 }} />
+                <div>
+                  <input list={listId} value={p.nome} onChange={e => setP(i, "nome", e.target.value.toUpperCase())} placeholder="NOME COMPLETO"
+                    style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", fontWeight:600 }} />
+                  {opcoes.nomes.length > 0 && (
+                    <datalist id={listId}>
+                      {opcoes.nomes.map(n => <option key={n} value={n} />)}
+                    </datalist>
+                  )}
+                </div>
                 <input type="time" value={p.horaEntrada} onChange={e => setP(i, "horaEntrada", e.target.value)}
                   style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:12, fontFamily:"monospace", background:"#FAFBFC", width:"100%", outline:"none" }} />
                 <input type="time" value={p.horaSaida} onChange={e => setP(i, "horaSaida", e.target.value)}
@@ -313,7 +342,7 @@ const FormLancamento = ({ inicial, onSave, onCancel }: FormLancamentoProps) => {
 // ─── TELA: LANÇAMENTOS ──────────────────────────────────────────
 interface Filtros { data: string; turno: string; fornecedor: string; unidade: string; setor: string; busca: string; }
 
-const Lancamentos = ({ registros, setRegistros }: { registros: Registro[]; setRegistros: (val: Registro[]) => void }) => {
+const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[]; setRegistros: (val: Registro[]) => void; opcoes: Opcoes }) => {
   const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", setor: "", busca: "" });
   const [modal, setModal]     = useState<null | "new" | Registro>(null);
   const [confirm, setConfirm] = useState<string | null>(null);
@@ -346,8 +375,6 @@ const Lancamentos = ({ registros, setRegistros }: { registros: Registro[]; setRe
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `terceiros_${filtros.data || "todos"}.csv`; a.click();
   };
 
-  const FORN_CORES: Record<string, string> = { "LIDER MASTER":"#D97706", "TRANSLOG":"#1A56DB", "SERVILOG":"#0E9F6E", "LOGFLEX":"#6C63FF", "OUTRO":"#64748B" };
-
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
       {/* Header */}
@@ -366,16 +393,16 @@ const Lancamentos = ({ registros, setRegistros }: { registros: Registro[]; setRe
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:"14px 18px", display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
         <Input label="Data" type="date" value={filtros.data} onChange={e => set("data", e.target.value)} style={{ width:150 }} />
         <Select label="Turno" value={filtros.turno} onChange={e => set("turno", e.target.value)} style={{ width:150 }}>
-          <option value="">Todos</option>{TURNOS.map(t => <option key={t}>{t}</option>)}
+          <option value="">Todos</option>{opcoes.turnos.map(t => <option key={t}>{t}</option>)}
         </Select>
         <Select label="Fornecedor" value={filtros.fornecedor} onChange={e => set("fornecedor", e.target.value)} style={{ width:150 }}>
-          <option value="">Todos</option>{FORNECEDORES.map(t => <option key={t}>{t}</option>)}
+          <option value="">Todos</option>{opcoes.fornecedores.map(t => <option key={t}>{t}</option>)}
         </Select>
         <Select label="Unidade" value={filtros.unidade} onChange={e => set("unidade", e.target.value)} style={{ width:150 }}>
-          <option value="">Todas</option>{UNIDADES.map(t => <option key={t}>{t}</option>)}
+          <option value="">Todas</option>{opcoes.unidades.map(t => <option key={t}>{t}</option>)}
         </Select>
         <Select label="Setor" value={filtros.setor} onChange={e => set("setor", e.target.value)} style={{ width:150 }}>
-          <option value="">Todos</option>{SETORES.map(t => <option key={t}>{t}</option>)}
+          <option value="">Todos</option>{opcoes.setores.map(t => <option key={t}>{t}</option>)}
         </Select>
         <Input label="Buscar nome" value={filtros.busca} onChange={e => set("busca", e.target.value)} placeholder="Nome…" style={{ width:180 }} />
         <div style={{ marginLeft:"auto", alignSelf:"flex-end" }}>
@@ -412,11 +439,9 @@ const Lancamentos = ({ registros, setRegistros }: { registros: Registro[]; setRe
                   onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? "#fff" : "#FAFBFC")}>
                   <td style={{ padding:"10px 12px", fontFamily:"monospace", fontSize:11, color:"#64748B" }}>{fmt(r.data)}</td>
                   <td style={{ padding:"10px 12px" }}><Chip label={r.turno} color="#1A56DB" /></td>
-                  <td style={{ padding:"10px 12px" }}>
-                    <div style={{ fontWeight:700, color:"#0F1C2E", whiteSpace:"nowrap" }}>{r.nome}</div>
-                  </td>
+                  <td style={{ padding:"10px 12px" }}><div style={{ fontWeight:700, color:"#0F1C2E", whiteSpace:"nowrap" }}>{r.nome}</div></td>
                   <td style={{ padding:"10px 12px", color:"#475569", maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.cargo}</td>
-                  <td style={{ padding:"10px 12px" }}><Chip label={r.fornecedor} color={FORN_CORES[r.fornecedor] || "#64748B"} /></td>
+                  <td style={{ padding:"10px 12px" }}><Chip label={r.fornecedor} color={fornCor(r.fornecedor, opcoes.fornecedores)} /></td>
                   <td style={{ padding:"10px 12px" }}><Chip label={r.setor || "—"} color="#6C63FF" /></td>
                   <td style={{ padding:"10px 12px" }}><Chip label={r.unidade} color="#0E9F6E" /></td>
                   <td style={{ padding:"10px 12px", fontFamily:"monospace", color:"#475569" }}>{r.horaEntrada}</td>
@@ -437,10 +462,9 @@ const Lancamentos = ({ registros, setRegistros }: { registros: Registro[]; setRe
         </div>
       </div>
 
-      {/* Modais */}
       {modal && (
         <Modal title={modal === "new" ? "Novo Lançamento" : "Editar Lançamento"} subtitle="Controle de Terceiros" onClose={() => setModal(null)} xl>
-          <FormLancamento inicial={modal === "new" ? null : modal as Registro} onSave={salvar} onCancel={() => setModal(null)} />
+          <FormLancamento inicial={modal === "new" ? null : modal as Registro} onSave={salvar} onCancel={() => setModal(null)} opcoes={opcoes} />
         </Modal>
       )}
 
@@ -487,7 +511,7 @@ const Lancamentos = ({ registros, setRegistros }: { registros: Registro[]; setRe
 };
 
 // ─── TELA: DASHBOARD ────────────────────────────────────────────
-const Dashboard = ({ registros }: { registros: Registro[] }) => {
+const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoes }) => {
   const [periodo, setPeriodo] = useState(mesAtual());
 
   const doMes  = useMemo(() => registros.filter(r => r.data.startsWith(periodo)), [registros, periodo]);
@@ -514,12 +538,6 @@ const Dashboard = ({ registros }: { registros: Registro[] }) => {
     return Object.entries(m).sort((a, b) => b[1] - a[1]);
   }, [doMes]);
 
-  const porTurno = useMemo(() => {
-    const m: Record<string, number> = {};
-    doMes.forEach(r => { m[r.turno] = (m[r.turno] || 0) + 1; });
-    return Object.entries(m);
-  }, [doMes]);
-
   const porDia = useMemo(() => {
     const m: Record<string, number> = {};
     doMes.forEach(r => { m[r.data] = (m[r.data] || 0) + 1; });
@@ -527,7 +545,7 @@ const Dashboard = ({ registros }: { registros: Registro[] }) => {
   }, [doMes]);
 
   const maxDia = Math.max(...porDia.map(([, v]) => v), 1);
-  const FORN_CORES = ["#1A56DB","#0E9F6E","#D97706","#6C63FF","#E02424","#0891B2"];
+  const CHART_CORES = ["#1A56DB","#0E9F6E","#D97706","#6C63FF","#E02424","#0891B2"];
 
   interface KPIProps { label: string; value: string | number; sub?: string; color?: string; icon?: ReactNode; }
   const KPI = ({ label, value, sub, color = "#1A56DB", icon }: KPIProps) => (
@@ -560,7 +578,6 @@ const Dashboard = ({ registros }: { registros: Registro[] }) => {
         </div>
       </div>
 
-      {/* KPIs */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
         <KPI label="Registros no Mês" value={doMes.length} sub={`${deHoje.length} hoje`} color="#1A56DB"
           icon={<Icon d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />} />
@@ -573,14 +590,13 @@ const Dashboard = ({ registros }: { registros: Registro[] }) => {
       </div>
 
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
-        {/* Por Fornecedor */}
         <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
           <div style={{ fontWeight:700, fontSize:13, marginBottom:16, color:"#0F1C2E" }}>Registros por Fornecedor</div>
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
             {porFornecedor.length === 0 && <div style={{ color:"#94A3B8", fontSize:12, textAlign:"center", padding:20 }}>Sem dados no período</div>}
             {porFornecedor.map(([forn, n], i) => {
               const pct = doMes.length ? (n / doMes.length * 100) : 0;
-              const cor = FORN_CORES[i % FORN_CORES.length];
+              const cor = CHART_CORES[i % CHART_CORES.length];
               return (
                 <div key={forn}>
                   <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:5 }}>
@@ -596,14 +612,13 @@ const Dashboard = ({ registros }: { registros: Registro[] }) => {
           </div>
         </div>
 
-        {/* Por Setor */}
         <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
           <div style={{ fontWeight:700, fontSize:13, marginBottom:16, color:"#0F1C2E" }}>Registros por Setor</div>
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
             {porSetor.length === 0 && <div style={{ color:"#94A3B8", fontSize:12, textAlign:"center", padding:20 }}>Sem dados no período</div>}
             {porSetor.map(([setor, n], i) => {
               const pct = doMes.length ? (n / doMes.length * 100) : 0;
-              const cor = FORN_CORES[(i + 2) % FORN_CORES.length];
+              const cor = CHART_CORES[(i + 2) % CHART_CORES.length];
               return (
                 <div key={setor}>
                   <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:5 }}>
@@ -620,7 +635,6 @@ const Dashboard = ({ registros }: { registros: Registro[] }) => {
         </div>
       </div>
 
-      {/* Volume por dia */}
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ fontWeight:700, fontSize:13, marginBottom:16, color:"#0F1C2E" }}>Volume Diário — últimos 15 dias do período</div>
         {porDia.length === 0
@@ -634,9 +648,7 @@ const Dashboard = ({ registros }: { registros: Registro[] }) => {
                   <div key={data} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
                     <div style={{ fontSize:10, fontWeight:700, color: isHoje ? "#1A56DB" : "#94A3B8" }}>{n}</div>
                     <div style={{ width:"100%", height:`${h}%`, background: isHoje ? "#1A56DB" : "#E2E6EC", borderRadius:"4px 4px 0 0", minHeight:4, transition:"height .4s" }} />
-                    <div style={{ fontSize:9, color: isHoje ? "#1A56DB" : "#94A3B8", fontFamily:"monospace", fontWeight: isHoje ? 700 : 400 }}>
-                      {data.slice(8)}
-                    </div>
+                    <div style={{ fontSize:9, color: isHoje ? "#1A56DB" : "#94A3B8", fontFamily:"monospace", fontWeight: isHoje ? 700 : 400 }}>{data.slice(8)}</div>
                   </div>
                 );
               })}
@@ -645,14 +657,13 @@ const Dashboard = ({ registros }: { registros: Registro[] }) => {
         }
       </div>
 
-      {/* Por turno */}
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ fontWeight:700, fontSize:13, marginBottom:14, color:"#0F1C2E" }}>Distribuição por Turno</div>
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-          {TURNOS.map((t, i) => {
+          {opcoes.turnos.map((t, i) => {
             const n = doMes.filter(r => r.turno === t).length;
             const pct = doMes.length ? (n / doMes.length * 100).toFixed(0) : 0;
-            const cor = FORN_CORES[i % FORN_CORES.length];
+            const cor = CHART_CORES[i % CHART_CORES.length];
             return (
               <div key={t} style={{ flex:1, minWidth:120, background: cor + "0F", border:`1.5px solid ${cor}33`, borderRadius:10, padding:"12px 16px" }}>
                 <div style={{ fontSize:11, color:cor, fontWeight:700, marginBottom:6 }}>{t}</div>
@@ -668,9 +679,9 @@ const Dashboard = ({ registros }: { registros: Registro[] }) => {
 };
 
 // ─── TELA: FORNECEDORES ─────────────────────────────────────────
-const Fornecedores = ({ registros }: { registros: Registro[] }) => {
+const Fornecedores = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoes }) => {
   const resumo = useMemo(() => {
-    return FORNECEDORES.map(forn => {
+    return opcoes.fornecedores.map(forn => {
       const regs    = registros.filter(r => r.fornecedor === forn);
       const hoje_   = regs.filter(r => r.data === hoje()).length;
       const mes_    = regs.filter(r => r.data.startsWith(mesAtual())).length;
@@ -680,9 +691,7 @@ const Fornecedores = ({ registros }: { registros: Registro[] }) => {
       const ultimos = [...regs].sort((a, b) => a.data > b.data ? -1 : 1).slice(0, 5);
       return { forn, total: regs.length, hoje: hoje_, mes: mes_, horas, setores, ultimos };
     }).filter(f => f.total > 0);
-  }, [registros]);
-
-  const FORN_CORES: Record<string, string> = { "LIDER MASTER":"#D97706", "TRANSLOG":"#1A56DB", "SERVILOG":"#0E9F6E", "LOGFLEX":"#6C63FF", "OUTRO":"#64748B" };
+  }, [registros, opcoes.fornecedores]);
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
@@ -690,17 +699,15 @@ const Fornecedores = ({ registros }: { registros: Registro[] }) => {
         <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>Visão</div>
         <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>Painel de Fornecedores</div>
       </div>
-
       {resumo.length === 0 && (
         <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:48, textAlign:"center", color:"#94A3B8" }}>
           <div style={{ fontSize:32, marginBottom:8 }}>🏢</div>
           Nenhum lançamento registrado ainda
         </div>
       )}
-
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))", gap:14 }}>
         {resumo.map(({ forn, total, hoje: hj, mes, horas, setores, ultimos }) => {
-          const cor = FORN_CORES[forn] || "#64748B";
+          const cor = fornCor(forn, opcoes.fornecedores);
           return (
             <div key={forn} style={{ background:"#fff", border:`1px solid ${cor}33`, borderRadius:12, overflow:"hidden", boxShadow:"0 1px 4px rgba(15,28,46,.06)" }}>
               <div style={{ background:cor, padding:"14px 18px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -746,41 +753,193 @@ const Fornecedores = ({ registros }: { registros: Registro[] }) => {
   );
 };
 
+// ─── TELA: CONFIGURAÇÕES ────────────────────────────────────────
+const OPCOES_CONFIG: { key: keyof Omit<Opcoes, "nomes">; label: string; cor: string }[] = [
+  { key: "turnos",       label: "Turnos",          cor: "#1A56DB" },
+  { key: "unidades",     label: "Unidades",         cor: "#0E9F6E" },
+  { key: "fornecedores", label: "Fornecedores",     cor: "#D97706" },
+  { key: "motivos",      label: "Motivos",          cor: "#6C63FF" },
+  { key: "cargos",       label: "Cargos",           cor: "#E02424" },
+  { key: "ccList",       label: "Centros de Custo", cor: "#0891B2" },
+  { key: "setores",      label: "Setores",          cor: "#475569" },
+];
+
+const Configuracoes = ({ opcoes, setOpcoes }: { opcoes: Opcoes; setOpcoes: (val: Opcoes) => void }) => {
+  type OpcKey = keyof Opcoes;
+  const [inputs, setInputs] = useState<Record<OpcKey, string>>({
+    turnos: "", unidades: "", fornecedores: "", motivos: "", cargos: "", ccList: "", setores: "", nomes: ""
+  });
+  const [nomesBulk, setNomesBulk] = useState("");
+  const [nomeBusca, setNomeBusca] = useState("");
+  const [bulkFeedback, setBulkFeedback] = useState("");
+
+  const addItem = (key: OpcKey, value: string) => {
+    const v = value.trim().toUpperCase();
+    if (!v || opcoes[key].includes(v)) return;
+    setOpcoes({ ...opcoes, [key]: [...opcoes[key], v] });
+    setInputs(prev => ({ ...prev, [key]: "" }));
+  };
+
+  const removeItem = (key: OpcKey, idx: number) => {
+    const arr = [...opcoes[key]];
+    arr.splice(idx, 1);
+    setOpcoes({ ...opcoes, [key]: arr });
+  };
+
+  const importNomes = () => {
+    const novos = nomesBulk
+      .split("\n")
+      .map(n => n.trim().toUpperCase())
+      .filter(n => n.length > 2 && !opcoes.nomes.includes(n));
+    if (novos.length === 0) { setBulkFeedback("Nenhum nome novo para importar."); return; }
+    setOpcoes({ ...opcoes, nomes: [...opcoes.nomes, ...novos] });
+    setNomesBulk("");
+    setBulkFeedback(`${novos.length} nome${novos.length > 1 ? "s" : ""} importado${novos.length > 1 ? "s" : ""} com sucesso!`);
+    setTimeout(() => setBulkFeedback(""), 3000);
+  };
+
+  const nomesFiltrados = opcoes.nomes.filter(n => n.toLowerCase().includes(nomeBusca.toLowerCase()));
+
+  const inStyle: CSSProperties = { border:"1.5px solid #E2E6EC", borderRadius:7, padding:"6px 10px", fontSize:12, fontFamily:"inherit", outline:"none", background:"#FAFBFC", flex:1 };
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+      <div>
+        <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>Personalização</div>
+        <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>Configurações</div>
+        <div style={{ fontSize:12, color:"#64748B", marginTop:4 }}>Gerencie as opções dos campos e a base de colaboradores.</div>
+      </div>
+
+      {/* Grade de listas de opções */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:14 }}>
+        {OPCOES_CONFIG.map(({ key, label, cor }) => (
+          <div key={key} style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:18, display:"flex", flexDirection:"column", gap:12 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <div style={{ width:10, height:10, borderRadius:"50%", background:cor, flexShrink:0 }} />
+              <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{label}</div>
+              <div style={{ marginLeft:"auto", fontSize:11, background:cor + "18", color:cor, fontWeight:700, borderRadius:99, padding:"2px 8px" }}>{opcoes[key].length}</div>
+            </div>
+
+            <div style={{ display:"flex", flexDirection:"column", gap:3, maxHeight:160, overflowY:"auto" }}>
+              {opcoes[key].length === 0 && <div style={{ color:"#CBD5E1", fontSize:11, textAlign:"center", padding:"10px 0" }}>Nenhum item</div>}
+              {opcoes[key].map((item, idx) => (
+                <div key={idx} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"5px 8px", background:"#F8FAFC", borderRadius:6, fontSize:12 }}>
+                  <span style={{ color:"#334155", fontWeight:500 }}>{item}</span>
+                  <button onClick={() => removeItem(key, idx)} style={{ background:"none", border:"none", cursor:"pointer", color:"#CBD5E1", padding:2, display:"flex", lineHeight:1, flexShrink:0 }}>
+                    <Icon d="M18 6L6 18M6 6l12 12" size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display:"flex", gap:6 }}>
+              <input value={inputs[key]} onChange={e => setInputs(p => ({ ...p, [key]: e.target.value }))}
+                onKeyDown={e => e.key === "Enter" && addItem(key, inputs[key])}
+                placeholder="Novo item..." style={inStyle} />
+              <button onClick={() => addItem(key, inputs[key])}
+                style={{ background:cor, border:"none", borderRadius:7, padding:"6px 14px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>+</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Base de Nomes */}
+      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
+          <div style={{ width:10, height:10, borderRadius:"50%", background:"#334155", flexShrink:0 }} />
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>Base de Colaboradores</div>
+          <div style={{ fontSize:11, background:"#33415518", color:"#334155", fontWeight:700, borderRadius:99, padding:"2px 8px" }}>{opcoes.nomes.length} nomes</div>
+          <div style={{ fontSize:12, color:"#94A3B8", marginLeft:4 }}>— usados para autocompletar o campo de nome nos lançamentos</div>
+        </div>
+
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+          {/* Lista de nomes */}
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            <div style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Colaboradores cadastrados</div>
+            <input value={nomeBusca} onChange={e => setNomeBusca(e.target.value)} placeholder="Buscar nome..."
+              style={{ ...inStyle, flex:"none" }} />
+            <div style={{ border:"1px solid #E2E6EC", borderRadius:8, maxHeight:260, overflowY:"auto" }}>
+              {nomesFiltrados.length === 0 && (
+                <div style={{ color:"#94A3B8", fontSize:12, textAlign:"center", padding:24 }}>
+                  {opcoes.nomes.length === 0 ? "Nenhum colaborador cadastrado" : "Nenhum resultado"}
+                </div>
+              )}
+              {nomesFiltrados.map((nome, idx) => {
+                const realIdx = opcoes.nomes.indexOf(nome);
+                return (
+                  <div key={idx} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 12px", borderBottom: idx < nomesFiltrados.length - 1 ? "1px solid #F1F5F9" : "none", fontSize:12 }}>
+                    <span style={{ color:"#334155", fontWeight:500 }}>{nome}</span>
+                    <button onClick={() => removeItem("nomes", realIdx)} style={{ background:"none", border:"none", cursor:"pointer", color:"#CBD5E1", padding:2, display:"flex" }}>
+                      <Icon d="M18 6L6 18M6 6l12 12" size={12} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display:"flex", gap:6 }}>
+              <input value={inputs.nomes} onChange={e => setInputs(p => ({ ...p, nomes: e.target.value }))}
+                onKeyDown={e => e.key === "Enter" && addItem("nomes", inputs.nomes)}
+                placeholder="Adicionar nome individual..." style={inStyle} />
+              <button onClick={() => addItem("nomes", inputs.nomes)}
+                style={{ background:"#334155", border:"none", borderRadius:7, padding:"6px 14px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>+</button>
+            </div>
+          </div>
+
+          {/* Importação em massa */}
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            <div style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Importar lista (um nome por linha)</div>
+            <textarea value={nomesBulk} onChange={e => setNomesBulk(e.target.value)}
+              placeholder={"JOÃO DA SILVA\nMARIA OLIVEIRA\nCARLOS SANTOS\n..."}
+              style={{ border:"1.5px solid #E2E6EC", borderRadius:8, padding:"9px 11px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", resize:"vertical", minHeight:220, lineHeight:1.8 }} />
+            <button onClick={importNomes}
+              style={{ background:"#1A56DB", border:"none", borderRadius:8, padding:"10px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
+              Importar Nomes
+            </button>
+            {bulkFeedback && (
+              <div style={{ fontSize:12, color:"#0E9F6E", fontWeight:600, background:"#E6F9F4", borderRadius:7, padding:"7px 12px" }}>
+                {bulkFeedback}
+              </div>
+            )}
+            <div style={{ fontSize:11, color:"#94A3B8" }}>Nomes duplicados são ignorados automaticamente. Cole diretamente de uma planilha Excel (uma coluna de nomes).</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ═══════════════════════════════════════════════════════════════
-// INDEX (APP ROOT)
+// INDEX
 // ═══════════════════════════════════════════════════════════════
-type TabId = "dashboard" | "lancamentos" | "fornecedores";
+type TabId = "dashboard" | "lancamentos" | "fornecedores" | "configuracoes";
 interface NavItem { id: TabId; label: string; icon: string; }
 
 const Index = () => {
-  const [tab, setTab]               = useState<TabId>("lancamentos");
-  const [registros, setRegistros]   = useStorage("ct-registros-v1", SEED);
-  const [saved, setSaved]           = useState(false);
+  const [tab, setTab]             = useState<TabId>("lancamentos");
+  const [registros, setRegistros] = useStorage("ct-registros-v1", SEED);
+  const [opcoes, setOpcoes]       = useOpcoes();
+  const [saved, setSaved]         = useState(false);
 
   const wrap = (fn: (val: Registro[]) => void) => (val: Registro[]) => {
-    fn(val);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    fn(val); setSaved(true); setTimeout(() => setSaved(false), 2000);
   };
 
   const hoje_ = registros.filter(r => r.data === hoje()).length;
   const mes_  = registros.filter(r => r.data.startsWith(mesAtual())).length;
 
   const NAV: NavItem[] = [
-    { id: "dashboard",    label: "Dashboard",    icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" },
-    { id: "lancamentos",  label: "Lançamentos",  icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" },
-    { id: "fornecedores", label: "Fornecedores", icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
+    { id: "dashboard",      label: "Dashboard",      icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" },
+    { id: "lancamentos",    label: "Lançamentos",    icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" },
+    { id: "fornecedores",   label: "Fornecedores",   icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
+    { id: "configuracoes",  label: "Configurações",  icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.94 11a8 8 0 0 0-15.88 0H2v2h2.06a8 8 0 0 0 15.88 0H22v-2h-2.06z" },
   ];
-
-  // Avoid unused import warning
-  void Badge;
 
   return (
     <div style={{ minHeight:"100vh", background:"#F0F2F5", fontFamily:"'DM Sans',system-ui,sans-serif", display:"flex", flexDirection:"column" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box}
-        input:focus,select:focus{border-color:#1A56DB!important;box-shadow:0 0 0 3px #1A56DB1A!important;outline:none!important}
+        input:focus,select:focus,textarea:focus{border-color:#1A56DB!important;box-shadow:0 0 0 3px #1A56DB1A!important;outline:none!important}
         button{transition:all .15s}
         button:hover:not(:disabled){opacity:.88}
         ::-webkit-scrollbar{width:5px;height:5px}
@@ -788,9 +947,7 @@ const Index = () => {
         ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:99px}
       `}</style>
 
-      {/* TOP BAR */}
       <header style={{ background:"#0B1628", borderBottom:"1px solid #1E293B", height:58, display:"flex", alignItems:"center", padding:"0 24px", gap:0, position:"sticky", top:0, zIndex:200 }}>
-        {/* Logo */}
         <div style={{ display:"flex", alignItems:"center", gap:10, paddingRight:28, borderRight:"1px solid #1E293B", marginRight:20 }}>
           <div style={{ width:34, height:34, background:"linear-gradient(135deg,#1A56DB,#3B82F6)", borderRadius:9, display:"flex", alignItems:"center", justifyContent:"center" }}>
             <Icon d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8zM5.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM18.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" size={18} />
@@ -801,7 +958,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Nav */}
         <nav style={{ display:"flex", gap:2, flex:1 }}>
           {NAV.map(n => (
             <button key={n.id} onClick={() => setTab(n.id)} style={{
@@ -815,7 +971,6 @@ const Index = () => {
           ))}
         </nav>
 
-        {/* Status bar */}
         <div style={{ display:"flex", alignItems:"center", gap:16 }}>
           <div style={{ display:"flex", gap:12, fontSize:11 }}>
             <div style={{ color:"#64748B" }}>Hoje: <strong style={{ color:"#F8FAFC" }}>{hoje_}</strong></div>
@@ -833,11 +988,11 @@ const Index = () => {
         </div>
       </header>
 
-      {/* CONTENT */}
       <main style={{ flex:1, padding:"24px", maxWidth:1440, width:"100%", margin:"0 auto" }}>
-        {tab === "dashboard"    && <Dashboard   registros={registros} />}
-        {tab === "lancamentos"  && <Lancamentos registros={registros} setRegistros={wrap(setRegistros)} />}
-        {tab === "fornecedores" && <Fornecedores registros={registros} />}
+        {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} />}
+        {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} />}
+        {tab === "fornecedores"  && <Fornecedores registros={registros} opcoes={opcoes} />}
+        {tab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} />}
       </main>
     </div>
   );
