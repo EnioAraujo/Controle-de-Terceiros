@@ -342,7 +342,7 @@ const Lancamentos = ({ registros, setRegistros }: { registros: Registro[]; setRe
   const exportCSV = () => {
     const h = ["Data","Turno","Hora Entrada","Hora Saída","Total Horas","Nome","Cargo","Setor","Unidade","CC","Motivo","Fornecedor","Obs"];
     const rows = filtered.map(r => [r.data,r.turno,r.horaEntrada,r.horaSaida,r.totalHoras,r.nome,r.cargo,r.setor||"",r.unidade,r.cc,r.motivo,r.fornecedor,r.obs].join(";"));
-    const blob = new Blob([[h.join(";"), ...rows].join("\n")], { type:"text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + [h.join(";"), ...rows].join("\n")], { type:"text/csv;charset=utf-8;" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `terceiros_${filtros.data || "todos"}.csv`; a.click();
   };
 
