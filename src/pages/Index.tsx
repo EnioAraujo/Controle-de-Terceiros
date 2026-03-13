@@ -209,28 +209,32 @@ const AutocompleteNome = ({ value, onChange, suggestions, placeholder, style }: 
 
 // ─── FORM DE LANÇAMENTO ─────────────────────────────────────────
 interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; }
-interface FormLancamentoProps { inicial?: Registro | null; onSave: (registros: Registro[]) => void; onCancel: () => void; opcoes: Opcoes; }
+interface FormLancamentoProps { inicial?: Registro | null; loteInicial?: Registro[]; onSave: (registros: Registro[]) => void; onCancel: () => void; opcoes: Opcoes; }
 
-const FormLancamento = ({ inicial, onSave, onCancel, opcoes }: FormLancamentoProps) => {
+const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: FormLancamentoProps) => {
   const isEdit = !!inicial;
+  const isLoteEdit = !!loteInicial?.length;
+  const base = loteInicial?.[0] ?? inicial;
 
   const [comum, setComum] = useState({
-    data:        inicial?.data        || hoje(),
-    turno:       inicial?.turno       || opcoes.turnos[0]       || "",
-    horaEntrada: inicial?.horaEntrada || "05:00",
-    horaSaida:   inicial?.horaSaida   || "13:20",
-    cargo:       inicial?.cargo       || opcoes.cargos[0]       || "",
-    setor:       inicial?.setor       || opcoes.setores[0]      || "",
-    unidade:     inicial?.unidade     || opcoes.unidades[0]     || "",
-    cc:          inicial?.cc          || opcoes.ccList[0]       || "",
-    motivo:      inicial?.motivo      || opcoes.motivos[0]      || "",
-    fornecedor:  inicial?.fornecedor  || opcoes.fornecedores[0] || "",
-    obs:         inicial?.obs         || "",
+    data:        base?.data        || hoje(),
+    turno:       base?.turno       || opcoes.turnos[0]       || "",
+    horaEntrada: base?.horaEntrada || "05:00",
+    horaSaida:   base?.horaSaida   || "13:20",
+    cargo:       base?.cargo       || opcoes.cargos[0]       || "",
+    setor:       base?.setor       || opcoes.setores[0]      || "",
+    unidade:     base?.unidade     || opcoes.unidades[0]     || "",
+    cc:          base?.cc          || opcoes.ccList[0]       || "",
+    motivo:      base?.motivo      || opcoes.motivos[0]      || "",
+    fornecedor:  base?.fornecedor  || opcoes.fornecedores[0] || "",
+    obs:         base?.obs         || "",
   });
 
-  const [pessoas, setPessoas] = useState<PessoaRow[]>([
-    { nome: inicial?.nome || "", horaEntrada: inicial?.horaEntrada || "05:00", horaSaida: inicial?.horaSaida || "13:20" }
-  ]);
+  const [pessoas, setPessoas] = useState<PessoaRow[]>(
+    isLoteEdit
+      ? loteInicial!.map(r => ({ nome: r.nome, horaEntrada: r.horaEntrada, horaSaida: r.horaSaida }))
+      : [{ nome: inicial?.nome || "", horaEntrada: base?.horaEntrada || "05:00", horaSaida: base?.horaSaida || "13:20" }]
+  );
 
   const setC = (k: string, v: string) => {
     setComum(prev => {
@@ -261,10 +265,17 @@ const FormLancamento = ({ inicial, onSave, onCancel, opcoes }: FormLancamentoPro
       const p = pessoas[0];
       onSave([{ ...inicial!, ...comum, nome: p.nome.trim(), horaEntrada: p.horaEntrada, horaSaida: p.horaSaida, totalHoras: calcHoras(p.horaEntrada, p.horaSaida) }]);
     } else {
-      onSave(pessoas
-        .filter(p => p.nome.trim().length > 2)
-        .map(p => ({ id: uuid(), ...comum, nome: p.nome.trim(), horaEntrada: p.horaEntrada, horaSaida: p.horaSaida, totalHoras: calcHoras(p.horaEntrada, p.horaSaida) }))
-      );
+      const validPessoas = pessoas.filter(p => p.nome.trim().length > 2);
+      const lId = isLoteEdit ? loteInicial![0].loteId : (validPessoas.length > 1 ? uuid() : undefined);
+      onSave(validPessoas.map((p, i) => ({
+        id: isLoteEdit ? (loteInicial![i]?.id ?? uuid()) : uuid(),
+        ...(lId ? { loteId: lId } : {}),
+        ...comum,
+        nome: p.nome.trim(),
+        horaEntrada: p.horaEntrada,
+        horaSaida: p.horaSaida,
+        totalHoras: calcHoras(p.horaEntrada, p.horaSaida),
+      })));
     }
   };
 
@@ -273,13 +284,13 @@ const FormLancamento = ({ inicial, onSave, onCancel, opcoes }: FormLancamentoPro
   );
 
   const totalPadrao = calcHoras(comum.horaEntrada, comum.horaSaida);
-  const btnLabel = isEdit ? "Salvar Alterações" : validCount > 1 ? `Salvar ${validCount} Lançamentos` : "Salvar Lançamento";
+  const btnLabel = (isEdit || isLoteEdit) ? "Salvar Alterações" : validCount > 1 ? `Salvar ${validCount} Lançamentos` : "Salvar Lançamento";
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
 
       {/* Bloco 0 — Quantidade */}
-      {!isEdit && (
+      {!isEdit && !isLoteEdit && (
         <div style={{ background:"#F0F6FF", border:"1.5px solid #BFDBFE", borderRadius:12, padding:"12px 18px", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
           <div style={{ fontSize:11, fontWeight:700, color:"#1A56DB", textTransform:"uppercase", letterSpacing:.8 }}>Quantidade de Pessoas</div>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
@@ -397,9 +408,9 @@ interface Filtros { data: string; turno: string; fornecedor: string; unidade: st
 
 const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[]; setRegistros: (val: Registro[]) => void; opcoes: Opcoes }) => {
   const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", setor: "", busca: "" });
-  const [modal, setModal]     = useState<null | "new" | Registro>(null);
-  const [confirm, setConfirm] = useState<string | null>(null);
-  const [detalhe, setDetalhe] = useState<Registro | null>(null);
+  const [modal, setModal]     = useState<null | "new" | Registro | Registro[]>(null);
+  const [confirm, setConfirm] = useState<string[] | null>(null);
+  const [detalhe, setDetalhe] = useState<Registro | Registro[] | null>(null);
 
   const set = (k: keyof Filtros, v: string) => setFiltros(f => ({ ...f, [k]: v }));
 
@@ -413,13 +424,40 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
     return true;
   }), [registros, filtros]);
 
+  // Agrupa registros do mesmo lote em uma única entrada para exibição
+  const grupos = useMemo(() => {
+    const loteMap = new Map<string, Registro[]>();
+    filtered.forEach(r => {
+      if (r.loteId) {
+        if (!loteMap.has(r.loteId)) loteMap.set(r.loteId, []);
+        loteMap.get(r.loteId)!.push(r);
+      }
+    });
+    const seen = new Set<string>();
+    const result: (Registro | Registro[])[] = [];
+    filtered.forEach(r => {
+      if (r.loteId) {
+        if (!seen.has(r.loteId)) { seen.add(r.loteId); result.push(loteMap.get(r.loteId)!); }
+      } else {
+        result.push(r);
+      }
+    });
+    return result;
+  }, [filtered]);
+
   const salvar = (novos: Registro[]) => {
-    if (modal === "new") setRegistros([...registros, ...novos]);
-    else setRegistros(registros.map(r => r.id === novos[0].id ? novos[0] : r));
+    if (modal === "new") {
+      setRegistros([...registros, ...novos]);
+    } else if (Array.isArray(modal)) {
+      const ids = new Set(modal.map(r => r.id));
+      setRegistros([...registros.filter(r => !ids.has(r.id)), ...novos]);
+    } else {
+      setRegistros(registros.map(r => r.id === novos[0].id ? novos[0] : r));
+    }
     setModal(null);
   };
 
-  const excluir = (id: string) => { setRegistros(registros.filter(r => r.id !== id)); setConfirm(null); };
+  const excluir = (ids: string[]) => { setRegistros(registros.filter(r => !ids.includes(r.id))); setConfirm(null); };
 
   const exportCSV = () => {
     const h = ["Data","Turno","Hora Entrada","Hora Saída","Total Horas","Nome","Cargo","Setor","Unidade","CC","Motivo","Fornecedor","Obs"];
@@ -480,69 +518,134 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && (
+              {grupos.length === 0 && (
                 <tr><td colSpan={12} style={{ textAlign:"center", padding:48, color:"#94A3B8" }}>
                   <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
                   Nenhum registro encontrado
                 </td></tr>
               )}
-              {filtered.map((r, i) => (
-                <tr key={r.id} style={{ borderBottom:"1px solid #F1F5F9", background: i % 2 === 0 ? "#fff" : "#FAFBFC", cursor:"pointer" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#F0F6FF")}
-                  onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? "#fff" : "#FAFBFC")}>
-                  <td style={{ padding:"10px 12px", fontFamily:"monospace", fontSize:11, color:"#64748B" }}>{fmt(r.data)}</td>
-                  <td style={{ padding:"10px 12px" }}><Chip label={r.turno} color="#1A56DB" /></td>
-                  <td style={{ padding:"10px 12px" }}><div style={{ fontWeight:700, color:"#0F1C2E", whiteSpace:"nowrap" }}>{r.nome}</div></td>
-                  <td style={{ padding:"10px 12px", color:"#475569", maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.cargo}</td>
-                  <td style={{ padding:"10px 12px" }}><Chip label={r.fornecedor} color={fornCor(r.fornecedor, opcoes.fornecedores)} /></td>
-                  <td style={{ padding:"10px 12px" }}><Chip label={r.setor || "—"} color="#6C63FF" /></td>
-                  <td style={{ padding:"10px 12px" }}><Chip label={r.unidade} color="#0E9F6E" /></td>
-                  <td style={{ padding:"10px 12px", fontFamily:"monospace", color:"#475569" }}>{r.horaEntrada}</td>
-                  <td style={{ padding:"10px 12px", fontFamily:"monospace", color:"#475569" }}>{r.horaSaida}</td>
-                  <td style={{ padding:"10px 12px", fontFamily:"monospace", fontWeight:800, color:"#0E9F6E" }}>{r.totalHoras}</td>
-                  <td style={{ padding:"10px 12px", color:"#64748B", maxWidth:150, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.motivo}</td>
-                  <td style={{ padding:"10px 12px" }}>
-                    <div style={{ display:"flex", gap:5 }}>
-                      <button onClick={() => setDetalhe(r)} title="Ver detalhes" style={{ background:"#F1F5F9", border:"none", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:"#64748B", display:"flex" }}><Icon d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" size={14} /></button>
-                      <button onClick={() => setModal(r)} title="Editar" style={{ background:"#EBF0FD", border:"none", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:"#1A56DB", display:"flex" }}><Icon d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" size={14} /></button>
-                      <button onClick={() => setConfirm(r.id)} title="Excluir" style={{ background:"#FDE8E8", border:"none", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:"#E02424", display:"flex" }}><Icon d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" size={14} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {grupos.map((item, i) => {
+                const isLote = Array.isArray(item);
+                const r = isLote ? item[0] : item;
+                const count = isLote ? item.length : 1;
+                const bgBase = i % 2 === 0 ? "#fff" : "#FAFBFC";
+                return (
+                  <tr key={isLote ? r.loteId : r.id}
+                    style={{ borderBottom:"1px solid #F1F5F9", background: bgBase, cursor:"pointer",
+                      borderLeft: isLote ? "3px solid #1A56DB" : "3px solid transparent" }}
+                    onClick={() => setDetalhe(item)}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#F0F6FF")}
+                    onMouseLeave={e => (e.currentTarget.style.background = bgBase)}>
+                    <td style={{ padding:"10px 12px", fontFamily:"monospace", fontSize:11, color:"#64748B" }}>{fmt(r.data)}</td>
+                    <td style={{ padding:"10px 12px" }}><Chip label={r.turno} color="#1A56DB" /></td>
+                    <td style={{ padding:"10px 12px" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                        <div style={{ fontWeight:700, color:"#0F1C2E", whiteSpace:"nowrap" }}>{r.nome}</div>
+                        {isLote && <span style={{ background:"#1A56DB", color:"#fff", borderRadius:99, padding:"1px 7px", fontSize:10, fontWeight:800, flexShrink:0 }}>{count}×</span>}
+                      </div>
+                      {isLote && <div style={{ fontSize:10, color:"#94A3B8", marginTop:2 }}>{item.slice(1, 3).map(x => x.nome).join(", ")}{count > 3 ? ` +${count - 3}` : ""}</div>}
+                    </td>
+                    <td style={{ padding:"10px 12px", color:"#475569", maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.cargo}</td>
+                    <td style={{ padding:"10px 12px" }}><Chip label={r.fornecedor} color={fornCor(r.fornecedor, opcoes.fornecedores)} /></td>
+                    <td style={{ padding:"10px 12px" }}><Chip label={r.setor || "—"} color="#6C63FF" /></td>
+                    <td style={{ padding:"10px 12px" }}><Chip label={r.unidade} color="#0E9F6E" /></td>
+                    <td style={{ padding:"10px 12px", fontFamily:"monospace", color:"#475569" }}>{r.horaEntrada}</td>
+                    <td style={{ padding:"10px 12px", fontFamily:"monospace", color:"#475569" }}>{r.horaSaida}</td>
+                    <td style={{ padding:"10px 12px", fontFamily:"monospace", fontWeight:800, color:"#0E9F6E" }}>{r.totalHoras}</td>
+                    <td style={{ padding:"10px 12px", color:"#64748B", maxWidth:150, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.motivo}</td>
+                    <td style={{ padding:"10px 12px" }} onClick={e => e.stopPropagation()}>
+                      <div style={{ display:"flex", gap:5 }}>
+                        <button onClick={() => setDetalhe(item)} title="Ver detalhes" style={{ background:"#F1F5F9", border:"none", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:"#64748B", display:"flex" }}><Icon d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" size={14} /></button>
+                        <button onClick={() => setModal(item)} title="Editar" style={{ background:"#EBF0FD", border:"none", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:"#1A56DB", display:"flex" }}><Icon d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" size={14} /></button>
+                        <button onClick={() => setConfirm(isLote ? item.map(x => x.id) : [r.id])} title="Excluir" style={{ background:"#FDE8E8", border:"none", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:"#E02424", display:"flex" }}><Icon d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
       {modal && (
-        <Modal title={modal === "new" ? "Novo Lançamento" : "Editar Lançamento"} subtitle="Controle de Terceiros" onClose={() => setModal(null)} xl>
-          <FormLancamento inicial={modal === "new" ? null : modal as Registro} onSave={salvar} onCancel={() => setModal(null)} opcoes={opcoes} />
+        <Modal
+          title={modal === "new" ? "Novo Lançamento" : Array.isArray(modal) ? `Editar Lote — ${modal.length} pessoas` : "Editar Lançamento"}
+          subtitle="Controle de Terceiros" onClose={() => setModal(null)} xl>
+          <FormLancamento
+            inicial={modal === "new" || Array.isArray(modal) ? null : modal as Registro}
+            loteInicial={Array.isArray(modal) ? modal : undefined}
+            onSave={salvar} onCancel={() => setModal(null)} opcoes={opcoes} />
         </Modal>
       )}
 
       {detalhe && (
-        <Modal title="Detalhes do Lançamento" subtitle={detalhe.nome} onClose={() => setDetalhe(null)} wide>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-            {([
-              ["Nome", detalhe.nome], ["Cargo", detalhe.cargo], ["Fornecedor", detalhe.fornecedor],
-              ["Data", fmt(detalhe.data)], ["Turno", detalhe.turno], ["Setor", detalhe.setor],
-              ["Unidade", detalhe.unidade], ["Centro de Custo", detalhe.cc],
-              ["Hora Entrada", detalhe.horaEntrada], ["Hora Saída", detalhe.horaSaida],
-              ["Total de Horas", detalhe.totalHoras], ["Motivo", detalhe.motivo],
-            ] as [string, string][]).map(([k, v]) => (
-              <div key={k} style={{ background:"#F8FAFC", borderRadius:8, padding:"10px 14px" }}>
-                <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{k}</div>
-                <div style={{ fontSize:13, fontWeight:600, color:"#0F1C2E" }}>{v || "—"}</div>
+        <Modal
+          title={Array.isArray(detalhe) ? `Lote — ${detalhe.length} colaboradores` : "Detalhes do Lançamento"}
+          subtitle={Array.isArray(detalhe) ? `${fmt(detalhe[0].data)} · ${detalhe[0].turno}` : detalhe.nome}
+          onClose={() => setDetalhe(null)} wide={!Array.isArray(detalhe)} xl={Array.isArray(detalhe)}>
+          {Array.isArray(detalhe) ? (
+            <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+              {/* Campos comuns */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                {([
+                  ["Data", fmt(detalhe[0].data)], ["Turno", detalhe[0].turno],
+                  ["Cargo", detalhe[0].cargo], ["Fornecedor", detalhe[0].fornecedor],
+                  ["Unidade", detalhe[0].unidade], ["Setor", detalhe[0].setor],
+                  ["Centro de Custo", detalhe[0].cc], ["Motivo", detalhe[0].motivo],
+                ] as [string, string][]).map(([k, v]) => (
+                  <div key={k} style={{ background:"#F8FAFC", borderRadius:8, padding:"10px 14px" }}>
+                    <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{k}</div>
+                    <div style={{ fontSize:13, fontWeight:600, color:"#0F1C2E" }}>{v || "—"}</div>
+                  </div>
+                ))}
               </div>
-            ))}
-            {detalhe.obs && (
-              <div style={{ gridColumn:"span 2", background:"#FEF3C7", borderRadius:8, padding:"10px 14px" }}>
-                <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>Observação</div>
-                <div style={{ fontSize:13, color:"#0F1C2E" }}>{detalhe.obs}</div>
+              {/* Lista de colaboradores */}
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Colaboradores ({detalhe.length})</div>
+                <div style={{ border:"1px solid #E2E6EC", borderRadius:8, overflow:"hidden" }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 96px 96px 72px", background:"#F8FAFC", padding:"8px 14px", gap:8, borderBottom:"1px solid #E2E6EC" }}>
+                    {["Nome","Entrada","Saída","Total"].map(h => <div key={h} style={{ fontSize:10, fontWeight:700, color:"#64748B", textTransform:"uppercase" }}>{h}</div>)}
+                  </div>
+                  {detalhe.map((rec, idx) => (
+                    <div key={rec.id} style={{ display:"grid", gridTemplateColumns:"1fr 96px 96px 72px", gap:8, padding:"8px 14px", background: idx%2===0?"#fff":"#FAFBFC", borderTop: idx > 0 ? "1px solid #F1F5F9" : "none" }}>
+                      <span style={{ fontWeight:600, color:"#0F1C2E", fontSize:12 }}>{rec.nome}</span>
+                      <span style={{ fontFamily:"monospace", color:"#475569", fontSize:12 }}>{rec.horaEntrada}</span>
+                      <span style={{ fontFamily:"monospace", color:"#475569", fontSize:12 }}>{rec.horaSaida}</span>
+                      <span style={{ fontFamily:"monospace", fontWeight:700, color:"#0E9F6E", fontSize:12 }}>{rec.totalHoras}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
+              {detalhe[0].obs && (
+                <div style={{ background:"#FEF3C7", borderRadius:8, padding:"10px 14px" }}>
+                  <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>Observação</div>
+                  <div style={{ fontSize:13, color:"#0F1C2E" }}>{detalhe[0].obs}</div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              {([
+                ["Nome", detalhe.nome], ["Cargo", detalhe.cargo], ["Fornecedor", detalhe.fornecedor],
+                ["Data", fmt(detalhe.data)], ["Turno", detalhe.turno], ["Setor", detalhe.setor],
+                ["Unidade", detalhe.unidade], ["Centro de Custo", detalhe.cc],
+                ["Hora Entrada", detalhe.horaEntrada], ["Hora Saída", detalhe.horaSaida],
+                ["Total de Horas", detalhe.totalHoras], ["Motivo", detalhe.motivo],
+              ] as [string, string][]).map(([k, v]) => (
+                <div key={k} style={{ background:"#F8FAFC", borderRadius:8, padding:"10px 14px" }}>
+                  <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{k}</div>
+                  <div style={{ fontSize:13, fontWeight:600, color:"#0F1C2E" }}>{v || "—"}</div>
+                </div>
+              ))}
+              {detalhe.obs && (
+                <div style={{ gridColumn:"span 2", background:"#FEF3C7", borderRadius:8, padding:"10px 14px" }}>
+                  <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>Observação</div>
+                  <div style={{ fontSize:13, color:"#0F1C2E" }}>{detalhe.obs}</div>
+                </div>
+              )}
+            </div>
+          )}
           <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:16, paddingTop:16, borderTop:"1px solid #F1F5F9" }}>
             <Btn variant="ghost" onClick={() => setDetalhe(null)}>Fechar</Btn>
             <Btn onClick={() => { setModal(detalhe); setDetalhe(null); }}>Editar</Btn>
@@ -552,7 +655,11 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
 
       {confirm && (
         <Modal title="Confirmar exclusão" onClose={() => setConfirm(null)}>
-          <p style={{ color:"#475569", fontSize:13, lineHeight:1.6 }}>Tem certeza que deseja excluir este lançamento? Esta ação não poderá ser desfeita.</p>
+          <p style={{ color:"#475569", fontSize:13, lineHeight:1.6 }}>
+            {confirm.length > 1
+              ? `Tem certeza que deseja excluir este lote (${confirm.length} registros)? Esta ação não poderá ser desfeita.`
+              : "Tem certeza que deseja excluir este lançamento? Esta ação não poderá ser desfeita."}
+          </p>
           <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20 }}>
             <Btn variant="ghost" onClick={() => setConfirm(null)}>Cancelar</Btn>
             <Btn variant="danger" onClick={() => excluir(confirm)}>Excluir</Btn>

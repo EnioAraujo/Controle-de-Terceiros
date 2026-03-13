@@ -1,5 +1,6 @@
 export interface Registro {
   id: string;
+  loteId?: string; // presente quando lançado em grupo (múltiplas pessoas)
   data: string; // YYYY-MM-DD
   turno: string;
   horaEntrada: string;
