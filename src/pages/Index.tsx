@@ -581,9 +581,10 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
 
   const porFornecedor = useMemo(() => {
     const m: Record<string, number> = {};
-    doMes.forEach(r => { m[r.fornecedor] = (m[r.fornecedor] || 0) + 1; });
+    doMes.filter(r => opcoes.fornecedores.includes(r.fornecedor))
+         .forEach(r => { m[r.fornecedor] = (m[r.fornecedor] || 0) + 1; });
     return Object.entries(m).sort((a, b) => b[1] - a[1]);
-  }, [doMes]);
+  }, [doMes, opcoes.fornecedores]);
 
   const porSetor = useMemo(() => {
     const m: Record<string, number> = {};
