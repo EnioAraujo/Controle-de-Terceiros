@@ -1,16 +1,18 @@
-export interface AttendanceRecord {
+export interface Registro {
   id: string;
-  date: Date;
-  fullName: string;
-  shift: string;
-  timeIn: string;
-  timeOut: string;
-  totalHours: string;
-  position: string;
-  unit: string;
-  costCenter: string;
-  reason: string;
-  supplier: string;
+  data: string; // YYYY-MM-DD
+  turno: string;
+  horaEntrada: string;
+  horaSaida: string;
+  totalHoras: string;
+  nome: string;
+  cargo: string;
+  setor: string;
+  unidade: string;
+  cc: string;
+  motivo: string;
+  fornecedor: string;
+  obs: string;
 }
 
 export interface SelectOption {
