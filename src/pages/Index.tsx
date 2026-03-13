@@ -155,7 +155,9 @@ interface AutocompleteNomeProps { value: string; onChange: (val: string) => void
 const AutocompleteNome = ({ value, onChange, suggestions, placeholder, style }: AutocompleteNomeProps) => {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
-  const ref = useRef<HTMLDivElement>(null);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(() => {
     if (!value.trim()) return suggestions.slice(0, 8);
@@ -165,36 +167,53 @@ const AutocompleteNome = ({ value, onChange, suggestions, placeholder, style }: 
 
   useEffect(() => { setHighlighted(0); }, [filtered.length]);
 
+  const calcPos = () => {
+    if (!inputRef.current) return;
+    const r = inputRef.current.getBoundingClientRect();
+    setDropPos({ top: r.bottom + 2, left: r.left, width: r.width });
+  };
+
+  const openDropdown = () => { calcPos(); setOpen(true); };
+
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
+    const reposition = () => { calcPos(); };
+    document.addEventListener("mousedown", close);
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [open]);
 
   const select = (name: string) => { onChange(name); setOpen(false); };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setHighlighted(h => Math.min(h + 1, filtered.length - 1)); }
+    if (e.key === "ArrowDown") { e.preventDefault(); openDropdown(); setHighlighted(h => Math.min(h + 1, filtered.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
     else if (e.key === "Enter") { e.preventDefault(); if (open && filtered[highlighted]) select(filtered[highlighted]); }
     else if (e.key === "Escape") setOpen(false);
   };
 
   return (
-    <div ref={ref} style={{ position:"relative", width:"100%" }}>
+    <div ref={wrapRef} style={{ position:"relative", width:"100%" }}>
       <input
+        ref={inputRef}
         value={value}
-        onChange={e => { onChange(e.target.value.toUpperCase()); setOpen(true); setHighlighted(0); }}
-        onFocus={() => setOpen(true)}
+        onChange={e => { onChange(e.target.value.toUpperCase()); openDropdown(); setHighlighted(0); }}
+        onFocus={openDropdown}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         autoComplete="off"
         style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", fontWeight:600, boxSizing:"border-box", ...style }}
       />
       {open && filtered.length > 0 && (
-        <div style={{ position:"absolute", top:"100%", left:0, right:0, background:"#fff", border:"1.5px solid #BFDBFE", borderRadius:8, boxShadow:"0 8px 24px rgba(10,18,35,.13)", zIndex:200, maxHeight:200, overflowY:"auto", marginTop:2 }}>
+        <div style={{ position:"fixed", top: dropPos.top, left: dropPos.left, width: dropPos.width, background:"#fff", border:"1.5px solid #BFDBFE", borderRadius:8, boxShadow:"0 8px 24px rgba(10,18,35,.13)", zIndex:9999, maxHeight:200, overflowY:"auto", marginTop:0 }}>
           {filtered.map((name, idx) => (
             <div key={name} onMouseDown={() => select(name)} onMouseEnter={() => setHighlighted(idx)}
               style={{ padding:"8px 12px", fontSize:12, fontWeight:600, color:"#334155", cursor:"pointer", background: idx === highlighted ? "#EFF6FF" : "transparent", borderBottom: idx < filtered.length - 1 ? "1px solid #F1F5F9" : "none" }}>
