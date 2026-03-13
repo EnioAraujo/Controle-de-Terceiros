@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, ReactNode, InputHTMLAttributes, SelectHTMLAttributes, CSSProperties } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, ReactNode, InputHTMLAttributes, SelectHTMLAttributes, CSSProperties } from "react";
 import { Registro } from "@/types/attendance";
 
 // ─── CONSTANTES DEFAULT ──────────────────────────────────────────
@@ -149,6 +149,63 @@ const Modal = ({ title, subtitle, onClose, children, wide, xl }: ModalProps) => 
     </div>
   </div>
 );
+
+// ─── AUTOCOMPLETE DE NOME ────────────────────────────────────────
+interface AutocompleteNomeProps { value: string; onChange: (val: string) => void; suggestions: string[]; placeholder?: string; style?: CSSProperties; }
+const AutocompleteNome = ({ value, onChange, suggestions, placeholder, style }: AutocompleteNomeProps) => {
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = useMemo(() => {
+    if (!value.trim()) return suggestions.slice(0, 8);
+    const q = value.toLowerCase();
+    return suggestions.filter(s => s.toLowerCase().includes(q)).slice(0, 10);
+  }, [value, suggestions]);
+
+  useEffect(() => { setHighlighted(0); }, [filtered.length]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const select = (name: string) => { onChange(name); setOpen(false); };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setHighlighted(h => Math.min(h + 1, filtered.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
+    else if (e.key === "Enter") { e.preventDefault(); if (open && filtered[highlighted]) select(filtered[highlighted]); }
+    else if (e.key === "Escape") setOpen(false);
+  };
+
+  return (
+    <div ref={ref} style={{ position:"relative", width:"100%" }}>
+      <input
+        value={value}
+        onChange={e => { onChange(e.target.value.toUpperCase()); setOpen(true); setHighlighted(0); }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={onKeyDown}
+        placeholder={placeholder}
+        autoComplete="off"
+        style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", fontWeight:600, boxSizing:"border-box", ...style }}
+      />
+      {open && filtered.length > 0 && (
+        <div style={{ position:"absolute", top:"100%", left:0, right:0, background:"#fff", border:"1.5px solid #BFDBFE", borderRadius:8, boxShadow:"0 8px 24px rgba(10,18,35,.13)", zIndex:200, maxHeight:200, overflowY:"auto", marginTop:2 }}>
+          {filtered.map((name, idx) => (
+            <div key={name} onMouseDown={() => select(name)} onMouseEnter={() => setHighlighted(idx)}
+              style={{ padding:"8px 12px", fontSize:12, fontWeight:600, color:"#334155", cursor:"pointer", background: idx === highlighted ? "#EFF6FF" : "transparent", borderBottom: idx < filtered.length - 1 ? "1px solid #F1F5F9" : "none" }}>
+              {name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ─── FORM DE LANÇAMENTO ─────────────────────────────────────────
 interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; }
@@ -307,19 +364,15 @@ const FormLancamento = ({ inicial, onSave, onCancel, opcoes }: FormLancamentoPro
           </div>
           {pessoas.map((p, i) => {
             const total = calcHoras(p.horaEntrada, p.horaSaida);
-            const listId = `nomes-list-${i}`;
             return (
               <div key={i} style={{ display:"grid", gridTemplateColumns:"36px 1fr 124px 124px 72px", gap:8, padding:"8px 14px", borderBottom: i < pessoas.length - 1 ? "1px solid #F1F5F9" : "none", alignItems:"center", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                 <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textAlign:"center" }}>{i + 1}</div>
-                <div>
-                  <input list={listId} value={p.nome} onChange={e => setP(i, "nome", e.target.value.toUpperCase())} placeholder="NOME COMPLETO"
-                    style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", fontWeight:600 }} />
-                  {opcoes.nomes.length > 0 && (
-                    <datalist id={listId}>
-                      {opcoes.nomes.map(n => <option key={n} value={n} />)}
-                    </datalist>
-                  )}
-                </div>
+                <AutocompleteNome
+                  value={p.nome}
+                  onChange={v => setP(i, "nome", v)}
+                  suggestions={opcoes.nomes}
+                  placeholder="NOME COMPLETO"
+                />
                 <input type="time" value={p.horaEntrada} onChange={e => setP(i, "horaEntrada", e.target.value)}
                   style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:12, fontFamily:"monospace", background:"#FAFBFC", width:"100%", outline:"none" }} />
                 <input type="time" value={p.horaSaida} onChange={e => setP(i, "horaSaida", e.target.value)}
