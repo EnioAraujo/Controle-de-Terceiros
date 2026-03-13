@@ -123,29 +123,95 @@ const Modal = ({ title, subtitle, onClose, children, wide, xl }: ModalProps) => 
 );
 
 // ─── FORM DE LANÇAMENTO ─────────────────────────────────────────
-interface FormLancamentoProps { inicial?: Registro | null; onSave: (f: Registro) => void; onCancel: () => void; }
+interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; }
+interface FormLancamentoProps { inicial?: Registro | null; onSave: (registros: Registro[]) => void; onCancel: () => void; }
+
 const FormLancamento = ({ inicial, onSave, onCancel }: FormLancamentoProps) => {
-  const [f, setF] = useState<Registro>(inicial || {
-    id: uuid(), data: hoje(), turno: TURNOS[0], horaEntrada: "05:00", horaSaida: "13:20",
-    totalHoras: "", nome: "", cargo: CARGOS[0], setor: SETORES[0], unidade: UNIDADES[0],
-    cc: CC_LIST[0], motivo: MOTIVOS[0], fornecedor: FORNECEDORES[0], obs: ""
+  const isEdit = !!inicial;
+
+  const [comum, setComum] = useState({
+    data:       inicial?.data       || hoje(),
+    turno:      inicial?.turno      || TURNOS[0],
+    horaEntrada: inicial?.horaEntrada || "05:00",
+    horaSaida:  inicial?.horaSaida  || "13:20",
+    cargo:      inicial?.cargo      || CARGOS[0],
+    setor:      inicial?.setor      || SETORES[0],
+    unidade:    inicial?.unidade    || UNIDADES[0],
+    cc:         inicial?.cc         || CC_LIST[0],
+    motivo:     inicial?.motivo     || MOTIVOS[0],
+    fornecedor: inicial?.fornecedor || FORNECEDORES[0],
+    obs:        inicial?.obs        || "",
   });
-  const set = (k: keyof Registro, v: string) => setF(p => {
-    const n = { ...p, [k]: v };
-    if (k === "horaEntrada" || k === "horaSaida") n.totalHoras = calcHoras(k === "horaEntrada" ? v : p.horaEntrada, k === "horaSaida" ? v : p.horaSaida);
-    return n;
-  });
-  const valid = f.nome.trim().length > 2;
+
+  const [pessoas, setPessoas] = useState<PessoaRow[]>([
+    { nome: inicial?.nome || "", horaEntrada: inicial?.horaEntrada || "05:00", horaSaida: inicial?.horaSaida || "13:20" }
+  ]);
+
+  // Atualiza campo comum; se for horaEntrada/horaSaida propaga para linhas que ainda usam o valor anterior
+  const setC = (k: string, v: string) => {
+    setComum(prev => {
+      if (k === "horaEntrada") setPessoas(ps => ps.map(p => p.horaEntrada === prev.horaEntrada ? { ...p, horaEntrada: v } : p));
+      if (k === "horaSaida")   setPessoas(ps => ps.map(p => p.horaSaida   === prev.horaSaida   ? { ...p, horaSaida: v }   : p));
+      return { ...prev, [k]: v };
+    });
+  };
+
+  // Ajusta quantidade de linhas
+  const handleQtd = (n: number) => {
+    const cap = Math.max(1, Math.min(20, n));
+    setPessoas(prev => {
+      if (cap > prev.length)
+        return [...prev, ...Array.from({ length: cap - prev.length }, () => ({ nome: "", horaEntrada: comum.horaEntrada, horaSaida: comum.horaSaida }))];
+      return prev.slice(0, cap);
+    });
+  };
+
+  const setP = (i: number, k: keyof PessoaRow, v: string) =>
+    setPessoas(ps => ps.map((p, idx) => idx === i ? { ...p, [k]: v } : p));
+
+  const validCount = pessoas.filter(p => p.nome.trim().length > 2).length;
+  const valid = isEdit ? pessoas[0]?.nome.trim().length > 2 : validCount > 0;
+
+  const handleSave = () => {
+    if (!valid) return;
+    if (isEdit) {
+      const p = pessoas[0];
+      onSave([{ ...inicial!, ...comum, nome: p.nome.trim(), horaEntrada: p.horaEntrada, horaSaida: p.horaSaida, totalHoras: calcHoras(p.horaEntrada, p.horaSaida) }]);
+    } else {
+      onSave(pessoas
+        .filter(p => p.nome.trim().length > 2)
+        .map(p => ({ id: uuid(), ...comum, nome: p.nome.trim(), horaEntrada: p.horaEntrada, horaSaida: p.horaSaida, totalHoras: calcHoras(p.horaEntrada, p.horaSaida) }))
+      );
+    }
+  };
 
   const G = ({ children, cols = 2 }: { children: ReactNode; cols?: number }) => (
     <div style={{ display:"grid", gridTemplateColumns:`repeat(${cols},1fr)`, gap:14 }}>{children}</div>
   );
-  const S = ({ children, span = 1 }: { children: ReactNode; span?: number }) => (
-    <div style={{ gridColumn:`span ${span}` }}>{children}</div>
-  );
+
+  const totalPadrao = calcHoras(comum.horaEntrada, comum.horaSaida);
+  const btnLabel = isEdit ? "Salvar Alterações" : validCount > 1 ? `Salvar ${validCount} Lançamentos` : "Salvar Lançamento";
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+
+      {/* Bloco 0 — Quantidade (apenas no modo novo) */}
+      {!isEdit && (
+        <div style={{ background:"#F0F6FF", border:"1.5px solid #BFDBFE", borderRadius:12, padding:"12px 18px", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+          <div style={{ fontSize:11, fontWeight:700, color:"#1A56DB", textTransform:"uppercase", letterSpacing:.8 }}>Quantidade de Pessoas</div>
+          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+            <button onClick={() => handleQtd(pessoas.length - 1)}
+              style={{ width:28, height:28, borderRadius:7, border:"1.5px solid #BFDBFE", background:"#fff", cursor:"pointer", fontWeight:800, fontSize:15, color:"#1A56DB", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>−</button>
+            <input type="number" min={1} max={20} value={pessoas.length}
+              onChange={e => handleQtd(Number(e.target.value))}
+              style={{ width:48, textAlign:"center", border:"1.5px solid #BFDBFE", borderRadius:7, padding:"5px 6px", fontSize:15, fontWeight:800, color:"#1A56DB", fontFamily:"inherit", background:"#fff", outline:"none" }} />
+            <button onClick={() => handleQtd(pessoas.length + 1)}
+              style={{ width:28, height:28, borderRadius:7, border:"none", background:"#1A56DB", cursor:"pointer", fontWeight:800, fontSize:15, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>+</button>
+          </div>
+          <div style={{ fontSize:12, color:"#64748B" }}>pessoa{pessoas.length !== 1 ? "s" : ""} neste lançamento</div>
+        </div>
+      )}
+
       {/* Bloco 1 — Identificação */}
       <div>
         <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
@@ -153,9 +219,8 @@ const FormLancamento = ({ inicial, onSave, onCancel }: FormLancamentoProps) => {
           Identificação
         </div>
         <G cols={2}>
-          <S span={2}><Input label="Nome Completo *" value={f.nome} onChange={e => set("nome", e.target.value.toUpperCase())} placeholder="NOME COMPLETO DO COLABORADOR TERCEIRO" /></S>
-          <Select label="Cargo" value={f.cargo} onChange={e => set("cargo", e.target.value)}>{CARGOS.map(c => <option key={c}>{c}</option>)}</Select>
-          <Select label="Fornecedor" value={f.fornecedor} onChange={e => set("fornecedor", e.target.value)}>{FORNECEDORES.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label="Cargo" value={comum.cargo} onChange={e => setC("cargo", e.target.value)}>{CARGOS.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label="Fornecedor" value={comum.fornecedor} onChange={e => setC("fornecedor", e.target.value)}>{FORNECEDORES.map(c => <option key={c}>{c}</option>)}</Select>
         </G>
       </div>
 
@@ -166,9 +231,9 @@ const FormLancamento = ({ inicial, onSave, onCancel }: FormLancamentoProps) => {
           Lotação
         </div>
         <G cols={3}>
-          <Select label="Unidade" value={f.unidade} onChange={e => set("unidade", e.target.value)}>{UNIDADES.map(c => <option key={c}>{c}</option>)}</Select>
-          <Select label="Setor" value={f.setor} onChange={e => set("setor", e.target.value)}>{SETORES.map(c => <option key={c}>{c}</option>)}</Select>
-          <Select label="Centro de Custo" value={f.cc} onChange={e => set("cc", e.target.value)}>{CC_LIST.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label="Unidade" value={comum.unidade} onChange={e => setC("unidade", e.target.value)}>{UNIDADES.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label="Setor" value={comum.setor} onChange={e => setC("setor", e.target.value)}>{SETORES.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label="Centro de Custo" value={comum.cc} onChange={e => setC("cc", e.target.value)}>{CC_LIST.map(c => <option key={c}>{c}</option>)}</Select>
         </G>
       </div>
 
@@ -177,17 +242,18 @@ const FormLancamento = ({ inicial, onSave, onCancel }: FormLancamentoProps) => {
         <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
           <div style={{ width:20, height:20, borderRadius:6, background:"#D97706", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>3</div>
           Jornada
+          {!isEdit && <span style={{ fontSize:10, color:"#94A3B8", fontWeight:400, letterSpacing:.3, marginLeft:4 }}>— horários padrão (altere individualmente abaixo se necessário)</span>}
         </div>
         <G cols={4}>
-          <Input label="Data" type="date" value={f.data} onChange={e => set("data", e.target.value)} />
-          <Select label="Turno" value={f.turno} onChange={e => set("turno", e.target.value)}>{TURNOS.map(c => <option key={c}>{c}</option>)}</Select>
-          <Input label="Hora Entrada" type="time" value={f.horaEntrada} onChange={e => set("horaEntrada", e.target.value)} />
-          <Input label="Hora Saída" type="time" value={f.horaSaida} onChange={e => set("horaSaida", e.target.value)} />
+          <Input label="Data" type="date" value={comum.data} onChange={e => setC("data", e.target.value)} />
+          <Select label="Turno" value={comum.turno} onChange={e => setC("turno", e.target.value)}>{TURNOS.map(c => <option key={c}>{c}</option>)}</Select>
+          <Input label={isEdit ? "Hora Entrada" : "Entrada Padrão"} type="time" value={comum.horaEntrada} onChange={e => setC("horaEntrada", e.target.value)} />
+          <Input label={isEdit ? "Hora Saída" : "Saída Padrão"} type="time" value={comum.horaSaida} onChange={e => setC("horaSaida", e.target.value)} />
         </G>
-        {f.totalHoras && (
+        {totalPadrao && (
           <div style={{ marginTop:10, display:"inline-flex", alignItems:"center", gap:8, background:"#E6F9F4", borderRadius:8, padding:"8px 14px" }}>
             <Icon d="M12 8v4l3 3M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0" size={14} />
-            <span style={{ fontSize:13, fontWeight:700, color:"#0E9F6E", fontFamily:"monospace" }}>Total: {f.totalHoras}</span>
+            <span style={{ fontSize:13, fontWeight:700, color:"#0E9F6E", fontFamily:"monospace" }}>{isEdit ? "Total:" : "Padrão:"} {totalPadrao}</span>
           </div>
         )}
       </div>
@@ -199,14 +265,46 @@ const FormLancamento = ({ inicial, onSave, onCancel }: FormLancamentoProps) => {
           Motivo e Observações
         </div>
         <G cols={1}>
-          <Select label="Motivo" value={f.motivo} onChange={e => set("motivo", e.target.value)}>{MOTIVOS.map(c => <option key={c}>{c}</option>)}</Select>
-          <Input label="Observação" value={f.obs} onChange={e => set("obs", e.target.value)} placeholder="Informações adicionais (opcional)" />
+          <Select label="Motivo" value={comum.motivo} onChange={e => setC("motivo", e.target.value)}>{MOTIVOS.map(c => <option key={c}>{c}</option>)}</Select>
+          <Input label="Observação" value={comum.obs} onChange={e => setC("obs", e.target.value)} placeholder="Informações adicionais (opcional)" />
         </G>
+      </div>
+
+      {/* Bloco 5 — Colaboradores */}
+      <div>
+        <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:20, height:20, borderRadius:6, background:"#0891B2", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>5</div>
+          {isEdit ? "Colaborador" : `Colaboradores — ${pessoas.length} pessoa${pessoas.length !== 1 ? "s" : ""}`}
+        </div>
+        <div style={{ border:"1px solid #E2E6EC", borderRadius:10, overflow:"hidden" }}>
+          {/* Cabeçalho */}
+          <div style={{ display:"grid", gridTemplateColumns:"36px 1fr 124px 124px 72px", background:"#F8FAFC", borderBottom:"1px solid #E2E6EC", padding:"9px 14px", gap:8 }}>
+            {["#", "Nome Completo *", "Hora Entrada", "Hora Saída", "Total"].map(h => (
+              <div key={h} style={{ fontSize:10, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:.6 }}>{h}</div>
+            ))}
+          </div>
+          {/* Linhas */}
+          {pessoas.map((p, i) => {
+            const total = calcHoras(p.horaEntrada, p.horaSaida);
+            return (
+              <div key={i} style={{ display:"grid", gridTemplateColumns:"36px 1fr 124px 124px 72px", gap:8, padding:"8px 14px", borderBottom: i < pessoas.length - 1 ? "1px solid #F1F5F9" : "none", alignItems:"center", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textAlign:"center" }}>{i + 1}</div>
+                <input value={p.nome} onChange={e => setP(i, "nome", e.target.value.toUpperCase())} placeholder="NOME COMPLETO"
+                  style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", fontWeight:600 }} />
+                <input type="time" value={p.horaEntrada} onChange={e => setP(i, "horaEntrada", e.target.value)}
+                  style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:12, fontFamily:"monospace", background:"#FAFBFC", width:"100%", outline:"none" }} />
+                <input type="time" value={p.horaSaida} onChange={e => setP(i, "horaSaida", e.target.value)}
+                  style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:12, fontFamily:"monospace", background:"#FAFBFC", width:"100%", outline:"none" }} />
+                <div style={{ fontFamily:"monospace", fontSize:12, fontWeight:700, color: total ? "#0E9F6E" : "#CBD5E1", textAlign:"center" }}>{total || "—"}</div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div style={{ display:"flex", justifyContent:"flex-end", gap:8, paddingTop:16, borderTop:"1px solid #F1F5F9" }}>
         <Btn variant="ghost" onClick={onCancel}>Cancelar</Btn>
-        <Btn onClick={() => valid && onSave(f)} disabled={!valid} icon={<Icon d="M5 13l4 4L19 7" />}>Salvar Lançamento</Btn>
+        <Btn onClick={handleSave} disabled={!valid} icon={<Icon d="M5 13l4 4L19 7" />}>{btnLabel}</Btn>
       </div>
     </div>
   );
@@ -233,9 +331,9 @@ const Lancamentos = ({ registros, setRegistros }: { registros: Registro[]; setRe
     return true;
   }), [registros, filtros]);
 
-  const salvar = (f: Registro) => {
-    if (modal === "new") setRegistros([...registros, f]);
-    else setRegistros(registros.map(r => r.id === f.id ? f : r));
+  const salvar = (novos: Registro[]) => {
+    if (modal === "new") setRegistros([...registros, ...novos]);
+    else setRegistros(registros.map(r => r.id === novos[0].id ? novos[0] : r));
     setModal(null);
   };
 
