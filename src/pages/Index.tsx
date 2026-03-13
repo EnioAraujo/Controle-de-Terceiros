@@ -591,13 +591,6 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
     return Object.entries(m).sort((a, b) => b[1] - a[1]);
   }, [doMes]);
 
-  const porDia = useMemo(() => {
-    const m: Record<string, number> = {};
-    doMes.forEach(r => { m[r.data] = (m[r.data] || 0) + 1; });
-    return Object.entries(m).sort((a, b) => a[0] > b[0] ? 1 : -1).slice(-15);
-  }, [doMes]);
-
-  const maxDia = Math.max(...porDia.map(([, v]) => v), 1);
   const CHART_CORES = ["#1A56DB","#0E9F6E","#D97706","#6C63FF","#E02424","#0891B2"];
 
   interface KPIProps { label: string; value: string | number; sub?: string; color?: string; icon?: ReactNode; }
@@ -689,39 +682,33 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
       </div>
 
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
-        <div style={{ fontWeight:700, fontSize:13, marginBottom:16, color:"#0F1C2E" }}>Volume Diário — últimos 15 dias do período</div>
-        {porDia.length === 0
-          ? <div style={{ color:"#94A3B8", fontSize:12, textAlign:"center", padding:24 }}>Sem dados no período selecionado</div>
-          : (
-            <div style={{ display:"flex", gap:6, alignItems:"flex-end", height:120 }}>
-              {porDia.map(([data, n]) => {
-                const h = Math.max((n / maxDia) * 100, 6);
-                const isHoje = data === hoje();
-                return (
-                  <div key={data} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
-                    <div style={{ fontSize:10, fontWeight:700, color: isHoje ? "#1A56DB" : "#94A3B8" }}>{n}</div>
-                    <div style={{ width:"100%", height:`${h}%`, background: isHoje ? "#1A56DB" : "#E2E6EC", borderRadius:"4px 4px 0 0", minHeight:4, transition:"height .4s" }} />
-                    <div style={{ fontSize:9, color: isHoje ? "#1A56DB" : "#94A3B8", fontFamily:"monospace", fontWeight: isHoje ? 700 : 400 }}>{data.slice(8)}</div>
-                  </div>
-                );
-              })}
-            </div>
-          )
-        }
-      </div>
-
-      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ fontWeight:700, fontSize:13, marginBottom:14, color:"#0F1C2E" }}>Distribuição por Turno</div>
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
           {opcoes.turnos.map((t, i) => {
-            const n = doMes.filter(r => r.turno === t).length;
-            const pct = doMes.length ? (n / doMes.length * 100).toFixed(0) : 0;
-            const cor = CHART_CORES[i % CHART_CORES.length];
+            const doMes_t  = doMes.filter(r => r.turno === t);
+            const n        = doMes_t.length;
+            const pct      = doMes.length ? (n / doMes.length * 100).toFixed(0) : 0;
+            const cor      = CHART_CORES[i % CHART_CORES.length];
+            const diasTurno = new Set(doMes_t.map(r => r.data)).size;
+            const mediaDia  = diasTurno > 0 ? (n / diasTurno).toFixed(1) : "—";
+            const allTurno  = registros.filter(r => r.turno === t);
+            const mesesTurno = new Set(allTurno.map(r => r.data.slice(0, 7))).size;
+            const mediaMes  = mesesTurno > 0 ? (allTurno.length / mesesTurno).toFixed(1) : "—";
             return (
-              <div key={t} style={{ flex:1, minWidth:120, background: cor + "0F", border:`1.5px solid ${cor}33`, borderRadius:10, padding:"12px 16px" }}>
-                <div style={{ fontSize:11, color:cor, fontWeight:700, marginBottom:6 }}>{t}</div>
-                <div style={{ fontSize:24, fontWeight:800, color:cor }}>{n}</div>
-                <div style={{ fontSize:11, color:"#94A3B8", marginTop:2 }}>{pct}% do mês</div>
+              <div key={t} style={{ flex:1, minWidth:140, background: cor + "0F", border:`1.5px solid ${cor}33`, borderRadius:10, padding:"12px 16px" }}>
+                <div style={{ fontSize:11, color:cor, fontWeight:700, marginBottom:8 }}>{t}</div>
+                <div style={{ fontSize:26, fontWeight:800, color:cor, lineHeight:1 }}>{n}</div>
+                <div style={{ fontSize:11, color:"#94A3B8", marginTop:2, marginBottom:10 }}>{pct}% do período</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:4, borderTop:`1px solid ${cor}22`, paddingTop:8 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:11 }}>
+                    <span style={{ color:"#94A3B8" }}>Média/dia</span>
+                    <span style={{ fontWeight:700, color:cor, fontFamily:"monospace" }}>{mediaDia}</span>
+                  </div>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:11 }}>
+                    <span style={{ color:"#94A3B8" }}>Média/mês</span>
+                    <span style={{ fontWeight:700, color:cor, fontFamily:"monospace" }}>{mediaMes}</span>
+                  </div>
+                </div>
               </div>
             );
           })}
