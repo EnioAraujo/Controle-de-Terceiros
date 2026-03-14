@@ -729,7 +729,7 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
         </div>
       </div>
 
-      <div style={{ display:"flex", justifyContent:"flex-end", gap:8, paddingTop:16, borderTop:"1px solid #F1F5F9" }}>
+      <div style={{ display:"flex", justifyContent:"flex-end", gap:8, paddingTop:16, borderTop:"1px solid #F1F5F9", flexWrap:"wrap" }}>
         <Btn variant="ghost" onClick={onCancel}>{t("form_btn_cancel")}</Btn>
         <Btn onClick={handleSave} disabled={!valid} icon={<Icon d="M5 13l4 4L19 7" />}>{btnLabel}</Btn>
       </div>
@@ -817,20 +817,20 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
 
       {/* Filtros */}
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:"14px 18px", display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
-        <Input label={t("form_label_data")} type="date" value={filtros.data} onChange={e => set("data", e.target.value)} style={{ width:150 }} />
-        <Select label={t("form_label_turno")} value={filtros.turno} onChange={e => set("turno", e.target.value)} style={{ width:150 }}>
+        <Input label={t("form_label_data")} type="date" value={filtros.data} onChange={e => set("data", e.target.value)} style={{ flex:"1 1 120px", minWidth:120 }} />
+        <Select label={t("form_label_turno")} value={filtros.turno} onChange={e => set("turno", e.target.value)} style={{ flex:"1 1 120px", minWidth:120 }}>
           <option value="">{t("lanc_filter_all_m")}</option>{opcoes.turnos.map(opt => <option key={opt}>{opt}</option>)}
         </Select>
-        <Select label={t("form_label_forn")} value={filtros.fornecedor} onChange={e => set("fornecedor", e.target.value)} style={{ width:150 }}>
+        <Select label={t("form_label_forn")} value={filtros.fornecedor} onChange={e => set("fornecedor", e.target.value)} style={{ flex:"1 1 120px", minWidth:120 }}>
           <option value="">{t("lanc_filter_all_m")}</option>{opcoes.fornecedores.map(opt => <option key={opt}>{opt}</option>)}
         </Select>
-        <Select label={t("form_label_unidade")} value={filtros.unidade} onChange={e => set("unidade", e.target.value)} style={{ width:150 }}>
+        <Select label={t("form_label_unidade")} value={filtros.unidade} onChange={e => set("unidade", e.target.value)} style={{ flex:"1 1 120px", minWidth:120 }}>
           <option value="">{t("lanc_filter_all_f")}</option>{opcoes.unidades.map(opt => <option key={opt}>{opt}</option>)}
         </Select>
-        <Select label={t("form_label_setor")} value={filtros.setor} onChange={e => set("setor", e.target.value)} style={{ width:150 }}>
+        <Select label={t("form_label_setor")} value={filtros.setor} onChange={e => set("setor", e.target.value)} style={{ flex:"1 1 120px", minWidth:120 }}>
           <option value="">{t("lanc_filter_all_m")}</option>{opcoes.setores.map(opt => <option key={opt}>{opt}</option>)}
         </Select>
-        <Input label={t("lanc_filter_busca")} value={filtros.busca} onChange={e => set("busca", e.target.value)} placeholder="Nome…" style={{ width:180 }} />
+        <Input label={t("lanc_filter_busca")} value={filtros.busca} onChange={e => set("busca", e.target.value)} placeholder="Nome…" style={{ flex:"1 1 140px", minWidth:140 }} />
         <div style={{ marginLeft:"auto", alignSelf:"flex-end" }}>
           <Btn variant="ghost" small onClick={() => setFiltros({ data:"", turno:"", fornecedor:"", unidade:"", setor:"", busca:"" })}>{t("lanc_filter_clear")}</Btn>
         </div>
@@ -939,6 +939,8 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
               <div>
                 <div style={{ fontSize:11, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>{t("lanc_detail_cols")} ({detalhe.length})</div>
                 <div style={{ border:"1px solid #E2E6EC", borderRadius:8, overflow:"hidden" }}>
+                  <div style={{ overflowX:"auto" }}>
+                  <div style={{ minWidth:380 }}>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 96px 96px 72px", background:"#F8FAFC", padding:"8px 14px", gap:8, borderBottom:"1px solid #E2E6EC" }}>
                     {[t("detail_col_nome"),t("detail_col_entrada"),t("detail_col_saida"),t("detail_col_total")].map(h => <div key={h} style={{ fontSize:10, fontWeight:700, color:"#64748B", textTransform:"uppercase" }}>{h}</div>)}
                   </div>
@@ -950,6 +952,8 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
                       <span style={{ fontFamily:"monospace", fontWeight:700, color:"#0E9F6E", fontSize:12 }}>{rec.totalHoras}</span>
                     </div>
                   ))}
+                  </div>
+                  </div>
                 </div>
               </div>
               {detalhe[0].obs && (
@@ -1190,7 +1194,7 @@ const Fornecedores = ({ registros, opcoes }: { registros: Registro[]; opcoes: Op
           {t("forn_empty")}
         </div>
       )}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))", gap:14 }}>
+      <div className="rsp-grid-autofill" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))", gap:14 }}>
         {resumo.map(({ forn, total, hoje: hj, mes, horas, setores, ultimos }) => {
           const cor = fornCor(forn, opcoes.fornecedores);
           return (
@@ -1200,7 +1204,7 @@ const Fornecedores = ({ registros, opcoes }: { registros: Registro[]; opcoes: Op
                 <div style={{ background:"rgba(255,255,255,.2)", borderRadius:8, padding:"4px 10px", fontSize:12, fontWeight:700, color:"#fff" }}>{total} {t("forn_registros")}</div>
               </div>
               <div style={{ padding:"14px 18px" }}>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:14 }}>
+                <div className="rsp-grid-3" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:14 }}>
                   {([[t("forn_card_today"), hj, cor], [t("forn_card_mes"), mes, "#334155"], [t("forn_card_horas"), horas, "#0E9F6E"]] as [string, string | number, string][]).map(([l, v, c]) => (
                     <div key={l} style={{ background:"#F8FAFC", borderRadius:8, padding:"8px 10px", textAlign:"center" }}>
                       <div style={{ fontSize:10, color:"#94A3B8", textTransform:"uppercase", letterSpacing:.6, marginBottom:3 }}>{l}</div>
@@ -1398,7 +1402,7 @@ const Configuracoes = ({
       </div>
 
       {/* Grade de listas de opções */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:14 }}>
+      <div className="rsp-grid-autofill" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:14 }}>
         {OPCOES_CONFIG.map(({ key, label, cor }) => (
           <div key={key} style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:18, display:"flex", flexDirection:"column", gap:12 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8 }}>

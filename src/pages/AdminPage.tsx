@@ -314,14 +314,14 @@ export default function AdminPage() {
 
             {/* Table card */}
             <div style={{ background: "#fff", border: "1px solid #E2E6EC", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ padding: "16px 20px", borderBottom: "1px solid #E2E6EC", display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "#0F1C2E", flex: 1 }}>{t("admin_users_title")}</div>
-                <div style={{ position: "relative" }}>
+              <div style={{ padding: "16px 20px", borderBottom: "1px solid #E2E6EC", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#0F1C2E", flex: "1 1 auto" }}>{t("admin_users_title")}</div>
+                <div style={{ position: "relative", flex: "1 1 160px", maxWidth: 220 }}>
                   <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
                     <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
                   </svg>
                   <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("admin_search_ph")}
-                    style={{ border: "1.5px solid #E2E6EC", borderRadius: 8, padding: "7px 12px 7px 30px", fontSize: 12, fontFamily: "inherit", background: "#FAFBFC", width: 220, outline: "none" }} />
+                    style={{ border: "1.5px solid #E2E6EC", borderRadius: 8, padding: "7px 12px 7px 30px", fontSize: 12, fontFamily: "inherit", background: "#FAFBFC", width: "100%", outline: "none" }} />
                 </div>
                 <button
                   onClick={openCreate}

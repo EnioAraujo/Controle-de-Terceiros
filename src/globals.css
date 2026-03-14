@@ -132,6 +132,8 @@ button:hover:not(:disabled) { opacity: .88; }
   .rsp-grid-3,
   .rsp-grid-2       { grid-template-columns: 1fr !important; }
 
+  .rsp-grid-autofill { grid-template-columns: 1fr !important; }
+
   .rsp-main,
   .rsp-main-admin   { padding: 12px !important; }
 
