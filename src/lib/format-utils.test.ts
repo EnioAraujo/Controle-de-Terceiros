@@ -191,8 +191,8 @@ describe("dataLimiteRetencao", () => {
 
 // ─── KEY_TO_FIELD ────────────────────────────────────────────────
 describe("KEY_TO_FIELD", () => {
-  it("mapeia todas as 7 chaves de opções", () => {
-    expect(Object.keys(KEY_TO_FIELD)).toHaveLength(7);
+  it("mapeia todas as 6 chaves de opções", () => {
+    expect(Object.keys(KEY_TO_FIELD)).toHaveLength(6);
   });
 
   it("mapeia chaves corretas para campos do Registro", () => {
@@ -202,6 +202,5 @@ describe("KEY_TO_FIELD", () => {
     expect(KEY_TO_FIELD.motivos).toBe("motivo");
     expect(KEY_TO_FIELD.cargos).toBe("cargo");
     expect(KEY_TO_FIELD.ccList).toBe("cc");
-    expect(KEY_TO_FIELD.setores).toBe("setor");
-  });
+    });
 });

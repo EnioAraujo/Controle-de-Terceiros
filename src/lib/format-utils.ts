@@ -93,5 +93,4 @@ export const KEY_TO_FIELD: Record<string, keyof Registro> = {
   motivos: "motivo",
   cargos: "cargo",
   ccList: "cc",
-  setores: "setor",
 };

@@ -30,8 +30,6 @@ const D_FORNECEDORES = ["LIDER MASTER", "TRANSLOG", "SERVILOG", "LOGFLEX", "OUTR
 const D_MOTIVOS      = ["OPERAÇÃO BAT HUB BRASIL", "REFORÇO TURNO", "COBERTURA FALTA", "PROJETO ESPECIAL", "OUTRO"];
 const D_CARGOS       = ["AUXILIAR DE DEPÓSITO", "CONFERENTE JR", "CONFERENTE SR", "OPERADOR DE EMPILHADEIRA", "LÍDER OPERACIONAL", "SUPERVISOR", "ANALISTA", "COORDENADOR"];
 const D_CC_LIST      = ["100001 - SOUZA CRUZ-COD", "100002 - SOUZA CRUZ-HUB", "100003 - ADMINISTRATIVO"];
-const D_SETORES      = ["RECEBIMENTO", "EXPEDIÇÃO", "SEPARAÇÃO", "CONFERÊNCIA", "ENDEREÇAMENTO", "ADMINISTRATIVO", "PÁTIO"];
-
 // ─── TIPOS ───────────────────────────────────────────────────────
 interface Opcoes {
   turnos:       string[];
@@ -40,7 +38,6 @@ interface Opcoes {
   motivos:      string[];
   cargos:       string[];
   ccList:       string[];
-  setores:      string[];
   nomes:        string[];
 }
 
@@ -51,7 +48,6 @@ const OPCOES_DEFAULT: Opcoes = {
   motivos:      D_MOTIVOS,
   cargos:       D_CARGOS,
   ccList:       D_CC_LIST,
-  setores:      D_SETORES,
   nomes:        [],
 };
 
@@ -507,7 +503,7 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
     horaEntrada: base?.horaEntrada || "05:00",
     horaSaida:   base?.horaSaida   || "13:20",
     cargo:       base?.cargo       || opcoes.cargos[0]       || "",
-    setor:       base?.setor       || opcoes.setores[0]      || "",
+    setor:       base?.setor       || "",
     unidade:     base?.unidade     || opcoes.unidades[0]     || "",
     cc:          base?.cc          || opcoes.ccList[0]       || "",
     motivo:      base?.motivo      || opcoes.motivos[0]      || "",
@@ -609,9 +605,8 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
           <div style={{ width:20, height:20, borderRadius:6, background:"#0E9F6E", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>2</div>
           {t("form_block_2")}
         </div>
-        <G cols={3}>
+        <G cols={2}>
           <Select label={t("form_label_unidade")} value={comum.unidade} onChange={e => setC("unidade", e.target.value)}>{opcoes.unidades.map(c => <option key={c}>{c}</option>)}</Select>
-          <Select label={t("form_label_setor")} value={comum.setor} onChange={e => setC("setor", e.target.value)}>{opcoes.setores.map(c => <option key={c}>{c}</option>)}</Select>
           <Select label={t("form_label_cc")} value={comum.cc} onChange={e => setC("cc", e.target.value)}>{opcoes.ccList.map(c => <option key={c}>{c}</option>)}</Select>
         </G>
       </div>
@@ -696,11 +691,11 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
 };
 
 // ─── TELA: LANÇAMENTOS ──────────────────────────────────────────
-interface Filtros { data: string; turno: string; fornecedor: string; unidade: string; setor: string; busca: string; }
+interface Filtros { data: string; turno: string; fornecedor: string; unidade: string; busca: string; }
 
 const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[]; setRegistros: (val: Registro[]) => void; opcoes: Opcoes }) => {
   const { t, lang } = useI18n();
-  const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", setor: "", busca: "" });
+  const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", busca: "" });
   const [modal, setModal]     = useState<null | "new" | Registro | Registro[]>(null);
   const [confirm, setConfirm] = useState<string[] | null>(null);
   const [detalhe, setDetalhe] = useState<Registro | Registro[] | null>(null);
@@ -712,7 +707,6 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
     if (filtros.turno      && r.turno !== filtros.turno)             return false;
     if (filtros.fornecedor && r.fornecedor !== filtros.fornecedor)   return false;
     if (filtros.unidade    && r.unidade !== filtros.unidade)         return false;
-    if (filtros.setor      && r.setor !== filtros.setor)             return false;
     if (filtros.busca      && !r.nome.toLowerCase().includes(filtros.busca.toLowerCase())) return false;
     return true;
   }), [registros, filtros]);
@@ -753,8 +747,8 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
   const excluir = (ids: string[]) => { setRegistros(registros.filter(r => !ids.includes(r.id))); setConfirm(null); };
 
   const exportCSV = () => {
-    const h = ["Data","Turno","Hora Entrada","Hora Saída","Total Horas","Nome","Cargo","Setor","Unidade","CC","Motivo","Fornecedor","Obs"];
-    const rows = filtered.map(r => [r.data,r.turno,r.horaEntrada,r.horaSaida,r.totalHoras,r.nome,r.cargo,r.setor||"",r.unidade,r.cc,r.motivo,r.fornecedor,r.obs].join(";"));
+    const h = ["Data","Turno","Hora Entrada","Hora Saída","Total Horas","Nome","Cargo","Unidade","CC","Motivo","Fornecedor","Obs"];
+    const rows = filtered.map(r => [r.data,r.turno,r.horaEntrada,r.horaSaida,r.totalHoras,r.nome,r.cargo,r.unidade,r.cc,r.motivo,r.fornecedor,r.obs].join(";"));
     const blob = new Blob(["\uFEFF" + [h.join(";"), ...rows].join("\n")], { type:"text/csv;charset=utf-8;" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `terceiros_${filtros.data || "todos"}.csv`; a.click();
   };
@@ -785,12 +779,9 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
         <Select label={t("form_label_unidade")} value={filtros.unidade} onChange={e => set("unidade", e.target.value)} style={{ width:150 }}>
           <option value="">{t("lanc_filter_all_f")}</option>{opcoes.unidades.map(opt => <option key={opt}>{opt}</option>)}
         </Select>
-        <Select label={t("form_label_setor")} value={filtros.setor} onChange={e => set("setor", e.target.value)} style={{ width:150 }}>
-          <option value="">{t("lanc_filter_all_m")}</option>{opcoes.setores.map(opt => <option key={opt}>{opt}</option>)}
-        </Select>
         <Input label={t("lanc_filter_busca")} value={filtros.busca} onChange={e => set("busca", e.target.value)} placeholder="Nome…" style={{ width:180 }} />
         <div style={{ marginLeft:"auto", alignSelf:"flex-end" }}>
-          <Btn variant="ghost" small onClick={() => setFiltros({ data:"", turno:"", fornecedor:"", unidade:"", setor:"", busca:"" })}>{t("lanc_filter_clear")}</Btn>
+          <Btn variant="ghost" small onClick={() => setFiltros({ data:"", turno:"", fornecedor:"", unidade:"", busca:"" })}>{t("lanc_filter_clear")}</Btn>
         </div>
       </div>
 
@@ -805,7 +796,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
             <thead>
               <tr style={{ background:"#F8FAFC" }}>
-                {[t("lanc_col_data"),t("lanc_col_turno"),t("lanc_col_nome"),t("lanc_col_cargo"),t("lanc_col_forn"),t("lanc_col_setor"),t("lanc_col_unidade"),t("lanc_col_entrada"),t("lanc_col_saida"),t("lanc_col_horas"),t("lanc_col_motivo"),t("lanc_col_acoes")].map(h => (
+                {[t("lanc_col_data"),t("lanc_col_turno"),t("lanc_col_nome"),t("lanc_col_cargo"),t("lanc_col_forn"),t("lanc_col_unidade"),t("lanc_col_entrada"),t("lanc_col_saida"),t("lanc_col_horas"),t("lanc_col_motivo"),t("lanc_col_acoes")].map(h => (
                   <th key={h} style={{ padding:"10px 12px", textAlign:"left", color:"#64748B", fontWeight:700, fontSize:10, textTransform:"uppercase", letterSpacing:.7, whiteSpace:"nowrap", borderBottom:"2px solid #E2E6EC" }}>{h}</th>
                 ))}
               </tr>
@@ -840,7 +831,6 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
                     </td>
                     <td style={{ padding:"10px 12px", color:"#475569", maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.cargo}</td>
                     <td style={{ padding:"10px 12px" }}><Chip label={r.fornecedor} color={fornCor(r.fornecedor, opcoes.fornecedores)} /></td>
-                    <td style={{ padding:"10px 12px" }}><Chip label={r.setor || "—"} color="#6C63FF" /></td>
                     <td style={{ padding:"10px 12px" }}><Chip label={r.unidade} color="#0E9F6E" /></td>
                     <td style={{ padding:"10px 12px", fontFamily:"monospace", color:"#475569" }}>{r.horaEntrada}</td>
                     <td style={{ padding:"10px 12px", fontFamily:"monospace", color:"#475569" }}>{r.horaSaida}</td>
@@ -884,7 +874,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
                 {([
                   [t("detail_data"), fmt(detalhe[0].data, lang)], [t("detail_turno"), detalhe[0].turno],
                   [t("detail_cargo"), detalhe[0].cargo], [t("detail_forn"), detalhe[0].fornecedor],
-                  [t("detail_unidade"), detalhe[0].unidade], [t("detail_setor"), detalhe[0].setor],
+                  [t("detail_unidade"), detalhe[0].unidade],
                   [t("detail_cc"), detalhe[0].cc], [t("detail_motivo"), detalhe[0].motivo],
                 ] as [string, string][]).map(([k, v]) => (
                   <div key={k} style={{ background:"#F8FAFC", borderRadius:8, padding:"10px 14px" }}>
@@ -925,7 +915,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
             <div className="rsp-modal-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
               {([
                   [t("detail_nome"), detalhe.nome], [t("detail_cargo"), detalhe.cargo], [t("detail_forn"), detalhe.fornecedor],
-                  [t("detail_data"), fmt(detalhe.data, lang)], [t("detail_turno"), detalhe.turno], [t("detail_setor"), detalhe.setor],
+                  [t("detail_data"), fmt(detalhe.data, lang)], [t("detail_turno"), detalhe.turno],
                   [t("detail_unidade"), detalhe.unidade], [t("detail_cc"), detalhe.cc],
                   [t("detail_entrada"), detalhe.horaEntrada], [t("detail_saida"), detalhe.horaSaida],
                   [t("detail_total_horas"), detalhe.totalHoras], [t("detail_motivo"), detalhe.motivo],
@@ -975,27 +965,12 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
   const doMes  = useMemo(() => registros.filter(r => r.data.startsWith(periodo)), [registros, periodo]);
   const deHoje = registros.filter(r => r.data === hoje());
 
-  const totalHorasMes = useMemo(() => {
-    const mins = doMes.reduce((acc, r) => {
-      if (!r.totalHoras) return acc;
-      const [h, m] = r.totalHoras.split(":").map(Number);
-      return acc + h * 60 + m;
-    }, 0);
-    return `${Math.floor(mins / 60)}h ${mins % 60}min`;
-  }, [doMes]);
-
   const porFornecedor = useMemo(() => {
     const m: Record<string, number> = {};
     doMes.filter(r => opcoes.fornecedores.includes(r.fornecedor))
          .forEach(r => { m[r.fornecedor] = (m[r.fornecedor] || 0) + 1; });
     return Object.entries(m).sort((a, b) => b[1] - a[1]);
   }, [doMes, opcoes.fornecedores]);
-
-  const porSetor = useMemo(() => {
-    const m: Record<string, number> = {};
-    doMes.forEach(r => { const k = r.setor || "SEM SETOR"; m[k] = (m[k] || 0) + 1; });
-    return Object.entries(m).sort((a, b) => b[1] - a[1]);
-  }, [doMes]);
 
   const CHART_CORES = ["#1A56DB","#0E9F6E","#D97706","#6C63FF","#E02424","#0891B2"];
 
@@ -1030,19 +1005,14 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
         </div>
       </div>
 
-      <div className="rsp-grid-4" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
+      <div className="rsp-grid-2" style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:12 }}>
         <KPI label={t("dash_kpi_records")} value={doMes.length} sub={t("dash_kpi_today").replace("{n}", String(deHoje.length))} color="#1A56DB"
           icon={<Icon d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />} />
         <KPI label={t("dash_kpi_forn")} value={porFornecedor.length} sub={t("dash_kpi_period")} color="#D97706"
           icon={<Icon d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />} />
-        <KPI label={t("dash_kpi_horas")} value={totalHorasMes} sub={t("dash_kpi_horas_sub")} color="#0E9F6E"
-          icon={<Icon d="M12 8v4l3 3M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0" />} />
-        <KPI label={t("dash_kpi_setores")} value={porSetor.length} sub={t("dash_kpi_period")} color="#6C63FF"
-          icon={<Icon d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />} />
       </div>
 
-      <div className="rsp-grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
-        <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
           <div style={{ fontWeight:700, fontSize:13, marginBottom:16, color:"#0F1C2E" }}>{t("dash_chart_forn")}</div>
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
             {porFornecedor.length === 0 && <div style={{ color:"#94A3B8", fontSize:12, textAlign:"center", padding:20 }}>{t("dash_no_data")}</div>}
@@ -1063,29 +1033,6 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
             })}
           </div>
         </div>
-
-        <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
-          <div style={{ fontWeight:700, fontSize:13, marginBottom:16, color:"#0F1C2E" }}>{t("dash_chart_setor")}</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {porSetor.length === 0 && <div style={{ color:"#94A3B8", fontSize:12, textAlign:"center", padding:20 }}>{t("dash_no_data")}</div>}
-            {porSetor.map(([setor, n], i) => {
-              const pct = doMes.length ? (n / doMes.length * 100) : 0;
-              const cor = CHART_CORES[(i + 2) % CHART_CORES.length];
-              return (
-                <div key={setor}>
-                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:5 }}>
-                    <span style={{ fontWeight:600, color:"#334155" }}>{setor}</span>
-                    <span style={{ fontFamily:"monospace", fontWeight:700, color:cor }}>{n} ({pct.toFixed(0)}%)</span>
-                  </div>
-                  <div style={{ height:8, background:"#F1F5F9", borderRadius:99, overflow:"hidden" }}>
-                    <div style={{ height:"100%", width:`${pct}%`, background:cor, borderRadius:99, transition:"width .6s" }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
 
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ fontWeight:700, fontSize:13, marginBottom:14, color:"#0F1C2E" }}>{t("dash_chart_turno")}</div>
@@ -1134,9 +1081,8 @@ const Fornecedores = ({ registros, opcoes }: { registros: Registro[]; opcoes: Op
       const mes_    = regs.filter(r => r.data.startsWith(mesAtual())).length;
       const mins    = regs.reduce((acc, r) => { if (!r.totalHoras) return acc; const [h, m] = r.totalHoras.split(":").map(Number); return acc + h * 60 + m; }, 0);
       const horas   = `${Math.floor(mins / 60)}h ${mins % 60}min`;
-      const setores = [...new Set(regs.map(r => r.setor).filter(Boolean))];
       const ultimos = [...regs].sort((a, b) => a.data > b.data ? -1 : 1).slice(0, 5);
-      return { forn, total: regs.length, hoje: hoje_, mes: mes_, horas, setores, ultimos };
+      return { forn, total: regs.length, hoje: hoje_, mes: mes_, horas, ultimos };
     }).filter(f => f.total > 0);
   }, [registros, opcoes.fornecedores]);
 
@@ -1153,7 +1099,7 @@ const Fornecedores = ({ registros, opcoes }: { registros: Registro[]; opcoes: Op
         </div>
       )}
       <div className="rsp-grid-autofill" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))", gap:14 }}>
-        {resumo.map(({ forn, total, hoje: hj, mes, horas, setores, ultimos }) => {
+        {resumo.map(({ forn, total, hoje: hj, mes, horas, ultimos }) => {
           const cor = fornCor(forn, opcoes.fornecedores);
           return (
             <div key={forn} style={{ background:"#fff", border:`1px solid ${cor}33`, borderRadius:12, overflow:"hidden", boxShadow:"0 1px 4px rgba(15,28,46,.06)" }}>
@@ -1170,14 +1116,6 @@ const Fornecedores = ({ registros, opcoes }: { registros: Registro[]; opcoes: Op
                     </div>
                   ))}
                 </div>
-                {setores.length > 0 && (
-                  <div style={{ marginBottom:12 }}>
-                    <div style={{ fontSize:10, color:"#94A3B8", textTransform:"uppercase", letterSpacing:.6, marginBottom:6 }}>{t("forn_setores")}</div>
-                    <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
-                      {setores.map(s => <Chip key={s} label={s} color={cor} size="sm" />)}
-                    </div>
-                  </div>
-                )}
                 {ultimos.length > 0 && (
                   <div>
                     <div style={{ fontSize:10, color:"#94A3B8", textTransform:"uppercase", letterSpacing:.6, marginBottom:6 }}>{t("forn_ultimos")}</div>
@@ -1208,7 +1146,6 @@ const OPCOES_CONFIG: { key: keyof Omit<Opcoes, "nomes">; label: string; cor: str
   { key: "motivos",      label: "Motivos",          cor: "#6C63FF" },
   { key: "cargos",       label: "Cargos",           cor: "#E02424" },
   { key: "ccList",       label: "Centros de Custo", cor: "#0891B2" },
-  { key: "setores",      label: "Setores",          cor: "#475569" },
 ];
 
 const Configuracoes = ({
@@ -1227,14 +1164,14 @@ const Configuracoes = ({
   const { t, lang } = useI18n();
   type OpcKey = keyof Opcoes;
   const [inputs, setInputs] = useState<Record<OpcKey, string>>({
-    turnos: "", unidades: "", fornecedores: "", motivos: "", cargos: "", ccList: "", setores: "", nomes: ""
+    turnos: "", unidades: "", fornecedores: "", motivos: "", cargos: "", ccList: "", nomes: ""
   });
   const [nomesBulk, setNomesBulk] = useState("");
   const [nomeBusca, setNomeBusca] = useState("");
   const [bulkFeedback, setBulkFeedback] = useState("");
 
   // ── Estado de edição inline e busca por card ──
-  const emptyByKey = { turnos: "", unidades: "", fornecedores: "", motivos: "", cargos: "", ccList: "", setores: "", nomes: "" };
+  const emptyByKey = { turnos: "", unidades: "", fornecedores: "", motivos: "", cargos: "", ccList: "", nomes: "" };
   const [editing, setEditing] = useState<{ key: OpcKey; idx: number; value: string } | null>(null);
   const [cardSearch, setCardSearch] = useState<Record<OpcKey, string>>(emptyByKey);
   const [bulkCategory, setBulkCategory] = useState<OpcKey>("nomes");
