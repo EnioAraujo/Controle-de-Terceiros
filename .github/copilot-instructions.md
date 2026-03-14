@@ -61,10 +61,10 @@ docs(context): atualiza CONTEXT.md com novo schema
 ### Sequência obrigatória ao final de cada tarefa
 
 1. Atualizar `CONTEXT.md` (seções relevantes + histórico)
-2. Executar o commit com **todos** os arquivos alterados:
+2. Executar o commit e o push com **todos** os arquivos alterados:
 
 ```bash
-git add -A && git commit -m "tipo(escopo): descrição"
+git add -A && git commit -m "tipo(escopo): descrição" && git push
 ```
 
 ---
