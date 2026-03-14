@@ -48,6 +48,7 @@ Use o padrão [Conventional Commits](https://www.conventionalcommits.org/):
 | `chore` | Atualização de deps, configs, scripts |
 | `docs` | Alterações apenas em documentação |
 | `db` | Migração ou alteração de schema no Supabase |
+| `test` | Adição ou alteração de testes |
 
 **Exemplos:**
 
@@ -61,11 +62,34 @@ docs(context): atualiza CONTEXT.md com novo schema
 ### Sequência obrigatória ao final de cada tarefa
 
 1. Atualizar `CONTEXT.md` (seções relevantes + histórico)
-2. Executar o commit e o push com **todos** os arquivos alterados:
+2. **Executar os testes** (`pnpm test`) e garantir que todos passem
+3. Executar o commit e o push com **todos** os arquivos alterados:
 
 ```bash
-git add -A && git commit -m "tipo(escopo): descrição" && git push
+pnpm test && git add -A && git commit -m "tipo(escopo): descrição" && git push
 ```
+
+---
+
+## Regra de Testes
+
+**Antes de cada commit**, os testes automatizados devem ser executados e todos devem passar.
+
+### Diretrizes
+
+- Testes unitários ficam em `src/**/*.test.ts` (co-localizados com o módulo testado)
+- Usar **Vitest** como framework de testes e **@testing-library/react** para componentes
+- Funções de lógica pura devem estar em módulos utilitários (`src/lib/`) para facilitar testes
+- Ao criar nova lógica de negócio (cálculos, formatação, mapeamento, validação), **criar testes correspondentes**
+- Rodar `pnpm test` antes de commitar; se falhar, **corrigir antes de prosseguir**
+- **Nunca commitar com testes falhando**
+
+### Comandos
+
+| Comando | Uso |
+|---|---|
+| `pnpm test` | Executa todos os testes uma vez |
+| `pnpm test:watch` | Executa testes em modo watch |
 
 ---
 
@@ -76,6 +100,7 @@ git add -A && git commit -m "tipo(escopo): descrição" && git push
 - TanStack React Query v5
 - shadcn/ui + Radix UI + Tailwind CSS
 - Supabase (PostgreSQL + Auth + RLS)
+- Vitest + @testing-library/react (testes)
 - Deploy: Vercel
 
 ## Regras de Código

@@ -271,12 +271,23 @@ Fallback para `https://placeholder.supabase.co` em dev sem `.env`.
 ## 10. Comandos
 
 ```bash
-pnpm dev        # servidor de desenvolvimento
-pnpm build      # build de produção
-pnpm build:dev  # build em modo development
-pnpm lint       # ESLint
-pnpm preview    # preview do build
+pnpm dev          # servidor de desenvolvimento
+pnpm build        # build de produção
+pnpm build:dev    # build em modo development
+pnpm lint         # ESLint
+pnpm preview      # preview do build
+pnpm test         # executa todos os testes (Vitest)
+pnpm test:watch   # testes em modo watch
 ```
+
+### Regra de Testes
+
+- **Antes de cada commit**, executar `pnpm test` e garantir que todos passem
+- Testes ficam co-localizados: `src/**/*.test.ts`
+- Framework: **Vitest** + **@testing-library/react** + **jsdom**
+- Setup de testes: `src/test/setup.ts`
+- Funções puras extraídas em `src/lib/format-utils.ts` para facilitar testes
+- **Nunca commitar com testes falhando**
 
 ---
 
@@ -348,3 +359,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-14 | Nomes removidos da tabela opcoes: SELECT filtra chave='nomes', limpeza automática de dados residuais no carregamento; nomes existem apenas na tabela terceiros |
 | 2026-03-14 | Importação em massa unificada: campo único com seletor de categoria (Colaboradores, Turnos, Unidades, Fornecedores, Motivos, Cargos, CC, Setores) substitui importação individual por card; removidos botões de importação dos cards de opções; i18n atualizado com labels genéricos |
 | 2026-03-14 | Corrigido RLS: adicionadas políticas SELECT para role authenticated nas tabelas registros e opcoes; sem elas, upserts falhavam porque o Supabase precisa de SELECT para verificar conflitos (onConflict) |
+| 2026-03-14 | Infraestrutura de testes: Vitest + @testing-library/react + jsdom; funções puras extraídas de Index.tsx para src/lib/format-utils.ts; 35 testes cobrindo calcHoras, fmt, fmtMes, fornCor, dbToRegistro, registroToDb, dataLimiteRetencao, KEY_TO_FIELD e mapSupabaseError; regra de testes obrigatórios antes de commit adicionada às instruções do Copilot |

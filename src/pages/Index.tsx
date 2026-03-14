@@ -4,6 +4,13 @@ import DOMPurify from "dompurify";
 import { Registro } from "@/types/attendance";
 import { supabase, authReady } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
+import {
+  hoje, fmt, fmtMes, mesAtual, calcHoras,
+  RETENCAO_ANOS, dataLimiteRetencao,
+  FORN_PALETTE, fornCor,
+  dbToRegistro, registroToDb,
+  KEY_TO_FIELD,
+} from "@/lib/format-utils";
 
 // ─── CONSTANTES DEFAULT ──────────────────────────────────────────
 const D_TURNOS       = ["1ª TURNO", "2ª TURNO", "3ª TURNO", "INTERMEDIÁRIO"];
@@ -37,32 +44,10 @@ const OPCOES_DEFAULT: Opcoes = {
   nomes:        [],
 };
 
-// ─── UTILITÁRIOS ─────────────────────────────────────────────────
-const hoje     = () => new Date().toISOString().slice(0, 10);
-const fmt      = (d: string, locale = "pt-BR") => d ? new Date(d + "T00:00:00").toLocaleDateString(locale) : "—";
-const fmtMes   = (ym: string, locale = "pt-BR") => {
-  const d = new Date(ym + "-01");
-  if (locale === "en-US") return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
-  const [y, m] = ym.split("-"); return ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"][+m-1] + "/" + y;
-};
-const mesAtual = () => new Date().toISOString().slice(0, 7);
-const calcHoras = (e: string, s: string) => {
-  if (!e || !s) return "";
-  const [eh, em] = e.split(":").map(Number);
-  const [sh, sm] = s.split(":").map(Number);
-  let m = (sh * 60 + sm) - (eh * 60 + em);
-  if (m < 0) m += 1440;
-  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-};
+// ─── UTILITÁRIOS (importados de @/lib/format-utils) ─────────────
 const uuid = () => crypto.randomUUID();
 
-// ─── LGPD ─────────────────────────────────────────────────────────
-const RETENCAO_ANOS = 5;
-const dataLimiteRetencao = () => {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() - RETENCAO_ANOS);
-  return d.toISOString().slice(0, 10);
-};
+// ─── LGPD (importado de @/lib/format-utils) ──────────────────────
 
 const logAudit = (
   operacao: "INSERT" | "UPDATE" | "DELETE" | "PURGE" | "EXCLUSAO_TITULAR",
@@ -82,49 +67,7 @@ const logAudit = (
   );
 };
 
-const FORN_PALETTE = ["#D97706","#1A56DB","#0E9F6E","#6C63FF","#E02424","#0891B2","#CA8A04","#7C3AED","#0F766E","#64748B"];
-const fornCor = (forn: string, lista: string[]) => FORN_PALETTE[lista.indexOf(forn) % FORN_PALETTE.length] || "#64748B";
-
-
-
-// ─── MAPEAMENTO DB ↔ MODELO ─────────────────────────────────────
-type DbRegistro = Record<string, unknown>;
-
-const dbToRegistro = (row: DbRegistro): Registro => ({
-  id:          row.id as string,
-  loteId:      (row.lote_id as string | null) ?? undefined,
-  data:        row.data as string,
-  turno:       row.turno as string,
-  horaEntrada: row.hora_entrada as string,
-  horaSaida:   row.hora_saida as string,
-  totalHoras:  row.total_horas as string,
-  nome:        row.nome as string,
-  cargo:       row.cargo as string,
-  setor:       row.setor as string,
-  unidade:     row.unidade as string,
-  cc:          row.cc as string,
-  motivo:      row.motivo as string,
-  fornecedor:  row.fornecedor as string,
-  obs:         row.obs as string,
-});
-
-const registroToDb = (r: Registro) => ({
-  id:           r.id,
-  lote_id:      r.loteId ?? null,
-  data:         r.data,
-  turno:        r.turno,
-  hora_entrada: r.horaEntrada,
-  hora_saida:   r.horaSaida,
-  total_horas:  r.totalHoras,
-  nome:         r.nome,
-  cargo:        r.cargo,
-  setor:        r.setor,
-  unidade:      r.unidade,
-  cc:           r.cc,
-  motivo:       r.motivo,
-  fornecedor:   r.fornecedor,
-  obs:          r.obs,
-});
+// ─── MAPEAMENTO DB ↔ MODELO (importado de @/lib/format-utils) ──
 
 // ─── HOOKS ───────────────────────────────────────────────────────
 const useStorage = (): [Registro[], (val: Registro[]) => void, boolean] => {
@@ -1256,11 +1199,6 @@ const OPCOES_CONFIG: { key: keyof Omit<Opcoes, "nomes">; label: string; cor: str
   { key: "ccList",       label: "Centros de Custo", cor: "#0891B2" },
   { key: "setores",      label: "Setores",          cor: "#475569" },
 ];
-
-const KEY_TO_FIELD: Record<string, keyof Registro> = {
-  turnos: "turno", unidades: "unidade", fornecedores: "fornecedor",
-  motivos: "motivo", cargos: "cargo", ccList: "cc", setores: "setor",
-};
 
 const Configuracoes = ({
   opcoes,
