@@ -2046,7 +2046,7 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
     const { default: jsPDF } = await import("jspdf");
     const { default: autoTable } = await import("jspdf-autotable");
     const doc = new jsPDF({ orientation: "landscape" });
-    const title = `Fechamento — ${fornecedor} (${intervalo.inicio} a ${intervalo.fim})`;
+    const title = `Fechamento — ${fornecedor} (${fmt(intervalo.inicio, lang)} a ${fmt(intervalo.fim, lang)})`;
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
     doc.text(title, 14, 16);
