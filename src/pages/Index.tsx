@@ -2086,7 +2086,7 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
     const XLSX = await import("xlsx");
     const rows = itens.map(i => ({
       [t("fech_col_nome")]: i.nome,
-      [t("fech_col_data")]: i.data,
+      [t("fech_col_data")]: fmt(i.data, lang),
       [t("fech_col_turno")]: i.turno,
       [t("fech_col_horas")]: i.horas,
       [t("fech_col_diaria")]: i.valorDiaria,
