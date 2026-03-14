@@ -2186,12 +2186,6 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
               <div style={{ fontSize: 22, fontWeight: 800, color: "#1A56DB" }}>{itens.length}</div>
             </div>
             <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 20px", flex: 1, minWidth: 120, textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: .6, marginBottom: 4 }}>{t("fech_horas")}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "#334155" }}>
-                {decimalToHoras(itens.reduce((acc, i) => acc + horasToDecimal(i.horas), 0))}
-              </div>
-            </div>
-            <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 20px", flex: 1, minWidth: 120, textAlign: "center" }}>
               <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: .6, marginBottom: 4 }}>{t("fech_total")}</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: "#0E9F6E" }}>{fmtCurrency(total)}</div>
             </div>

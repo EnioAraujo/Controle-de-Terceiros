@@ -363,3 +363,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-14 | Seções DPO (Art. 41) e Exclusão por Solicitação (Art. 18 LGPD) visíveis apenas para administradores (isAdmin) na aba Configurações |
 | 2026-03-14 | Implementado componente FechamentoTab: cálculo de fechamento financeiro por fornecedor/período com filtros (mês, período 1º/2º/3º/custom, fornecedor), resumo (presenças, horas, total), tabela detalhada por pessoa/dia com edição inline de valores, fluxo de status (rascunho→enviado→revisão→aprovado), salvar/carregar do DB (fechamentos + fechamento_itens), exportação XLSX, histórico de fechamentos salvos |
 | 2026-03-14 | Removido bloco "Resumo por pessoa" do FechamentoTab (redundante com tabela detalhada); adicionada exportação PDF (jspdf + jspdf-autotable) com tabela completa e rodapé de total |
+| 2026-03-14 | Removido card "HORAS" do resumo do FechamentoTab (redundante com a tabela detalhada) |
