@@ -240,7 +240,9 @@ const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
 
       const built: Opcoes = { ...OPCOES_DEFAULT };
       byKey.forEach((vals, k) => {
-        if (k in built && k !== "nomes") (built as Record<string, string[]>)[k] = vals;
+        if (k !== "nomes" && k in built) {
+          Object.assign(built, { [k]: vals });
+        }
       });
       built.nomes = nomes;
 
