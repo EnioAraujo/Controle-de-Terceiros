@@ -11,6 +11,17 @@ import {
   dbToRegistro, registroToDb,
   KEY_TO_FIELD,
 } from "@/lib/format-utils";
+import {
+  type TurnoConfig, type DiariaConfig, type FechamentoItem, type Fechamento,
+  type FechamentoStatus, type ResumoPessoa,
+  dbToTurnoConfig, dbToDiariaConfig,
+  dbToFechamento, fechamentoToDb,
+  dbToFechamentoItem, fechamentoItemToDb,
+  horasToDecimal, decimalToHoras,
+  periodosPadrao,
+  gerarItensFechamento, calcularTotal, agruparPorPessoa,
+  STATUS_COLORS, NEXT_STATUS,
+} from "@/lib/fechamento-utils";
 
 // ─── CONSTANTES DEFAULT ──────────────────────────────────────────
 const D_TURNOS       = ["1ª TURNO", "2ª TURNO", "3ª TURNO", "INTERMEDIÁRIO"];
@@ -1228,6 +1239,62 @@ const Configuracoes = ({
   const [cardSearch, setCardSearch] = useState<Record<OpcKey, string>>(emptyByKey);
   const [bulkCategory, setBulkCategory] = useState<OpcKey>("nomes");
 
+  // ── Config de Turnos (horas padrão) ──
+  const [turnosConfig, setTurnosConfig] = useState<TurnoConfig[]>([]);
+  const [turnosConfigSaved, setTurnosConfigSaved] = useState(false);
+
+  // ── Config de Diárias (fornecedor + turno → valor) ──
+  const [diariasConfig, setDiariasConfig] = useState<DiariaConfig[]>([]);
+  const [newDiaria, setNewDiaria] = useState({ fornecedor: "", turno: "", valor: "250" });
+
+  useEffect(() => {
+    authReady.then(async () => {
+      // Carregar turnos_config
+      const { data: tData } = await supabase.from("turnos_config").select("*").order("turno");
+      if (tData) setTurnosConfig(tData.map(dbToTurnoConfig));
+      // Carregar diarias_config
+      const { data: dData } = await supabase.from("diarias_config").select("*").order("fornecedor");
+      if (dData) setDiariasConfig(dData.map(dbToDiariaConfig));
+    });
+  }, []);
+
+  const saveTurnosConfig = async () => {
+    for (const tc of turnosConfig) {
+      await supabase.from("turnos_config").upsert({
+        turno: tc.turno,
+        hora_inicio: tc.horaInicio,
+        hora_fim: tc.horaFim,
+        hora_padrao: tc.horaPadrao,
+      }, { onConflict: "turno" });
+    }
+    setTurnosConfigSaved(true);
+    setTimeout(() => setTurnosConfigSaved(false), 2000);
+  };
+
+  const addDiaria = async () => {
+    const forn = newDiaria.fornecedor.trim();
+    const turno = newDiaria.turno.trim() || null;
+    const valor = parseFloat(newDiaria.valor);
+    if (!forn || isNaN(valor)) return;
+    const { data, error } = await supabase.from("diarias_config")
+      .upsert({ fornecedor: forn, turno, valor_diaria: valor }, { onConflict: "fornecedor,turno" })
+      .select();
+    if (!error && data) {
+      const updated = data.map(dbToDiariaConfig);
+      setDiariasConfig(prev => {
+        const filtered = prev.filter(d => !(d.fornecedor === forn && d.turno === turno));
+        return [...filtered, ...updated].sort((a, b) => a.fornecedor.localeCompare(b.fornecedor));
+      });
+      setNewDiaria({ fornecedor: "", turno: "", valor: "250" });
+    }
+  };
+
+  const removeDiaria = async (d: DiariaConfig) => {
+    if (!d.id) return;
+    await supabase.from("diarias_config").delete().eq("id", d.id);
+    setDiariasConfig(prev => prev.filter(x => x.id !== d.id));
+  };
+
   // ── DPO (Art. 41 LGPD)
   const [dpoNome,       setDpoNome]       = useState("");
   const [dpoEmail,      setDpoEmail]      = useState("");
@@ -1540,6 +1607,122 @@ const Configuracoes = ({
         </div>
       </div>
 
+      {/* ── Horas Padrão por Turno ── */}
+      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
+          <div style={{ width:10, height:10, borderRadius:"50%", background:"#0891B2", flexShrink:0 }} />
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{t("cfg_turnos_horas_title")}</div>
+        </div>
+        <div style={{ fontSize:12, color:"#64748B", marginBottom:14, paddingLeft:20 }}>{t("cfg_turnos_horas_desc")}</div>
+        <div style={{ overflowX:"auto" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+            <thead>
+              <tr style={{ background:"#F8FAFC", borderBottom:"1px solid #E2E6EC" }}>
+                <th style={{ textAlign:"left", padding:"8px 10px", fontWeight:700, color:"#475569" }}>{t("cfg_turnos_turno")}</th>
+                <th style={{ textAlign:"center", padding:"8px 10px", fontWeight:700, color:"#475569" }}>{t("cfg_turnos_inicio")}</th>
+                <th style={{ textAlign:"center", padding:"8px 10px", fontWeight:700, color:"#475569" }}>{t("cfg_turnos_fim")}</th>
+                <th style={{ textAlign:"center", padding:"8px 10px", fontWeight:700, color:"#475569" }}>{t("cfg_turnos_padrao")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {turnosConfig.map((tc, idx) => (
+                <tr key={tc.turno} style={{ borderBottom:"1px solid #F1F5F9" }}>
+                  <td style={{ padding:"6px 10px", fontWeight:600, color:"#0F1C2E" }}>{tc.turno}</td>
+                  <td style={{ textAlign:"center", padding:"6px 10px" }}>
+                    <input type="time" value={tc.horaInicio} onChange={e => { const v = [...turnosConfig]; v[idx] = { ...tc, horaInicio: e.target.value }; setTurnosConfig(v); }}
+                      style={{ border:"1.5px solid #E2E6EC", borderRadius:6, padding:"4px 8px", fontSize:12, fontFamily:"'DM Mono',monospace", textAlign:"center", background:"#FAFBFC" }} />
+                  </td>
+                  <td style={{ textAlign:"center", padding:"6px 10px" }}>
+                    <input type="time" value={tc.horaFim} onChange={e => { const v = [...turnosConfig]; v[idx] = { ...tc, horaFim: e.target.value }; setTurnosConfig(v); }}
+                      style={{ border:"1.5px solid #E2E6EC", borderRadius:6, padding:"4px 8px", fontSize:12, fontFamily:"'DM Mono',monospace", textAlign:"center", background:"#FAFBFC" }} />
+                  </td>
+                  <td style={{ textAlign:"center", padding:"6px 10px" }}>
+                    <input type="time" value={tc.horaPadrao} onChange={e => { const v = [...turnosConfig]; v[idx] = { ...tc, horaPadrao: e.target.value }; setTurnosConfig(v); }}
+                      style={{ border:"1.5px solid #E2E6EC", borderRadius:6, padding:"4px 8px", fontSize:12, fontFamily:"'DM Mono',monospace", textAlign:"center", background:"#FAFBFC", fontWeight:700 }} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:12, marginTop:12 }}>
+          <button onClick={saveTurnosConfig} style={{ background:"#0891B2", border:"none", borderRadius:8, padding:"9px 22px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
+            {t("cfg_turnos_salvar")}
+          </button>
+          {turnosConfigSaved && <span style={{ fontSize:12, color:"#0E9F6E", fontWeight:600 }}>{t("cfg_turnos_salvo")}</span>}
+        </div>
+      </div>
+
+      {/* ── Valor das Diárias por Fornecedor + Turno ── */}
+      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
+          <div style={{ width:10, height:10, borderRadius:"50%", background:"#D97706", flexShrink:0 }} />
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{t("cfg_diarias_title")}</div>
+        </div>
+        <div style={{ fontSize:12, color:"#64748B", marginBottom:14, paddingLeft:20 }}>
+          {t("cfg_diarias_desc")} <span style={{ color:"#94A3B8" }}>{t("cfg_diarias_padrao")}</span>
+        </div>
+
+        {/* Tabela existente */}
+        {diariasConfig.length > 0 && (
+          <div style={{ overflowX:"auto", marginBottom:14 }}>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+              <thead>
+                <tr style={{ background:"#F8FAFC", borderBottom:"1px solid #E2E6EC" }}>
+                  <th style={{ textAlign:"left", padding:"8px 10px", fontWeight:700, color:"#475569" }}>{t("cfg_diarias_forn")}</th>
+                  <th style={{ textAlign:"left", padding:"8px 10px", fontWeight:700, color:"#475569" }}>{t("cfg_diarias_turno")}</th>
+                  <th style={{ textAlign:"right", padding:"8px 10px", fontWeight:700, color:"#475569" }}>{t("cfg_diarias_valor")}</th>
+                  <th style={{ width:40 }} />
+                </tr>
+              </thead>
+              <tbody>
+                {diariasConfig.map(d => (
+                  <tr key={d.id} style={{ borderBottom:"1px solid #F1F5F9" }}>
+                    <td style={{ padding:"6px 10px", fontWeight:600, color:"#0F1C2E" }}>{d.fornecedor}</td>
+                    <td style={{ padding:"6px 10px", color:"#475569" }}>{d.turno ?? t("cfg_diarias_todos_turnos")}</td>
+                    <td style={{ padding:"6px 10px", textAlign:"right", fontFamily:"'DM Mono',monospace", fontWeight:700, color:"#0E9F6E" }}>
+                      R$ {d.valorDiaria.toFixed(2)}
+                    </td>
+                    <td style={{ padding:"6px 4px", textAlign:"center" }}>
+                      <button onClick={() => removeDiaria(d)} title="Remover" style={{ background:"none", border:"none", cursor:"pointer", color:"#E02424", fontSize:14, lineHeight:1 }}>×</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Adicionar nova diária */}
+        <div className="rsp-grid-4" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 100px auto", gap:8, alignItems:"end" }}>
+          <div>
+            <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, marginBottom:4 }}>{t("cfg_diarias_forn")}</div>
+            <select value={newDiaria.fornecedor} onChange={e => setNewDiaria(p => ({ ...p, fornecedor: e.target.value }))}
+              style={{ width:"100%", border:"1.5px solid #E2E6EC", borderRadius:7, padding:"8px 10px", fontSize:13, fontFamily:"inherit", background:"#FAFBFC" }}>
+              <option value="">{t("fech_selecione_forn")}</option>
+              {opcoes.fornecedores.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          <div>
+            <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, marginBottom:4 }}>{t("cfg_diarias_turno")}</div>
+            <select value={newDiaria.turno} onChange={e => setNewDiaria(p => ({ ...p, turno: e.target.value }))}
+              style={{ width:"100%", border:"1.5px solid #E2E6EC", borderRadius:7, padding:"8px 10px", fontSize:13, fontFamily:"inherit", background:"#FAFBFC" }}>
+              <option value="">{t("cfg_diarias_todos_turnos")}</option>
+              {opcoes.turnos.map(t_ => <option key={t_} value={t_}>{t_}</option>)}
+            </select>
+          </div>
+          <div>
+            <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, marginBottom:4 }}>{t("cfg_diarias_valor")}</div>
+            <input type="number" min="0" step="0.01" value={newDiaria.valor}
+              onChange={e => setNewDiaria(p => ({ ...p, valor: e.target.value }))}
+              style={{ width:"100%", border:"1.5px solid #E2E6EC", borderRadius:7, padding:"8px 10px", fontSize:13, fontFamily:"'DM Mono',monospace", background:"#FAFBFC" }} />
+          </div>
+          <button onClick={addDiaria} style={{ background:"#D97706", border:"none", borderRadius:8, padding:"9px 18px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit", alignSelf:"end" }}>
+            {t("cfg_diarias_add")}
+          </button>
+        </div>
+      </div>
+
       {/* ── LGPD: DPO (Art. 41) — somente admin ── */}
       {isAdmin && (
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
@@ -1661,10 +1844,479 @@ const Configuracoes = ({
   );
 };
 
+// ─── TELA: FECHAMENTO ────────────────────────────────────────────
+const STATUS_LABEL_KEY: Record<FechamentoStatus, string> = {
+  rascunho: "fech_status_rascunho",
+  enviado:  "fech_status_enviado",
+  revisao:  "fech_status_revisao",
+  aprovado: "fech_status_aprovado",
+};
+
+const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoes }) => {
+  const { t, lang } = useI18n();
+
+  // ── Filtros ──
+  const [mes, setMes] = useState(mesAtual());
+  const [periodoIdx, setPeriodoIdx] = useState(0); // 0,1,2 = padrão; 3 = custom
+  const [customInicio, setCustomInicio] = useState("");
+  const [customFim, setCustomFim] = useState("");
+  const [fornecedor, setFornecedor] = useState("");
+
+  // ── Dados calculados ──
+  const [itens, setItens] = useState<FechamentoItem[]>([]);
+  const [resumoPessoas, setResumoPessoas] = useState<ResumoPessoa[]>([]);
+  const [total, setTotal] = useState(0);
+  const [calculado, setCalculado] = useState(false);
+
+  // ── Fechamento salvo ──
+  const [fechamento, setFechamento] = useState<Fechamento | null>(null);
+  const [historico, setHistorico] = useState<Fechamento[]>([]);
+  const [feedback, setFeedback] = useState("");
+
+  // ── Configs (carregar do DB) ──
+  const [turnosConfig, setTurnosConfig] = useState<TurnoConfig[]>([]);
+  const [diariasConfig, setDiariasConfig] = useState<DiariaConfig[]>([]);
+
+  // ── Edição inline ──
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+  const [editValor, setEditValor] = useState("");
+  const [editObs, setEditObs] = useState("");
+
+  // Carregar configs + histórico
+  useEffect(() => {
+    authReady.then(async () => {
+      const { data: tData } = await supabase.from("turnos_config").select("*").order("turno");
+      if (tData) setTurnosConfig(tData.map(dbToTurnoConfig));
+      const { data: dData } = await supabase.from("diarias_config").select("*").order("fornecedor");
+      if (dData) setDiariasConfig(dData.map(dbToDiariaConfig));
+      const { data: hData } = await supabase.from("fechamentos").select("*").order("created_at", { ascending: false }).limit(50);
+      if (hData) setHistorico(hData.map(dbToFechamento));
+    });
+  }, []);
+
+  // Períodos do mês selecionado
+  const periodos = useMemo(() => periodosPadrao(mes), [mes]);
+
+  // Intervalo de datas ativo
+  const intervalo = useMemo(() => {
+    if (periodoIdx === 3) return { inicio: customInicio, fim: customFim };
+    const p = periodos[periodoIdx];
+    return p ? { inicio: p.inicio, fim: p.fim } : { inicio: "", fim: "" };
+  }, [periodoIdx, periodos, customInicio, customFim]);
+
+  // ── Calcular fechamento ──
+  const calcular = useCallback(() => {
+    if (!fornecedor || !intervalo.inicio || !intervalo.fim) return;
+    const regs = registros.filter(r =>
+      r.fornecedor === fornecedor &&
+      r.data >= intervalo.inicio &&
+      r.data <= intervalo.fim
+    );
+    const items = gerarItensFechamento(
+      regs.map(r => ({
+        id: r.id, nome: r.nome, data: r.data,
+        turno: r.turno, totalHoras: r.totalHoras, fornecedor: r.fornecedor,
+      })),
+      diariasConfig, turnosConfig,
+    );
+    setItens(items);
+    setResumoPessoas(agruparPorPessoa(items));
+    setTotal(calcularTotal(items));
+    setCalculado(true);
+    setFechamento(null);
+    setEditIdx(null);
+    setFeedback("");
+  }, [fornecedor, intervalo, registros, diariasConfig, turnosConfig]);
+
+  // ── Aplicar edição inline ──
+  const aplicarEdicao = (idx: number) => {
+    const val = parseFloat(editValor);
+    if (isNaN(val)) return;
+    setItens(prev => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], valorCalculado: val, ajusteManual: true, obs: editObs };
+      const newTotal = calcularTotal(next);
+      setTotal(newTotal);
+      setResumoPessoas(agruparPorPessoa(next));
+      return next;
+    });
+    setEditIdx(null);
+  };
+
+  // ── Salvar ──
+  const salvar = async () => {
+    if (!fornecedor || itens.length === 0) return;
+    const fech: Fechamento = fechamento ?? {
+      fornecedor,
+      dataInicio: intervalo.inicio,
+      dataFim: intervalo.fim,
+      status: "rascunho",
+      valorTotal: total,
+    };
+    fech.valorTotal = total;
+    const dbFech = fechamentoToDb(fech);
+    const { data: savedFech, error } = fech.id
+      ? await supabase.from("fechamentos").update(dbFech).eq("id", fech.id).select().single()
+      : await supabase.from("fechamentos").insert(dbFech).select().single();
+    if (error || !savedFech) {
+      setFeedback(t("fech_erro_salvar"));
+      return;
+    }
+    const fechId = savedFech.id as string;
+    // Deletar itens antigos e inserir novos
+    await supabase.from("fechamento_itens").delete().eq("fechamento_id", fechId);
+    const dbItens = itens.map(i => fechamentoItemToDb(i, fechId));
+    await supabase.from("fechamento_itens").insert(dbItens);
+    const savedObj = dbToFechamento(savedFech);
+    setFechamento(savedObj);
+    logAudit(fech.id ? "UPDATE" : "INSERT", "fechamentos", fechId, { fornecedor, total });
+    // Atualizar histórico
+    setHistorico(prev => {
+      const filtered = prev.filter(h => h.id !== fechId);
+      return [savedObj, ...filtered];
+    });
+    setFeedback(t("fech_salvo_sucesso"));
+    setTimeout(() => setFeedback(""), 3000);
+  };
+
+  // ── Avançar status ──
+  const avancarStatus = async () => {
+    if (!fechamento?.id) return;
+    const next = NEXT_STATUS[fechamento.status];
+    if (!next) return;
+    const { error } = await supabase.from("fechamentos").update({ status: next }).eq("id", fechamento.id);
+    if (!error) {
+      const updated = { ...fechamento, status: next };
+      setFechamento(updated);
+      logAudit("UPDATE", "fechamentos", fechamento.id, { status: next });
+      setHistorico(prev => prev.map(h => h.id === fechamento.id ? updated : h));
+    }
+  };
+
+  const voltarRevisao = async () => {
+    if (!fechamento?.id || fechamento.status !== "enviado") return;
+    const { error } = await supabase.from("fechamentos").update({ status: "revisao" }).eq("id", fechamento.id);
+    if (!error) {
+      const updated = { ...fechamento, status: "revisao" as FechamentoStatus };
+      setFechamento(updated);
+      logAudit("UPDATE", "fechamentos", fechamento.id, { status: "revisao" });
+      setHistorico(prev => prev.map(h => h.id === fechamento.id ? updated : h));
+    }
+  };
+
+  // ── Abrir fechamento salvo ──
+  const abrirFechamento = async (f: Fechamento) => {
+    if (!f.id) return;
+    setFornecedor(f.fornecedor);
+    // Ajustar mes e período
+    setMes(f.dataInicio.slice(0, 7));
+    setPeriodoIdx(3);
+    setCustomInicio(f.dataInicio);
+    setCustomFim(f.dataFim);
+    // Carregar itens
+    const { data } = await supabase.from("fechamento_itens").select("*").eq("fechamento_id", f.id).order("nome").order("data");
+    if (data) {
+      const items = data.map(dbToFechamentoItem);
+      setItens(items);
+      setResumoPessoas(agruparPorPessoa(items));
+      setTotal(calcularTotal(items));
+    }
+    setFechamento(f);
+    setCalculado(true);
+    setEditIdx(null);
+    setFeedback("");
+  };
+
+  // ── Excluir fechamento ──
+  const excluirFechamento = async (f: Fechamento) => {
+    if (!f.id || !confirm(t("fech_confirmar_excluir"))) return;
+    await supabase.from("fechamento_itens").delete().eq("fechamento_id", f.id);
+    await supabase.from("fechamentos").delete().eq("id", f.id);
+    logAudit("DELETE", "fechamentos", f.id);
+    setHistorico(prev => prev.filter(h => h.id !== f.id));
+    if (fechamento?.id === f.id) {
+      setFechamento(null);
+      setItens([]);
+      setCalculado(false);
+    }
+  };
+
+  // ── Exportar XLSX ──
+  const exportarXlsx = async () => {
+    const XLSX = await import("xlsx");
+    const rows = itens.map(i => ({
+      [t("fech_col_nome")]: i.nome,
+      [t("fech_col_data")]: i.data,
+      [t("fech_col_turno")]: i.turno,
+      [t("fech_col_horas")]: i.horas,
+      [t("fech_col_diaria")]: i.valorDiaria,
+      [t("fech_col_vlr_hora")]: i.valorHora,
+      [t("fech_col_vlr_dia")]: i.valorCalculado,
+      [t("fech_col_obs")]: i.obs,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Fechamento");
+    XLSX.writeFile(wb, `fechamento_${fornecedor}_${intervalo.inicio}_${intervalo.fim}.xlsx`);
+  };
+
+  const fmtCurrency = (v: number) => v.toLocaleString(lang, { style: "currency", currency: "BRL" });
+
+  const periodoBtns = [
+    { label: t("fech_periodo_1"), idx: 0 },
+    { label: t("fech_periodo_2"), idx: 1 },
+    { label: t("fech_periodo_3"), idx: 2 },
+    { label: t("fech_periodo_custom"), idx: 3 },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Header */}
+      <div>
+        <div style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>{t("fech_section")}</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: "#0F1C2E" }}>{t("fech_title")}</div>
+        <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>{t("fech_desc")}</div>
+      </div>
+
+      {/* ── Barra de Filtros ── */}
+      <div style={{ background: "#fff", border: "1px solid #E2E6EC", borderRadius: 12, padding: 16, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
+        {/* Mês */}
+        <div>
+          <label style={{ fontSize: 11, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 4 }}>{t("fech_mes")}</label>
+          <input type="month" value={mes} onChange={e => { setMes(e.target.value); setCalculado(false); }}
+            style={{ border: "1.5px solid #E2E6EC", borderRadius: 7, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", background: "#FAFBFC", outline: "none" }} />
+        </div>
+        {/* Período */}
+        <div>
+          <label style={{ fontSize: 11, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 4 }}>{t("fech_periodo")}</label>
+          <div style={{ display: "flex", gap: 4 }}>
+            {periodoBtns.map(pb => (
+              <button key={pb.idx} onClick={() => { setPeriodoIdx(pb.idx); setCalculado(false); }}
+                style={{
+                  padding: "6px 12px", borderRadius: 7, border: "1.5px solid", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+                  background: periodoIdx === pb.idx ? "#1A56DB" : "#fff",
+                  color: periodoIdx === pb.idx ? "#fff" : "#64748B",
+                  borderColor: periodoIdx === pb.idx ? "#1A56DB" : "#E2E6EC",
+                }}>
+                {pb.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* Range custom */}
+        {periodoIdx === 3 && (
+          <>
+            <div>
+              <label style={{ fontSize: 11, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 4 }}>{t("fech_data_inicio")}</label>
+              <input type="date" value={customInicio} onChange={e => { setCustomInicio(e.target.value); setCalculado(false); }}
+                style={{ border: "1.5px solid #E2E6EC", borderRadius: 7, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", background: "#FAFBFC", outline: "none" }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 4 }}>{t("fech_data_fim")}</label>
+              <input type="date" value={customFim} onChange={e => { setCustomFim(e.target.value); setCalculado(false); }}
+                style={{ border: "1.5px solid #E2E6EC", borderRadius: 7, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", background: "#FAFBFC", outline: "none" }} />
+            </div>
+          </>
+        )}
+        {/* Fornecedor */}
+        <div>
+          <label style={{ fontSize: 11, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 4 }}>{t("fech_fornecedor")}</label>
+          <select value={fornecedor} onChange={e => { setFornecedor(e.target.value); setCalculado(false); }}
+            style={{ border: "1.5px solid #E2E6EC", borderRadius: 7, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", background: "#FAFBFC", outline: "none", minWidth: 180 }}>
+            <option value="">{t("fech_selecione_forn")}</option>
+            {opcoes.fornecedores.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </div>
+        {/* Botão calcular */}
+        <button onClick={calcular} disabled={!fornecedor || !intervalo.inicio || !intervalo.fim}
+          style={{
+            background: "#1A56DB", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer",
+            color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit", opacity: !fornecedor ? 0.5 : 1,
+          }}>
+          {calculado ? t("fech_recalcular") : t("fech_calcular")}
+        </button>
+      </div>
+
+      {/* ── Resumo ── */}
+      {calculado && (
+        <div style={{ background: "#fff", border: "1px solid #E2E6EC", borderRadius: 12, padding: 16 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 16 }}>
+            <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 20px", flex: 1, minWidth: 120, textAlign: "center" }}>
+              <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: .6, marginBottom: 4 }}>{t("fech_presencas")}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#1A56DB" }}>{itens.length}</div>
+            </div>
+            <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 20px", flex: 1, minWidth: 120, textAlign: "center" }}>
+              <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: .6, marginBottom: 4 }}>{t("fech_horas")}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#334155" }}>
+                {decimalToHoras(itens.reduce((acc, i) => acc + horasToDecimal(i.horas), 0))}
+              </div>
+            </div>
+            <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 20px", flex: 1, minWidth: 120, textAlign: "center" }}>
+              <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: .6, marginBottom: 4 }}>{t("fech_total")}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#0E9F6E" }}>{fmtCurrency(total)}</div>
+            </div>
+            {fechamento && (
+              <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 20px", flex: 1, minWidth: 120, textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: .6, marginBottom: 4 }}>{t("fech_status")}</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: STATUS_COLORS[fechamento.status] }}>
+                  {t(STATUS_LABEL_KEY[fechamento.status])}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {itens.length === 0 ? (
+            <div style={{ padding: 32, textAlign: "center", color: "#94A3B8", fontSize: 13 }}>{t("fech_sem_registros")}</div>
+          ) : (
+            <>
+              {/* ── Resumo por pessoa ── */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#0F1C2E", marginBottom: 8 }}>{t("fech_resumo_pessoa")}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {resumoPessoas.map(rp => (
+                    <div key={rp.nome} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F8FAFC", borderRadius: 8, padding: "8px 14px", fontSize: 12 }}>
+                      <span style={{ fontWeight: 700, color: "#0F1C2E", flex: 1 }}>{rp.nome}</span>
+                      <span style={{ color: "#64748B", minWidth: 60, textAlign: "center" }}>{rp.dias} {t("fech_dias")}</span>
+                      <span style={{ color: "#64748B", fontFamily: "monospace", minWidth: 60, textAlign: "center" }}>{decimalToHoras(rp.totalHoras)}</span>
+                      <span style={{ fontWeight: 700, color: "#0E9F6E", minWidth: 100, textAlign: "right" }}>{fmtCurrency(rp.valorTotal)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Tabela detalhada ── */}
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: "#F1F5F9", textAlign: "left" }}>
+                      {[t("fech_col_nome"), t("fech_col_data"), t("fech_col_turno"), t("fech_col_horas"), t("fech_col_diaria"), t("fech_col_vlr_hora"), t("fech_col_vlr_dia"), t("fech_col_obs"), t("fech_col_acoes")].map(h => (
+                        <th key={h} style={{ padding: "8px 10px", fontWeight: 700, color: "#475569", borderBottom: "2px solid #E2E6EC", whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {itens.map((item, idx) => (
+                      <tr key={idx} style={{ borderBottom: "1px solid #F1F5F9", background: item.ajusteManual ? "#FFFBEB" : "transparent" }}>
+                        <td style={{ padding: "7px 10px", fontWeight: 600, color: "#0F1C2E", whiteSpace: "nowrap" }}>{item.nome}</td>
+                        <td style={{ padding: "7px 10px", color: "#64748B", fontFamily: "monospace" }}>{fmt(item.data, lang)}</td>
+                        <td style={{ padding: "7px 10px", color: "#64748B" }}>{item.turno}</td>
+                        <td style={{ padding: "7px 10px", color: "#64748B", fontFamily: "monospace" }}>{item.horas}</td>
+                        <td style={{ padding: "7px 10px", color: "#64748B" }}>{fmtCurrency(item.valorDiaria)}</td>
+                        <td style={{ padding: "7px 10px", color: "#64748B" }}>{fmtCurrency(item.valorHora)}</td>
+                        {editIdx === idx ? (
+                          <>
+                            <td style={{ padding: "4px 6px" }}>
+                              <input type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)}
+                                style={{ width: 80, border: "1.5px solid #1A56DB", borderRadius: 5, padding: "4px 6px", fontSize: 12, fontFamily: "inherit", outline: "none" }} />
+                            </td>
+                            <td style={{ padding: "4px 6px" }}>
+                              <input value={editObs} onChange={e => setEditObs(e.target.value)} placeholder={t("fech_col_obs")}
+                                style={{ width: 100, border: "1.5px solid #E2E6EC", borderRadius: 5, padding: "4px 6px", fontSize: 12, fontFamily: "inherit", outline: "none" }} />
+                            </td>
+                            <td style={{ padding: "4px 6px", whiteSpace: "nowrap" }}>
+                              <button onClick={() => aplicarEdicao(idx)} style={{ background: "#0E9F6E", border: "none", borderRadius: 5, padding: "4px 10px", color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit", marginRight: 4 }}>✓</button>
+                              <button onClick={() => setEditIdx(null)} style={{ background: "#F1F5F9", border: "none", borderRadius: 5, padding: "4px 10px", color: "#64748B", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>✕</button>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td style={{ padding: "7px 10px", fontWeight: 700, color: item.ajusteManual ? "#D97706" : "#0E9F6E" }}>{fmtCurrency(item.valorCalculado)}</td>
+                            <td style={{ padding: "7px 10px", color: "#94A3B8", fontSize: 11, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.obs}</td>
+                            <td style={{ padding: "7px 10px" }}>
+                              <button onClick={() => { setEditIdx(idx); setEditValor(String(item.valorCalculado)); setEditObs(item.obs); }}
+                                title={t("fech_ajuste")}
+                                style={{ background: "transparent", border: "1px solid #E2E6EC", borderRadius: 5, padding: "3px 8px", cursor: "pointer", color: "#64748B", fontSize: 11, fontFamily: "inherit" }}>
+                                ✎
+                              </button>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ background: "#F1F5F9" }}>
+                      <td colSpan={6} style={{ padding: "8px 10px", fontWeight: 800, color: "#0F1C2E", textAlign: "right" }}>{t("fech_total")}</td>
+                      <td style={{ padding: "8px 10px", fontWeight: 800, color: "#0E9F6E" }}>{fmtCurrency(total)}</td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* ── Barra de ações ── */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16, alignItems: "center" }}>
+                <button onClick={salvar}
+                  style={{ background: "#1A56DB", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
+                  {t("fech_salvar")}
+                </button>
+                {fechamento && NEXT_STATUS[fechamento.status] && (
+                  <button onClick={avancarStatus}
+                    style={{ background: STATUS_COLORS[NEXT_STATUS[fechamento.status]!], border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
+                    {t("fech_avancar_status")}
+                  </button>
+                )}
+                {fechamento?.status === "enviado" && (
+                  <button onClick={voltarRevisao}
+                    style={{ background: "#E02424", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
+                    {t("fech_voltar_revisao")}
+                  </button>
+                )}
+                <button onClick={exportarXlsx}
+                  style={{ background: "#0E9F6E", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
+                  {t("fech_exportar_xlsx")}
+                </button>
+                {feedback && (
+                  <div style={{ fontSize: 12, fontWeight: 600, color: feedback === t("fech_salvo_sucesso") ? "#0E9F6E" : "#E02424", background: feedback === t("fech_salvo_sucesso") ? "#E6F9F4" : "#FEF2F2", borderRadius: 7, padding: "6px 14px" }}>
+                    {feedback}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Histórico de fechamentos ── */}
+      <div style={{ background: "#fff", border: "1px solid #E2E6EC", borderRadius: 12, padding: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#0F1C2E", marginBottom: 12 }}>{t("fech_historico")}</div>
+        {historico.length === 0 ? (
+          <div style={{ textAlign: "center", color: "#94A3B8", fontSize: 12, padding: 24 }}>{t("fech_nenhum_salvo")}</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {historico.map(h => (
+              <div key={h.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F8FAFC", borderRadius: 8, padding: "8px 14px", fontSize: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+                  <span style={{ fontWeight: 700, color: "#0F1C2E" }}>{h.fornecedor}</span>
+                  <span style={{ color: "#64748B", fontFamily: "monospace" }}>{fmt(h.dataInicio, lang)} → {fmt(h.dataFim, lang)}</span>
+                  <span style={{ fontWeight: 700, color: STATUS_COLORS[h.status], fontSize: 11, background: `${STATUS_COLORS[h.status]}18`, borderRadius: 99, padding: "2px 8px" }}>
+                    {t(STATUS_LABEL_KEY[h.status])}
+                  </span>
+                  <span style={{ fontWeight: 700, color: "#0E9F6E" }}>{fmtCurrency(h.valorTotal)}</span>
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => abrirFechamento(h)}
+                    style={{ background: "#1A56DB18", border: "none", borderRadius: 6, padding: "4px 12px", cursor: "pointer", color: "#1A56DB", fontWeight: 700, fontSize: 11, fontFamily: "inherit" }}>
+                    {t("fech_abrir")}
+                  </button>
+                  <button onClick={() => excluirFechamento(h)}
+                    style={{ background: "#FEF2F2", border: "none", borderRadius: 6, padding: "4px 12px", cursor: "pointer", color: "#E02424", fontWeight: 700, fontSize: 11, fontFamily: "inherit" }}>
+                    {t("fech_excluir")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ═══════════════════════════════════════════════════════════════
 // INDEX
 // ═══════════════════════════════════════════════════════════════
-type TabId = "dashboard" | "lancamentos" | "fornecedores" | "configuracoes";
+type TabId = "dashboard" | "lancamentos" | "fornecedores" | "fechamento" | "configuracoes";
 interface NavItem { id: TabId; label: string; icon: string; }
 
 const Index = () => {
@@ -1705,6 +2357,7 @@ const Index = () => {
     { id: "dashboard",      label: t("nav_tab_dashboard"), icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" },
     { id: "lancamentos",    label: t("nav_tab_lanc"),      icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" },
     { id: "fornecedores",   label: t("nav_tab_forn"),      icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
+    { id: "fechamento",     label: t("nav_tab_fech"),      icon: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" },
     { id: "configuracoes",  label: t("nav_tab_cfg"),       icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.94 11a8 8 0 0 0-15.88 0H2v2h2.06a8 8 0 0 0 15.88 0H22v-2h-2.06z" },
   ];
 
@@ -1794,6 +2447,7 @@ const Index = () => {
             {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} />}
             {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} />}
             {tab === "fornecedores"  && <Fornecedores registros={registros} opcoes={opcoes} />}
+            {tab === "fechamento"    && <FechamentoTab registros={registros} opcoes={opcoes} />}
             {tab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} registros={registros} setRegistros={setRegistros} isAdmin={isAdmin} />}
           </>
         )}
