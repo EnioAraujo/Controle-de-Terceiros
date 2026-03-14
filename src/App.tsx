@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import AdminPage from "./pages/AdminPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -16,16 +17,22 @@ const queryClient = new QueryClient();
 const App = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRecovery, setIsRecovery] = useState(false);
 
   useEffect(() => {
-    // Carrega sessão persistida
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
 
-    // Reage a login/logout em tempo real
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsRecovery(true);
+        setSession(session);
+        setLoading(false);
+        return;
+      }
+      setIsRecovery(false);
       setSession(session);
       setLoading(false);
     });
@@ -48,9 +55,9 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />
-            <Route path="/" element={session ? <Index /> : <Navigate to="/login" replace />} />
-            <Route path="/admin" element={session ? <AdminPage /> : <Navigate to="/login" replace />} />
+            <Route path="/login" element={session && !isRecovery ? <Navigate to="/" replace /> : isRecovery ? <ResetPasswordPage onDone={() => setIsRecovery(false)} /> : <LoginPage />} />
+            <Route path="/" element={isRecovery ? <ResetPasswordPage onDone={() => setIsRecovery(false)} /> : session ? <Index /> : <Navigate to="/login" replace />} />
+            <Route path="/admin" element={isRecovery ? <ResetPasswordPage onDone={() => setIsRecovery(false)} /> : session ? <AdminPage /> : <Navigate to="/login" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
