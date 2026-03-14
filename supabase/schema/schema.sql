@@ -65,6 +65,15 @@ CREATE POLICY "anon_select_opcoes"
   ON public.opcoes FOR SELECT TO anon
   USING (true);
 
+-- Leitura autenticada — necessária para upserts (verificação de conflito).
+CREATE POLICY "authed_select_registros"
+  ON public.registros FOR SELECT TO authenticated
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "authed_select_opcoes"
+  ON public.opcoes FOR SELECT TO authenticated
+  USING (auth.uid() IS NOT NULL);
+
 -- Escrita restrita — INSERT / UPDATE / DELETE exigem sessão autenticada.
 -- Cobre e-mail/senha E sessões anônimas (supabase.auth.signInAnonymously).
 -- auth.uid() IS NOT NULL é verdadeiro para qualquer token authenticated válido.
