@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect, ReactNode, InputHTMLAttributes, SelectHTMLAttributes, CSSProperties } from "react";
 import { Registro } from "@/types/attendance";
+import { supabase, authReady } from "@/lib/supabase";
 
 // ─── CONSTANTES DEFAULT ──────────────────────────────────────────
 const D_TURNOS       = ["1ª TURNO", "2ª TURNO", "3ª TURNO", "INTERMEDIÁRIO"];
@@ -47,6 +48,33 @@ const calcHoras = (e: string, s: string) => {
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 };
 const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+
+// ─── LGPD ─────────────────────────────────────────────────────────
+const RETENCAO_ANOS = 5;
+const dataLimiteRetencao = () => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - RETENCAO_ANOS);
+  return d.toISOString().slice(0, 10);
+};
+
+const logAudit = (
+  operacao: "INSERT" | "UPDATE" | "DELETE" | "PURGE" | "EXCLUSAO_TITULAR",
+  tabela: string,
+  registroId?: string,
+  dados?: unknown
+) => {
+  authReady.then(() =>
+    supabase.from("audit_log").insert({
+      operacao,
+      tabela,
+      registro_id: registroId ?? null,
+      dados: dados ? dados : null,
+    }).then(({ error }) => {
+      if (error) console.warn("audit_log:", error.message);
+    })
+  );
+};
+
 const FORN_PALETTE = ["#D97706","#1A56DB","#0E9F6E","#6C63FF","#E02424","#0891B2","#CA8A04","#7C3AED","#0F766E","#64748B"];
 const fornCor = (forn: string, lista: string[]) => FORN_PALETTE[lista.indexOf(forn) % FORN_PALETTE.length] || "#64748B";
 
@@ -57,33 +85,301 @@ const SEED: Registro[] = [
   { id: uuid(), data: hoje(), turno: "2ª TURNO", horaEntrada: "13:50", horaSaida: "22:10", totalHoras: "08:20", nome: "ROBERTO ALVES NETO", cargo: "OPERADOR DE EMPILHADEIRA", setor: "SEPARAÇÃO", unidade: "COD DIURNO", cc: "100001 - SOUZA CRUZ-COD", motivo: "COBERTURA FALTA", fornecedor: "SERVILOG", obs: "" },
 ];
 
+// ─── MAPEAMENTO DB ↔ MODELO ─────────────────────────────────────
+type DbRegistro = Record<string, unknown>;
+
+const dbToRegistro = (row: DbRegistro): Registro => ({
+  id:          row.id as string,
+  loteId:      (row.lote_id as string | null) ?? undefined,
+  data:        row.data as string,
+  turno:       row.turno as string,
+  horaEntrada: row.hora_entrada as string,
+  horaSaida:   row.hora_saida as string,
+  totalHoras:  row.total_horas as string,
+  nome:        row.nome as string,
+  cargo:       row.cargo as string,
+  setor:       row.setor as string,
+  unidade:     row.unidade as string,
+  cc:          row.cc as string,
+  motivo:      row.motivo as string,
+  fornecedor:  row.fornecedor as string,
+  obs:         row.obs as string,
+});
+
+const registroToDb = (r: Registro) => ({
+  id:           r.id,
+  lote_id:      r.loteId ?? null,
+  data:         r.data,
+  turno:        r.turno,
+  hora_entrada: r.horaEntrada,
+  hora_saida:   r.horaSaida,
+  total_horas:  r.totalHoras,
+  nome:         r.nome,
+  cargo:        r.cargo,
+  setor:        r.setor,
+  unidade:      r.unidade,
+  cc:           r.cc,
+  motivo:       r.motivo,
+  fornecedor:   r.fornecedor,
+  obs:          r.obs,
+});
+
 // ─── HOOKS ───────────────────────────────────────────────────────
-const useStorage = (key: string, seed: Registro[]): [Registro[], (val: Registro[]) => void] => {
-  const [data, setData] = useState<Registro[]>(() => {
-    try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : seed; }
-    catch { return seed; }
-  });
-  const save = useCallback((val: Registro[]) => {
-    setData(val);
-    try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
-  }, [key]);
-  return [data, save];
+const useStorage = (): [Registro[], (val: Registro[]) => void, boolean] => {
+  const [data, setData]       = useState<Registro[]>([]);
+  const [loading, setLoading] = useState(true);
+  const prevRef               = useRef<Registro[]>([]);
+
+  useEffect(() => {
+    authReady.then(() =>
+      supabase
+        .from("registros")
+        .select("*")
+        .order("created_at", { ascending: true })
+        .then(({ data: rows, error }) => {
+          if (error) {
+            console.error("Erro ao carregar registros:", error.message);
+          } else if (rows && rows.length > 0) {
+            const parsed = (rows as DbRegistro[]).map(dbToRegistro);
+            setData(parsed);
+            prevRef.current = parsed;
+          }
+          setLoading(false);
+
+          // LGPD Art. 15/16 — purga client-side de registros com mais de 5 anos
+          const limite = dataLimiteRetencao();
+          supabase
+            .from("registros")
+            .delete()
+            .lt("data", limite)
+            .select("id")
+            .then(({ data: purged, error: pe }) => {
+              if (pe) { console.error("Erro ao purgar registros antigos:", pe.message); return; }
+              if (purged && purged.length > 0) {
+                logAudit("PURGE", "registros", undefined, {
+                  motivo: `Retenção LGPD — registros anteriores a ${limite}`,
+                  registros_removidos: purged.length,
+                });
+                setData(prev => prev.filter(r => r.data >= limite));
+                prevRef.current = prevRef.current.filter(r => r.data >= limite);
+              }
+            });
+        })
+    );
+  }, []);
+
+  const save = useCallback((newVal: Registro[]) => {
+    const prev = prevRef.current;
+    setData(newVal);
+    prevRef.current = newVal;
+
+    // Detectar deletados: estavam antes e não estão agora
+    const newIds     = new Set(newVal.map(r => r.id));
+    const deletedIds = prev.filter(r => !newIds.has(r.id)).map(r => r.id);
+
+    // Detectar inseridos/alterados: novos ou com conteúdo diferente
+    const prevMap  = new Map(prev.map(r => [r.id, r]));
+    const toUpsert = newVal.filter(r => {
+      const p = prevMap.get(r.id);
+      return !p || JSON.stringify(p) !== JSON.stringify(r);
+    });
+
+    if (deletedIds.length > 0) {
+      supabase
+        .from("registros")
+        .delete()
+        .in("id", deletedIds)
+        .then(({ error }) => {
+          if (error) console.error("Erro ao deletar registros:", error.message);
+          else deletedIds.forEach(id => logAudit("DELETE", "registros", id));
+        });
+    }
+    if (toUpsert.length > 0) {
+      supabase
+        .from("registros")
+        .upsert(toUpsert.map(registroToDb))
+        .then(({ error }) => {
+          if (error) console.error("Erro ao salvar registros:", error.message);
+          else toUpsert.forEach(r => {
+            const isNew = !prevRef.current.find(p => p.id === r.id);
+            logAudit(isNew ? "INSERT" : "UPDATE", "registros", r.id);
+          });
+        });
+    }
+  }, []);
+
+  return [data, save, loading];
 };
 
-const useOpcoes = (): [Opcoes, (val: Opcoes) => void] => {
-  const [data, setData] = useState<Opcoes>(() => {
-    try {
-      const s = localStorage.getItem("ct-opcoes-v1");
-      if (s) return { ...OPCOES_DEFAULT, ...JSON.parse(s) };
-      return OPCOES_DEFAULT;
-    } catch { return OPCOES_DEFAULT; }
-  });
-  const save = useCallback((val: Opcoes) => {
-    setData(val);
-    try { localStorage.setItem("ct-opcoes-v1", JSON.stringify(val)); } catch {}
+const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
+  const [data, setData]       = useState<Opcoes>(OPCOES_DEFAULT);
+  const [loading, setLoading] = useState(true);
+  const prevRef               = useRef<Opcoes>(OPCOES_DEFAULT);
+
+  useEffect(() => {
+    authReady.then(() =>
+      supabase
+        .from("opcoes")
+        .select("chave, valor")
+        .order("id", { ascending: true })
+        .then(({ data: rows, error }) => {
+          if (error) {
+            console.error("Erro ao carregar opções:", error.message);
+          } else if (rows) {
+            // Agrupar valores do DB por chave
+            const byKey = new Map<string, string[]>();
+            (rows as { chave: string; valor: string }[]).forEach(row => {
+              if (!byKey.has(row.chave)) byKey.set(row.chave, []);
+              byKey.get(row.chave)!.push(row.valor);
+            });
+
+            // Partir dos defaults e sobrescrever apenas as chaves que existem no DB.
+            // Chaves sem registro no DB mantêm os valores default automaticamente.
+            const built: Opcoes = { ...OPCOES_DEFAULT };
+            byKey.forEach((vals, k) => {
+              if (k in built) (built as Record<string, string[]>)[k] = vals;
+            });
+
+            setData(built);
+            prevRef.current = built;
+          }
+          setLoading(false);
+        })
+    );
   }, []);
-  return [data, save];
+
+  const save = useCallback((newVal: Opcoes) => {
+    const prev = prevRef.current;
+    setData(newVal);
+    prevRef.current = newVal;
+
+    const KEYS = Object.keys(newVal) as (keyof Opcoes)[];
+    for (const key of KEYS) {
+      const prevList = prev[key] as string[];
+      const nextList = newVal[key] as string[];
+      if (JSON.stringify(prevList) === JSON.stringify(nextList)) continue;
+
+      // Abordagem diff: insere apenas itens realmente novos, deleta apenas os removidos.
+      // Evita deletar tudo e reinserir tudo — previne perda de dados se o insert falhar.
+      const toAdd    = nextList.filter(v => !prevList.includes(v));
+      const toRemove = prevList.filter(v => !nextList.includes(v));
+
+      if (toAdd.length > 0) {
+        // Batches de 100 para evitar timeout em listas grandes.
+        // Usa upsert com ignoreDuplicates para ser idempotente.
+        const CHUNK = 100;
+        (async () => {
+          for (let i = 0; i < toAdd.length; i += CHUNK) {
+            const batch = toAdd.slice(i, i + CHUNK);
+            const { error } = await supabase
+              .from("opcoes")
+              .upsert(
+                batch.map(valor => ({ chave: key, valor })),
+                { onConflict: "chave,valor", ignoreDuplicates: true }
+              );
+            if (error) console.error(`Erro ao inserir opções [${key}]:`, error.message);
+          }
+        })();
+      }
+
+      if (toRemove.length > 0) {
+        supabase
+          .from("opcoes")
+          .delete()
+          .eq("chave", key)
+          .in("valor", toRemove)
+          .then(({ error }) => {
+            if (error) console.error(`Erro ao remover opções [${key}]:`, error.message);
+          });
+      }
+    }
+  }, []);
+
+  return [data, save, loading];
 };
+
+// ─── LGPD: AVISO DE PRIVACIDADE ──────────────────────────────────
+const usePrivacyAccepted = () => {
+  const [accepted, setAccepted] = useState(() => localStorage.getItem("lgpd_aceito") === "1");
+  const accept = () => { localStorage.setItem("lgpd_aceito", "1"); setAccepted(true); };
+  return [accepted, accept] as const;
+};
+
+const PrivacyNotice = ({ dpoNome, dpoEmail, onAccept }: { dpoNome: string; dpoEmail: string; onAccept: () => void }) => (
+  <div style={{ position:"fixed", inset:0, zIndex:9999, background:"rgba(11,22,40,.92)", display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+    <div style={{ background:"#fff", borderRadius:16, maxWidth:620, width:"100%", maxHeight:"90vh", overflowY:"auto", boxShadow:"0 24px 80px rgba(0,0,0,.4)" }}>
+      <div style={{ background:"linear-gradient(135deg,#0B1628,#1A2C4A)", padding:"24px 28px", borderRadius:"16px 16px 0 0", display:"flex", alignItems:"center", gap:12 }}>
+        <div style={{ width:40, height:40, background:"#1A56DB", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div>
+          <div style={{ color:"#F8FAFC", fontWeight:800, fontSize:16 }}>Aviso de Privacidade e Proteção de Dados</div>
+          <div style={{ color:"#64748B", fontSize:12, marginTop:2 }}>Lei Geral de Proteção de Dados Pessoais — Lei nº 13.709/2018</div>
+        </div>
+      </div>
+
+      <div style={{ padding:"24px 28px", display:"flex", flexDirection:"column", gap:18, fontSize:13, color:"#334155", lineHeight:1.7 }}>
+        <div style={{ background:"#EFF6FF", border:"1px solid #BFDBFE", borderRadius:10, padding:"12px 16px", fontSize:12, color:"#1A56DB", fontWeight:600 }}>
+          Este sistema trata dados pessoais de trabalhadores terceirizados. Leia as informações abaixo antes de continuar.
+        </div>
+
+        <section>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>📋 Quais dados são coletados</div>
+          <ul style={{ paddingLeft:18, margin:0, display:"flex", flexDirection:"column", gap:3, fontSize:12 }}>
+            <li>Nome completo do colaborador</li>
+            <li>Cargo e empresa fornecedora</li>
+            <li>Data, horário de entrada/saída e total de horas trabalhadas</li>
+            <li>Setor, unidade e centro de custo de lotação</li>
+            <li>Motivo do acionamento</li>
+          </ul>
+        </section>
+
+        <section>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>⚖️ Base legal e finalidade (Art. 7º, II e V)</div>
+          <p style={{ margin:0, fontSize:12 }}>
+            O tratamento se baseia no <strong>cumprimento de obrigação legal</strong> (controle trabalhista, fiscal e de segurança) e na <strong>execução de contrato</strong> com as empresas fornecedoras de mão de obra. Os dados são usados exclusivamente para controle de presença e gestão operacional.
+          </p>
+        </section>
+
+        <section>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>🗓️ Retenção de dados (Art. 15 e 16)</div>
+          <p style={{ margin:0, fontSize:12 }}>
+            Os registros são mantidos por <strong>até {RETENCAO_ANOS} anos</strong> a partir da data do lançamento, após os quais são excluídos automaticamente.
+          </p>
+        </section>
+
+        <section>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>🔒 Segurança</div>
+          <p style={{ margin:0, fontSize:12 }}>
+            Os dados são armazenados com Row Level Security (RLS) no Supabase. Todas as operações de escrita requerem sessão autenticada e são registradas em log de auditoria.
+          </p>
+        </section>
+
+        <section>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>📌 Direitos do titular (Art. 18)</div>
+          <p style={{ margin:0, fontSize:12 }}>
+            O titular pode solicitar acesso, correção ou exclusão de seus dados a qualquer momento, mediante requisição ao Encarregado de Dados (DPO).
+          </p>
+        </section>
+
+        {(dpoNome || dpoEmail) && (
+          <section style={{ background:"#F8FAFC", border:"1px solid #E2E6EC", borderRadius:10, padding:"12px 16px" }}>
+            <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>👤 Encarregado de Dados (DPO) — Art. 41</div>
+            {dpoNome  && <div style={{ fontSize:12 }}><strong>Nome:</strong> {dpoNome}</div>}
+            {dpoEmail && <div style={{ fontSize:12 }}><strong>E-mail:</strong> {dpoEmail}</div>}
+          </section>
+        )}
+
+        <button onClick={onAccept} style={{ background:"#1A56DB", border:"none", borderRadius:10, padding:"14px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:14, fontFamily:"inherit", marginTop:4 }}>
+          Entendi e aceito — Continuar
+        </button>
+        <div style={{ fontSize:11, color:"#94A3B8", textAlign:"center", marginTop:-8 }}>
+          Ao continuar, você confirma que está ciente das práticas de tratamento de dados descritas acima.
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 // ─── UI ATOMS ────────────────────────────────────────────────────
 const Icon = ({ d, size = 16 }: { d: string; size?: number }) => (
@@ -931,7 +1227,17 @@ const OPCOES_CONFIG: { key: keyof Omit<Opcoes, "nomes">; label: string; cor: str
   { key: "setores",      label: "Setores",          cor: "#475569" },
 ];
 
-const Configuracoes = ({ opcoes, setOpcoes }: { opcoes: Opcoes; setOpcoes: (val: Opcoes) => void }) => {
+const Configuracoes = ({
+  opcoes,
+  setOpcoes,
+  registros,
+  setRegistros,
+}: {
+  opcoes: Opcoes;
+  setOpcoes: (val: Opcoes) => void;
+  registros: Registro[];
+  setRegistros: (val: Registro[]) => void;
+}) => {
   type OpcKey = keyof Opcoes;
   const [inputs, setInputs] = useState<Record<OpcKey, string>>({
     turnos: "", unidades: "", fornecedores: "", motivos: "", cargos: "", ccList: "", setores: "", nomes: ""
@@ -939,6 +1245,74 @@ const Configuracoes = ({ opcoes, setOpcoes }: { opcoes: Opcoes; setOpcoes: (val:
   const [nomesBulk, setNomesBulk] = useState("");
   const [nomeBusca, setNomeBusca] = useState("");
   const [bulkFeedback, setBulkFeedback] = useState("");
+
+  // ── DPO (Art. 41 LGPD)
+  const [dpoNome,       setDpoNome]       = useState("");
+  const [dpoEmail,      setDpoEmail]      = useState("");
+  const [dpoTelefone,   setDpoTelefone]   = useState("");
+  const [dpoSaved,      setDpoSaved]      = useState(false);
+
+  useEffect(() => {
+    authReady.then(async () => {
+      const { data } = await supabase
+        .from("opcoes")
+        .select("chave, valor")
+        .in("chave", ["dpo_nome", "dpo_email", "dpo_telefone"]);
+      if (data) {
+        data.forEach((row: { chave: string; valor: string }) => {
+          if (row.chave === "dpo_nome")      setDpoNome(row.valor);
+          if (row.chave === "dpo_email")     setDpoEmail(row.valor);
+          if (row.chave === "dpo_telefone")  setDpoTelefone(row.valor);
+        });
+      }
+    });
+  }, []);
+
+  const saveDpo = async () => {
+    const fields = [
+      { chave: "dpo_nome",      valor: dpoNome.trim() },
+      { chave: "dpo_email",     valor: dpoEmail.trim() },
+      { chave: "dpo_telefone",  valor: dpoTelefone.trim() },
+    ];
+    for (const f of fields) {
+      await supabase.from("opcoes").delete().eq("chave", f.chave);
+      if (f.valor) await supabase.from("opcoes").insert({ chave: f.chave, valor: f.valor });
+    }
+    setDpoSaved(true);
+    setTimeout(() => setDpoSaved(false), 2500);
+  };
+
+  // ── Exclusão por Solicitação (Art. 18 LGPD)
+  const [titularNome,   setTitularNome]   = useState("");
+  const [titularResult, setTitularResult] = useState<Registro[] | null>(null);
+  const [exclusaoConfirm, setExclusaoConfirm] = useState(false);
+  const [exclusaoFeedback, setExclusaoFeedback] = useState("");
+
+  const buscarTitular = () => {
+    const q = titularNome.trim().toUpperCase();
+    if (!q) return;
+    setTitularResult(registros.filter(r => r.nome === q));
+    setExclusaoConfirm(false);
+    setExclusaoFeedback("");
+  };
+
+  const excluirTitular = () => {
+    const q = titularNome.trim().toUpperCase();
+    const ids = (titularResult ?? []).map(r => r.id);
+    if (!ids.length) return;
+    setRegistros(registros.filter(r => r.nome !== q));
+    logAudit("EXCLUSAO_TITULAR", "registros", undefined, {
+      nome: q,
+      registros_removidos: ids.length,
+      ids,
+      motivo: "Solicitação de exclusão Art. 18 LGPD",
+    });
+    setTitularResult(null);
+    setTitularNome("");
+    setExclusaoConfirm(false);
+    setExclusaoFeedback(`✓ ${ids.length} registro${ids.length > 1 ? "s" : ""} de "${q}" excluído${ids.length > 1 ? "s" : ""} com sucesso.`);
+    setTimeout(() => setExclusaoFeedback(""), 5000);
+  };
 
   const addItem = (key: OpcKey, value: string) => {
     const v = value.trim().toUpperCase();
@@ -953,16 +1327,41 @@ const Configuracoes = ({ opcoes, setOpcoes }: { opcoes: Opcoes; setOpcoes: (val:
     setOpcoes({ ...opcoes, [key]: arr });
   };
 
-  const importNomes = () => {
-    const novos = nomesBulk
-      .split("\n")
-      .map(n => n.trim().toUpperCase())
-      .filter(n => n.length > 2 && !opcoes.nomes.includes(n));
+  const importNomes = async () => {
+    // Deduplica internamente E filtra já existentes
+    const novos = [...new Set(
+      nomesBulk
+        .split("\n")
+        .map(n => n.trim().toUpperCase())
+        .filter(n => n.length > 2)
+    )].filter(n => !opcoes.nomes.includes(n));
+
     if (novos.length === 0) { setBulkFeedback("Nenhum nome novo para importar."); return; }
-    setOpcoes({ ...opcoes, nomes: [...opcoes.nomes, ...novos] });
+
+    setBulkFeedback("Salvando…");
+
+    // Insere direto no DB em batches de 100 (com feedback real de erro)
+    const CHUNK = 100;
+    let erroMsg = "";
+    for (let i = 0; i < novos.length; i += CHUNK) {
+      const batch = novos.slice(i, i + CHUNK);
+      const { error } = await supabase
+        .from("opcoes")
+        .insert(batch.map(valor => ({ chave: "nomes", valor })));
+      if (error) { erroMsg = error.message; break; }
+    }
+
+    if (erroMsg) {
+      setBulkFeedback(`Erro ao salvar: ${erroMsg}`);
+      return;
+    }
+
+    // Atualiza estado local (sem re-disparar save no DB — já fizemos acima)
+    const novaLista = [...opcoes.nomes, ...novos];
+    setOpcoes({ ...opcoes, nomes: novaLista });
     setNomesBulk("");
     setBulkFeedback(`${novos.length} nome${novos.length > 1 ? "s" : ""} importado${novos.length > 1 ? "s" : ""} com sucesso!`);
-    setTimeout(() => setBulkFeedback(""), 3000);
+    setTimeout(() => setBulkFeedback(""), 4000);
   };
 
   const nomesFiltrados = opcoes.nomes.filter(n => n.toLowerCase().includes(nomeBusca.toLowerCase()));
@@ -1071,6 +1470,117 @@ const Configuracoes = ({ opcoes, setOpcoes }: { opcoes: Opcoes; setOpcoes: (val:
           </div>
         </div>
       </div>
+
+      {/* ── LGPD: DPO (Art. 41) ── */}
+      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
+          <div style={{ width:10, height:10, borderRadius:"50%", background:"#6C63FF", flexShrink:0 }} />
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>Encarregado de Dados (DPO)</div>
+          <div style={{ fontSize:11, background:"#6C63FF18", color:"#6C63FF", fontWeight:700, borderRadius:99, padding:"2px 8px" }}>Art. 41 LGPD</div>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:14 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Nome</label>
+            <input value={dpoNome} onChange={e => setDpoNome(e.target.value)} placeholder="Nome do responsável"
+              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>E-mail</label>
+            <input type="email" value={dpoEmail} onChange={e => setDpoEmail(e.target.value)} placeholder="dpo@empresa.com.br"
+              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Telefone</label>
+            <input value={dpoTelefone} onChange={e => setDpoTelefone(e.target.value)} placeholder="(00) 00000-0000"
+              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
+          </div>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <button onClick={saveDpo} style={{ background:"#6C63FF", border:"none", borderRadius:8, padding:"9px 22px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
+            Salvar DPO
+          </button>
+          {dpoSaved && <span style={{ fontSize:12, color:"#0E9F6E", fontWeight:600 }}>✓ Salvo com sucesso</span>}
+        </div>
+        <div style={{ fontSize:11, color:"#94A3B8", marginTop:10 }}>
+          As informações do DPO são exibidas no aviso de privacidade apresentado ao usuário no primeiro acesso. Obrigatório pela Lei nº 13.709/2018 (LGPD).
+        </div>
+      </div>
+
+      {/* ── LGPD: Exclusão por Solicitação (Art. 18) ── */}
+      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
+          <div style={{ width:10, height:10, borderRadius:"50%", background:"#E02424", flexShrink:0 }} />
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>Direitos do Titular — Exclusão por Solicitação</div>
+          <div style={{ fontSize:11, background:"#E0242418", color:"#E02424", fontWeight:700, borderRadius:99, padding:"2px 8px" }}>Art. 18 LGPD</div>
+        </div>
+        <div style={{ fontSize:12, color:"#64748B", marginBottom:14 }}>
+          Para atender a uma solicitação de exclusão de dados de um colaborador, busque pelo nome exato abaixo. Todos os registros deste colaborador serão removidos permanentemente e o evento será registrado no log de auditoria.
+        </div>
+        <div style={{ display:"flex", gap:8, marginBottom:14 }}>
+          <input value={titularNome} onChange={e => setTitularNome(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && buscarTitular()}
+            placeholder="NOME COMPLETO DO COLABORADOR"
+            style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"8px 12px", fontSize:13, fontFamily:"inherit", background:"#FAFBFC", outline:"none", flex:1, textTransform:"uppercase" }} />
+          <button onClick={buscarTitular} style={{ background:"#334155", border:"none", borderRadius:8, padding:"8px 20px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit", flexShrink:0 }}>
+            Buscar
+          </button>
+        </div>
+
+        {titularResult !== null && (
+          <div style={{ border:"1px solid #E2E6EC", borderRadius:10, overflow:"hidden", marginBottom:12 }}>
+            <div style={{ background:"#F8FAFC", padding:"10px 16px", fontSize:12, color:"#64748B", borderBottom:"1px solid #E2E6EC", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <span>Resultado para: <strong style={{ color:"#0F1C2E" }}>{titularNome.trim().toUpperCase()}</strong></span>
+              <span style={{ fontWeight:700, color: titularResult.length > 0 ? "#E02424" : "#0E9F6E" }}>
+                {titularResult.length} registro{titularResult.length !== 1 ? "s" : ""} encontrado{titularResult.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            {titularResult.length === 0 ? (
+              <div style={{ padding:"20px 16px", fontSize:12, color:"#94A3B8", textAlign:"center" }}>Nenhum registro encontrado para este nome.</div>
+            ) : (
+              <div style={{ padding:"12px 16px", display:"flex", flexDirection:"column", gap:10 }}>
+                <div style={{ display:"flex", flexDirection:"column", gap:4, maxHeight:160, overflowY:"auto" }}>
+                  {titularResult.slice(0, 5).map(r => (
+                    <div key={r.id} style={{ display:"flex", gap:10, fontSize:11, color:"#475569", background:"#FFF5F5", borderRadius:6, padding:"5px 10px" }}>
+                      <span style={{ color:"#94A3B8", fontFamily:"monospace" }}>{fmt(r.data)}</span>
+                      <span>{r.turno}</span>
+                      <span>{r.fornecedor}</span>
+                      <span style={{ color:"#64748B" }}>{r.horaEntrada}–{r.horaSaida}</span>
+                    </div>
+                  ))}
+                  {titularResult.length > 5 && <div style={{ fontSize:11, color:"#94A3B8", textAlign:"center" }}>+{titularResult.length - 5} registro{titularResult.length - 5 > 1 ? "s" : ""} não exibido{titularResult.length - 5 > 1 ? "s" : ""}</div>}
+                </div>
+                {!exclusaoConfirm ? (
+                  <button onClick={() => setExclusaoConfirm(true)}
+                    style={{ background:"#FEF2F2", border:"1.5px solid #FECACA", borderRadius:8, padding:"9px 18px", cursor:"pointer", color:"#E02424", fontWeight:700, fontSize:13, fontFamily:"inherit", alignSelf:"flex-start" }}>
+                    Solicitar exclusão de {titularResult.length} registro{titularResult.length !== 1 ? "s" : ""}
+                  </button>
+                ) : (
+                  <div style={{ background:"#FFF5F5", border:"1.5px solid #FECACA", borderRadius:10, padding:"14px 16px", display:"flex", flexDirection:"column", gap:10 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:"#E02424" }}>⚠️ Confirmação de Exclusão Irreversível</div>
+                    <div style={{ fontSize:12, color:"#475569" }}>
+                      Esta ação removerá <strong>{titularResult.length} registro{titularResult.length !== 1 ? "s" : ""}</strong> de <strong>{titularNome.trim().toUpperCase()}</strong> permanentemente. O evento será registrado no log de auditoria para fins de compliance com a LGPD.
+                    </div>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button onClick={excluirTitular} style={{ background:"#E02424", border:"none", borderRadius:8, padding:"9px 18px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
+                        Confirmar Exclusão
+                      </button>
+                      <button onClick={() => setExclusaoConfirm(false)} style={{ background:"#F1F5F9", border:"none", borderRadius:8, padding:"9px 18px", cursor:"pointer", color:"#475569", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {exclusaoFeedback && (
+          <div style={{ fontSize:12, color:"#0E9F6E", fontWeight:600, background:"#E6F9F4", borderRadius:7, padding:"9px 14px" }}>
+            {exclusaoFeedback}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -1082,10 +1592,29 @@ type TabId = "dashboard" | "lancamentos" | "fornecedores" | "configuracoes";
 interface NavItem { id: TabId; label: string; icon: string; }
 
 const Index = () => {
-  const [tab, setTab]             = useState<TabId>("lancamentos");
-  const [registros, setRegistros] = useStorage("ct-registros-v1", SEED);
-  const [opcoes, setOpcoes]       = useOpcoes();
-  const [saved, setSaved]         = useState(false);
+  const [tab, setTab]                             = useState<TabId>("lancamentos");
+  const [registros, setRegistros, loadingRegs]    = useStorage();
+  const [opcoes, setOpcoes, loadingOpts]           = useOpcoes();
+  const [saved, setSaved]                         = useState(false);
+  const loading                                   = loadingRegs || loadingOpts;
+  const [privacyAccepted, acceptPrivacy]          = usePrivacyAccepted();
+  const [dpoCfg, setDpoCfg]                       = useState<{ nome: string; email: string }>({ nome: "", email: "" });
+  const [isAdmin, setIsAdmin]                     = useState(false);
+
+  useEffect(() => {
+    authReady.then(() => {
+      supabase.from("opcoes").select("chave,valor")
+        .in("chave", ["dpo_nome", "dpo_email"])
+        .then(({ data }) => {
+          if (!data) return;
+          const m: Record<string, string> = {};
+          data.forEach((r: { chave: string; valor: string }) => { m[r.chave] = r.valor; });
+          setDpoCfg({ nome: m["dpo_nome"] ?? "", email: m["dpo_email"] ?? "" });
+        });
+      supabase.from("profiles").select("is_admin").maybeSingle()
+        .then(({ data }) => { if (data?.is_admin) setIsAdmin(true); });
+    });
+  }, []);
 
   const wrap = (fn: (val: Registro[]) => void) => (val: Registro[]) => {
     fn(val); setSaved(true); setTimeout(() => setSaved(false), 2000);
@@ -1102,6 +1631,10 @@ const Index = () => {
   ];
 
   return (
+    <>
+      {!privacyAccepted && (
+        <PrivacyNotice dpoNome={dpoCfg.nome} dpoEmail={dpoCfg.email} onAccept={acceptPrivacy} />
+      )}
     <div style={{ minHeight:"100vh", background:"#F0F2F5", fontFamily:"'DM Sans',system-ui,sans-serif", display:"flex", flexDirection:"column" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
@@ -1143,7 +1676,13 @@ const Index = () => {
             <div style={{ color:"#64748B" }}>Hoje: <strong style={{ color:"#F8FAFC" }}>{hoje_}</strong></div>
             <div style={{ color:"#64748B" }}>Mês: <strong style={{ color:"#F8FAFC" }}>{mes_}</strong></div>
           </div>
-          {saved && (
+          {loading && (
+            <div style={{ display:"flex", alignItems:"center", gap:6, background:"#1A56DB18", border:"1px solid #1A56DB33", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#1A56DB", fontWeight:600 }}>
+              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              Carregando…
+            </div>
+          )}
+          {saved && !loading && (
             <div style={{ display:"flex", alignItems:"center", gap:5, background:"#0E9F6E22", border:"1px solid #0E9F6E44", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#0E9F6E", fontWeight:600 }}>
               <Icon d="M5 13l4 4L19 7" size={12} /> Salvo
             </div>
@@ -1152,16 +1691,44 @@ const Index = () => {
             <div style={{ width:7, height:7, borderRadius:"50%", background:"#0E9F6E", boxShadow:"0 0 0 3px #0E9F6E30" }} />
             {new Date().toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" })}
           </div>
-        </div>
+          {isAdmin && (
+            <button
+              onClick={() => { window.location.href = "/admin"; }}
+              title="Painel de administração"
+              style={{ display:"flex", alignItems:"center", gap:5, background:"#1A56DB18", border:"1px solid #1A56DB44", borderRadius:8, padding:"4px 10px", cursor:"pointer", color:"#1A56DB", fontSize:11, fontFamily:"inherit", fontWeight:600 }}
+            >
+              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Admin
+            </button>
+          )}
+          <button
+            onClick={() => supabase.auth.signOut()}
+            title="Sair do sistema"
+            style={{ display:"flex", alignItems:"center", gap:5, background:"transparent", border:"1px solid #1E293B", borderRadius:8, padding:"4px 10px", cursor:"pointer", color:"#64748B", fontSize:11, fontFamily:"inherit", fontWeight:600 }}
+          >
+            <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+            Sair
+          </button>        </div>
       </header>
 
       <main style={{ flex:1, padding:"24px", maxWidth:1440, width:"100%", margin:"0 auto" }}>
-        {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} />}
-        {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} />}
-        {tab === "fornecedores"  && <Fornecedores registros={registros} opcoes={opcoes} />}
-        {tab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} />}
+        {loading ? (
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"60vh", gap:16 }}>
+            <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="#1A56DB" strokeWidth={2} style={{ animation:"spin 1s linear infinite" }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            <div style={{ fontSize:14, color:"#64748B", fontWeight:600 }}>Carregando dados do servidor…</div>
+            <style>{"@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}"}</style>
+          </div>
+        ) : (
+          <>
+            {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} />}
+            {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} />}
+            {tab === "fornecedores"  && <Fornecedores registros={registros} opcoes={opcoes} />}
+            {tab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} registros={registros} setRegistros={setRegistros} />}
+          </>
+        )}
       </main>
     </div>
+    </>
   );
 };
 

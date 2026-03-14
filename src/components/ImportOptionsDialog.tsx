@@ -106,7 +106,7 @@ export function ImportOptionsDialog({ isOpen, onClose, onImportSuccess }: Import
       }
 
       if (parsedOptions.length > 0) {
-        saveOptions(optionTypeKey, parsedOptions);
+        await saveOptions(optionTypeKey, parsedOptions);
         showSuccess(`Opções de ${optionTypes.find(o => o.value === optionTypeKey)?.label} importadas com sucesso!`);
         onImportSuccess();
         onClose();

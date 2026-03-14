@@ -54,7 +54,7 @@ const ManualOptionsInputPage = () => {
     },
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const optionTypeKey = values.optionType;
     const optionsText = values.optionsText;
 
@@ -65,10 +65,14 @@ const ManualOptionsInputPage = () => {
       .map((line) => ({ value: line, label: line }));
 
     if (parsedOptions.length > 0) {
-      saveOptions(optionTypeKey, parsedOptions);
-      showSuccess(`Opções de ${optionTypes.find(o => o.value === optionTypeKey)?.label} salvas com sucesso!`);
-      form.reset();
-      navigate("/attendance"); // Navigate back to attendance page to see updated options
+      try {
+        await saveOptions(optionTypeKey, parsedOptions);
+        showSuccess(`Opções de ${optionTypes.find(o => o.value === optionTypeKey)?.label} salvas com sucesso!`);
+        form.reset();
+        navigate("/attendance");
+      } catch (err) {
+        showError("Erro ao salvar opções.");
+      }
     } else {
       showError("Nenhuma opção válida encontrada para salvar.");
     }

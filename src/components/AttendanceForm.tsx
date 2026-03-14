@@ -114,14 +114,27 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
   const [newManualFullName, setNewManualFullName] = useState("");
   const [isAddingNameOpen, setIsAddingNameOpen] = useState(false); // State for collapsible
 
-  const loadOptions = useCallback(() => {
-    setFullNameOptions(getOptions("fullNameOptions").length > 0 ? getOptions("fullNameOptions") : defaultFullNameOptions);
-    setShiftOptions(getOptions("shiftOptions").length > 0 ? getOptions("shiftOptions") : defaultShiftOptions);
-    setPositionOptions(getOptions("positionOptions").length > 0 ? getOptions("positionOptions") : defaultPositionOptions);
-    setUnitOptions(getOptions("unitOptions").length > 0 ? getOptions("unitOptions") : defaultUnitOptions);
-    setCostCenterOptions(getOptions("costCenterOptions").length > 0 ? getOptions("costCenterOptions") : defaultCostCenterOptions);
-    setReasonOptions(getOptions("reasonOptions").length > 0 ? getOptions("reasonOptions") : defaultReasonOptions);
-    setSupplierOptions(getOptions("supplierOptions").length > 0 ? getOptions("supplierOptions") : defaultSupplierOptions);
+  const loadOptions = useCallback(async () => {
+    try {
+      const [full, shift, pos, unit, cc, reason, supplier] = await Promise.all([
+        getOptions("fullNameOptions"),
+        getOptions("shiftOptions"),
+        getOptions("positionOptions"),
+        getOptions("unitOptions"),
+        getOptions("costCenterOptions"),
+        getOptions("reasonOptions"),
+        getOptions("supplierOptions"),
+      ]);
+      setFullNameOptions(full.length     > 0 ? full     : defaultFullNameOptions);
+      setShiftOptions(shift.length       > 0 ? shift    : defaultShiftOptions);
+      setPositionOptions(pos.length      > 0 ? pos      : defaultPositionOptions);
+      setUnitOptions(unit.length         > 0 ? unit     : defaultUnitOptions);
+      setCostCenterOptions(cc.length     > 0 ? cc       : defaultCostCenterOptions);
+      setReasonOptions(reason.length     > 0 ? reason   : defaultReasonOptions);
+      setSupplierOptions(supplier.length > 0 ? supplier : defaultSupplierOptions);
+    } catch (err) {
+      console.error("Erro ao carregar opções:", err);
+    }
   }, []);
 
   useEffect(() => {
@@ -179,14 +192,14 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
     }
   }, [timeIn, timeOut]);
 
-  const handleAddManualFullName = () => {
+  const handleAddManualFullName = async () => {
     const trimmedName = newManualFullName.trim();
     if (!trimmedName) {
       showError("O nome não pode ser vazio.");
       return;
     }
 
-    const existingOptions = getOptions("fullNameOptions");
+    const existingOptions = await getOptions("fullNameOptions");
     const isAlreadyAdded = existingOptions.some(
       (option) => option.value.toLowerCase() === trimmedName.toLowerCase()
     );
@@ -198,11 +211,15 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
 
     const newOption: SelectOption = { value: trimmedName, label: trimmedName };
     const updatedOptions = [...existingOptions, newOption];
-    saveOptions("fullNameOptions", updatedOptions);
-    setFullNameOptions(updatedOptions);
-    setNewManualFullName("");
-    showSuccess(`Nome "${trimmedName}" adicionado com sucesso!`);
-    onOptionsUpdated();
+    try {
+      await saveOptions("fullNameOptions", updatedOptions);
+      setFullNameOptions(updatedOptions);
+      setNewManualFullName("");
+      showSuccess(`Nome "${trimmedName}" adicionado com sucesso!`);
+      onOptionsUpdated();
+    } catch (err) {
+      showError("Erro ao adicionar nome.");
+    }
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -227,7 +244,7 @@ export function AttendanceForm({ onOptionsUpdated }: AttendanceFormProps) {
           reason: values.reason,
           supplier: values.supplier,
         };
-        addAttendanceRecord(newRecord);
+        await addAttendanceRecord(newRecord);
       }
       showSuccess("Registro(s) de presença adicionado(s) com sucesso!");
       form.reset({

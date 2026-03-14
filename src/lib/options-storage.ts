@@ -1,33 +1,54 @@
 "use client";
 
 import { SelectOption } from "@/types/attendance";
+import { supabase } from "@/lib/supabase";
 import DOMPurify from "dompurify";
 
-const OPTIONS_STORAGE_PREFIX = "app_options_";
+const sanitize = (str: string): string =>
+  DOMPurify.sanitize(str, { USE_PROFILES: { html: false } });
 
-export const getOptions = (key: string): SelectOption[] => {
-  if (typeof window === "undefined") {
-    return [];
-  }
-  const storedOptions = localStorage.getItem(`${OPTIONS_STORAGE_PREFIX}${key}`);
-  return storedOptions ? JSON.parse(storedOptions) : [];
-};
-
-export const saveOptions = (key: string, options: SelectOption[]): void => {
-  if (typeof window === "undefined") {
-    return;
-  }
-  // Sanitize each option's value and label before saving
-  const sanitizedOptions = options.map(option => ({
-    value: DOMPurify.sanitize(option.value, { USE_PROFILES: { html: false } }),
-    label: DOMPurify.sanitize(option.label, { USE_PROFILES: { html: false } }),
+export const getOptions = async (key: string): Promise<SelectOption[]> => {
+  const { data, error } = await supabase
+    .from("opcoes")
+    .select("valor")
+    .eq("chave", key)
+    .order("id", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data as { valor: string }[]).map(row => ({
+    value: row.valor,
+    label: row.valor,
   }));
-  localStorage.setItem(`${OPTIONS_STORAGE_PREFIX}${key}`, JSON.stringify(sanitizedOptions));
 };
 
-export const clearOptions = (key: string): void => {
-  if (typeof window === "undefined") {
-    return;
-  }
-  localStorage.removeItem(`${OPTIONS_STORAGE_PREFIX}${key}`);
+export const saveOptions = async (
+  key: string,
+  options: SelectOption[]
+): Promise<void> => {
+  // Sanitizar antes de persistir
+  const sanitized = options.map(o => ({
+    value: sanitize(o.value),
+    label: sanitize(o.label),
+  }));
+
+  // Apagar todas as opções anteriores da chave e reinserir
+  const { error: delErr } = await supabase
+    .from("opcoes")
+    .delete()
+    .eq("chave", key);
+  if (delErr) throw new Error(delErr.message);
+
+  if (sanitized.length === 0) return;
+
+  const { error: insErr } = await supabase
+    .from("opcoes")
+    .insert(sanitized.map(o => ({ chave: key, valor: o.value })));
+  if (insErr) throw new Error(insErr.message);
+};
+
+export const clearOptions = async (key: string): Promise<void> => {
+  const { error } = await supabase
+    .from("opcoes")
+    .delete()
+    .eq("chave", key);
+  if (error) throw new Error(error.message);
 };

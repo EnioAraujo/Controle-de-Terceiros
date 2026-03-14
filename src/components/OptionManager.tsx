@@ -77,11 +77,15 @@ export function OptionManager({ optionTypeKey, optionTypeName }: OptionManagerPr
     loadOptions();
   }, [optionTypeKey]);
 
-  const loadOptions = () => {
-    setOptions(getOptions(optionTypeKey));
+  const loadOptions = async () => {
+    try {
+      setOptions(await getOptions(optionTypeKey));
+    } catch (err) {
+      console.error("Erro ao carregar opções:", err);
+    }
   };
 
-  const handleAddOption = (values: z.infer<typeof formSchema>) => {
+  const handleAddOption = async (values: z.infer<typeof formSchema>) => {
     const trimmedValue = values.newOption.trim();
     if (!trimmedValue) return;
 
@@ -92,13 +96,17 @@ export function OptionManager({ optionTypeKey, optionTypeName }: OptionManagerPr
 
     const newOption: SelectOption = { value: trimmedValue, label: trimmedValue };
     const updatedOptions = [...options, newOption];
-    saveOptions(optionTypeKey, updatedOptions);
-    setOptions(updatedOptions);
-    form.reset();
-    showSuccess(`Opção "${trimmedValue}" adicionada.`);
+    try {
+      await saveOptions(optionTypeKey, updatedOptions);
+      setOptions(updatedOptions);
+      form.reset();
+      showSuccess(`Opção "${trimmedValue}" adicionada.`);
+    } catch (err) {
+      showError("Erro ao salvar opção.");
+    }
   };
 
-  const handleEditOption = (oldValue: string, newLabel: string) => {
+  const handleEditOption = async (oldValue: string, newLabel: string) => {
     const trimmedNewLabel = newLabel.trim();
     if (!trimmedNewLabel) {
       showError("A opção editada não pode ser vazia.");
@@ -113,17 +121,25 @@ export function OptionManager({ optionTypeKey, optionTypeName }: OptionManagerPr
     const updatedOptions = options.map(opt =>
       opt.value === oldValue ? { value: trimmedNewLabel, label: trimmedNewLabel } : opt
     );
-    saveOptions(optionTypeKey, updatedOptions);
-    setOptions(updatedOptions);
-    setIsEditDialogOpen(false);
-    showSuccess(`Opção "${oldValue}" atualizada para "${trimmedNewLabel}".`);
+    try {
+      await saveOptions(optionTypeKey, updatedOptions);
+      setOptions(updatedOptions);
+      setIsEditDialogOpen(false);
+      showSuccess(`Opção "${oldValue}" atualizada para "${trimmedNewLabel}".`);
+    } catch (err) {
+      showError("Erro ao atualizar opção.");
+    }
   };
 
-  const handleDeleteOption = (valueToDelete: string) => {
+  const handleDeleteOption = async (valueToDelete: string) => {
     const updatedOptions = options.filter(opt => opt.value !== valueToDelete);
-    saveOptions(optionTypeKey, updatedOptions);
-    setOptions(updatedOptions);
-    showSuccess(`Opção "${valueToDelete}" removida.`);
+    try {
+      await saveOptions(optionTypeKey, updatedOptions);
+      setOptions(updatedOptions);
+      showSuccess(`Opção "${valueToDelete}" removida.`);
+    } catch (err) {
+      showError("Erro ao remover opção.");
+    }
   };
 
   const openEditDialog = (option: SelectOption) => {
