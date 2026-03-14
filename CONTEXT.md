@@ -75,7 +75,11 @@ supabase/
     ├── fix_linter_warnings.sql
     ├── fix_rls_write_policies.sql
     ├── retention_policy.sql
-    └── terceiros_table.sql    # Tabela de nomes de terceirizados
+    ├── terceiros_table.sql    # Tabela de nomes de terceirizados
+    └── user_management.sql    # ON DELETE CASCADE + trigger sync email
+supabase/functions/
+└── admin-users/
+    └── index.ts               # Edge Function: criar, editar, excluir usuários
 ```
 
 ---
@@ -225,8 +229,31 @@ Setores:      RECEBIMENTO, EXPEDIÇÃO, SEPARAÇÃO, CONFERÊNCIA, ENDEREÇAMENT
 ## 8. Painel Administrativo (AdminPage.tsx)
 
 - Acesso restrito a usuários com `is_admin = true` no `profiles`
-- **Aba Usuários:** lista todos os usuários, toggle de admin (exceto si próprio), envio de e-mail de redefinição de senha
-- **Aba Conta:** alteração de senha do usuário logado (mínimo 6 caracteres)
+- **Aba Usuários:**
+  - Lista todos os usuários com stats (total, admins, comuns)
+  - **Novo usuário:** botão abre modal para criar usuário (e-mail + senha + flag admin)
+  - **Editar:** botão ⌘ por linha — altera e-mail e/ou senha do usuário
+  - **Excluir:** botão 🗑 por linha — remove permanentemente (não pode excluir a si mesmo)
+  - Toggle admin: promove/revoga permissão de administrador
+  - Envio de e-mail de redefinição de senha
+- **Aba Conta:** alteração de senha do usuário logado
+
+### Edge Function `admin-users`
+
+O CRUD de usuários usa a Edge Function `supabase/functions/admin-users/index.ts`.
+Ela usa `SUPABASE_SERVICE_ROLE_KEY` (secret do Supabase, nunca exposta no frontend).
+
+**Deploy:**
+```bash
+supabase functions deploy admin-users
+```
+
+**Ações:**
+| Ação | Payload |
+|---|---|
+| `create` | `{ email, password, is_admin? }` |
+| `update` | `{ userId, email?, password? }` |
+| `delete` | `{ userId }` |
 
 ---
 
@@ -310,3 +337,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-14 | Arquivo de contexto criado com levantamento completo do projeto |
 | 2026-03-14 | Corrigido fluxo de redefinição de senha: rota /reset-password dedicada, AppRoutes com useNavigate dentro do BrowserRouter, ResetPasswordPage autônoma sem prop onDone |
 | 2026-03-14 | Implementado sistema i18n pt-BR/en-US: i18n-translations.ts, i18n-context.ts, i18n.tsx (provider), use-i18n.ts (hook); seletor de idioma na LoginPage; tradução de LoginPage, ResetPasswordPage e AdminPage; mapSupabaseError para mensagens de erro do Supabase em português/inglês |
+| 2026-03-14 | Gerenciamento de usuários na AdminPage: criar, editar, excluir via Edge Function admin-users (service_role segura); modal CRUD; migração user_management.sql |

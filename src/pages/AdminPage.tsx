@@ -12,6 +12,7 @@ type Profile = {
 };
 
 type Tab = "usuarios" | "conta";
+type ModalMode = "create" | "edit" | "delete" | null;
 
 const Icon = ({ d, size = 16 }: { d: string; size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -38,6 +39,15 @@ export default function AdminPage() {
   // Per-user feedback
   const [resetFeedback, setResetFeedback]   = useState<Record<string, string>>({});
   const [toggleLoading, setToggleLoading]   = useState<string | null>(null);
+
+  // User CRUD modal
+  const [modal, setModal]               = useState<ModalMode>(null);
+  const [selectedUser, setSelectedUser]  = useState<Profile | null>(null);
+  const [formEmail, setFormEmail]        = useState("");
+  const [formPassword, setFormPassword]  = useState("");
+  const [formIsAdmin, setFormIsAdmin]    = useState(false);
+  const [modalLoading, setModalLoading]  = useState(false);
+  const [modalError, setModalError]      = useState("");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -83,6 +93,81 @@ export default function AdminPage() {
     const msg = error ? `${t("admin_err_reset")} ${error.message}` : t("admin_email_sent");
     setResetFeedback(p => ({ ...p, [userId]: msg }));
     setTimeout(() => setResetFeedback(p => { const n = { ...p }; delete n[userId]; return n; }), 5000);
+  };
+
+  // ── Edge Function helper ─────────────────────────────────────────
+  const callAdminFn = async (action: string, params: Record<string, unknown>) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const { data, error } = await supabase.functions.invoke("admin-users", {
+      body: { action, ...params },
+      headers: { Authorization: `Bearer ${session?.access_token ?? ""}` },
+    });
+    if (error) throw new Error(error.message);
+    if (data?.error) throw new Error(data.error);
+    return data;
+  };
+
+  const openCreate = () => {
+    setFormEmail(""); setFormPassword(""); setFormIsAdmin(false);
+    setModalError(""); setModal("create");
+  };
+
+  const openEdit = (user: Profile) => {
+    setSelectedUser(user); setFormEmail(user.email); setFormPassword("");
+    setModalError(""); setModal("edit");
+  };
+
+  const openDelete = (user: Profile) => {
+    setSelectedUser(user); setModalError(""); setModal("delete");
+  };
+
+  const handleCreateUser = async () => {
+    if (!formEmail.trim()) { setModalError("E-mail é obrigatório."); return; }
+    if (formPassword.length < 6) { setModalError("A senha deve ter no mínimo 6 caracteres."); return; }
+    setModalLoading(true); setModalError("");
+    try {
+      await callAdminFn("create", { email: formEmail.trim(), password: formPassword, is_admin: formIsAdmin });
+      await loadData();
+      setModal(null);
+    } catch (e) {
+      setModalError(e instanceof Error ? e.message : "Erro ao criar usuário.");
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handleEditUser = async () => {
+    if (!selectedUser) return;
+    if (!formEmail.trim()) { setModalError("E-mail é obrigatório."); return; }
+    if (formPassword && formPassword.length < 6) { setModalError("A senha deve ter no mínimo 6 caracteres."); return; }
+    setModalLoading(true); setModalError("");
+    try {
+      await callAdminFn("update", {
+        userId: selectedUser.id,
+        email: formEmail.trim(),
+        ...(formPassword ? { password: formPassword } : {}),
+      });
+      await loadData();
+      setModal(null);
+    } catch (e) {
+      setModalError(e instanceof Error ? e.message : "Erro ao editar usuário.");
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+    setModalLoading(true); setModalError("");
+    try {
+      await callAdminFn("delete", { userId: selectedUser.id });
+      await loadData();
+      setModal(null);
+    } catch (e) {
+      setModalError(e instanceof Error ? e.message : "Erro ao excluir usuário.");
+    } finally {
+      setModalLoading(false);
+    }
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -241,9 +326,13 @@ export default function AdminPage() {
                   <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por e-mail…"
                     style={{ border: "1.5px solid #E2E6EC", borderRadius: 8, padding: "7px 12px 7px 30px", fontSize: 12, fontFamily: "inherit", background: "#FAFBFC", width: 220, outline: "none" }} />
                 </div>
-                <div style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>
-                  Para criar novos usuários: <span style={{ color: "#1A56DB" }}>Supabase Dashboard → Authentication → Users → Add User</span>
-                </div>
+                <button
+                  onClick={openCreate}
+                  style={{ display: "flex", alignItems: "center", gap: 6, background: "#1A56DB", border: "none", borderRadius: 8, padding: "7px 14px", cursor: "pointer", color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: "inherit" }}
+                >
+                  <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                  Novo usuário
+                </button>
               </div>
 
               {filtered.length === 0 ? (
@@ -289,7 +378,7 @@ export default function AdminPage() {
                           {new Date(user.created_at).toLocaleDateString("pt-BR")}
                         </td>
                         <td style={{ padding: "12px 20px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                             {/* Toggle admin */}
                             <button
                               onClick={() => handleToggleAdmin(user)}
@@ -324,6 +413,26 @@ export default function AdminPage() {
                               <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" /></svg>
                               Redefinir senha
                             </button>
+
+                            {/* Edit */}
+                            <button
+                              onClick={() => openEdit(user)}
+                              title="Editar usuário"
+                              style={{ width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", background: "#F0FDF4", border: "1.5px solid #BBF7D0", borderRadius: 7, cursor: "pointer", color: "#0E9F6E", flexShrink: 0 }}
+                            >
+                              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+
+                            {/* Delete */}
+                            {user.id !== myId && (
+                              <button
+                                onClick={() => openDelete(user)}
+                                title="Excluir usuário"
+                                style={{ width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: 7, cursor: "pointer", color: "#E02424", flexShrink: 0 }}
+                              >
+                                <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                              </button>
+                            )}
 
                             {resetFeedback[user.id] && (
                               <span style={{ fontSize: 11, color: resetFeedback[user.id].startsWith("Erro") ? "#E02424" : "#0E9F6E", fontWeight: 600 }}>
@@ -390,6 +499,106 @@ export default function AdminPage() {
           </div>
         )}
       </main>
+
+      {/* ── MODAL CRUD ────────────────────────────────────────────── */}
+      {modal && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget && !modalLoading) setModal(null); }}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16 }}
+        >
+          <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: "100%", maxWidth: 440, boxShadow: "0 24px 64px rgba(0,0,0,.25)" }}>
+
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <div style={{ fontWeight: 800, fontSize: 17, color: "#0F1C2E" }}>
+                {modal === "create" ? "Novo usuário" : modal === "edit" ? "Editar usuário" : "Excluir usuário"}
+              </div>
+              <button onClick={() => !modalLoading && setModal(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: 4, display: "flex", alignItems: "center" }}>
+                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            {/* Delete confirmation */}
+            {modal === "delete" && (
+              <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "14px 16px", marginBottom: 20, fontSize: 13, color: "#991B1B" }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>Esta ação não pode ser desfeita.</div>
+                <div>O usuário <strong>{selectedUser?.email}</strong> e todos os seus dados de acesso serão permanentemente removidos do sistema.</div>
+              </div>
+            )}
+
+            {/* Create / Edit form */}
+            {(modal === "create" || modal === "edit") && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: .7, marginBottom: 5 }}>E-mail</label>
+                  <input
+                    type="email" value={formEmail} onChange={e => setFormEmail(e.target.value)}
+                    placeholder="usuario@email.com" autoFocus autoComplete="off"
+                    style={{ width: "100%", border: "1.5px solid #E2E6EC", borderRadius: 8, padding: "9px 12px", fontSize: 13, fontFamily: "inherit", background: "#FAFBFC", boxSizing: "border-box" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: .7, marginBottom: 5 }}>
+                    {modal === "create" ? "Senha" : "Nova senha (deixe vazio para manter)"}
+                  </label>
+                  <input
+                    type="password" value={formPassword} onChange={e => setFormPassword(e.target.value)}
+                    placeholder={modal === "create" ? "Mínimo 6 caracteres" : "Deixe vazio para não alterar"}
+                    autoComplete="new-password"
+                    style={{ width: "100%", border: "1.5px solid #E2E6EC", borderRadius: 8, padding: "9px 12px", fontSize: 13, fontFamily: "inherit", background: "#FAFBFC", boxSizing: "border-box" }}
+                  />
+                </div>
+                {modal === "create" && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} onClick={() => setFormIsAdmin(v => !v)}>
+                    <div style={{ width: 40, height: 22, borderRadius: 11, background: formIsAdmin ? "#6C63FF" : "#E2E6EC", position: "relative", transition: "background .2s", flexShrink: 0 }}>
+                      <div style={{ position: "absolute", top: 3, left: formIsAdmin ? 21 : 3, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.2)" }} />
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#0F1C2E", userSelect: "none" }}>Administrador</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Error */}
+            {modalError && (
+              <div style={{ marginTop: 14, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "9px 14px", fontSize: 12, color: "#E02424", fontWeight: 600 }}>
+                {modalError}
+              </div>
+            )}
+
+            {/* Footer */}
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 24 }}>
+              <button
+                onClick={() => !modalLoading && setModal(null)}
+                disabled={modalLoading}
+                style={{ background: "#F1F5F9", border: "1.5px solid #E2E6EC", borderRadius: 9, padding: "9px 20px", cursor: modalLoading ? "not-allowed" : "pointer", color: "#475569", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
+              >
+                Cancelar
+              </button>
+              {modal === "delete" ? (
+                <button
+                  onClick={handleDeleteUser}
+                  disabled={modalLoading}
+                  style={{ background: modalLoading ? "#FCA5A5" : "#E02424", border: "none", borderRadius: 9, padding: "9px 20px", cursor: modalLoading ? "not-allowed" : "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}
+                >
+                  {modalLoading && <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} style={{ animation: "spin 1s linear infinite" }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>}
+                  {modalLoading ? "Excluindo…" : "Excluir"}
+                </button>
+              ) : (
+                <button
+                  onClick={modal === "create" ? handleCreateUser : handleEditUser}
+                  disabled={modalLoading}
+                  style={{ background: modalLoading ? "#93AEDE" : "#1A56DB", border: "none", borderRadius: 9, padding: "9px 20px", cursor: modalLoading ? "not-allowed" : "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}
+                >
+                  {modalLoading && <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} style={{ animation: "spin 1s linear infinite" }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>}
+                  {modalLoading ? "Salvando…" : modal === "create" ? "Criar usuário" : "Salvar alterações"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{"@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}"}</style>
     </div>
   );
