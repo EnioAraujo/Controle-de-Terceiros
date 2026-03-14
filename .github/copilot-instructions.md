@@ -1,5 +1,19 @@
 # Instruções do GitHub Copilot — Controle de Terceiros
 
+## Regra de Clarificação (OBRIGATÓRIA)
+
+**Antes de iniciar qualquer tarefa**, sempre pergunte ao usuário o que pode ajudar a entender melhor o que está sendo pedido. Exemplos de perguntas úteis:
+
+- "Essa ação foi feita pelo formulário ou por importação de arquivo?"
+- "Isso aconteceu antes ou depois do último deploy?"
+- "Isso afeta só a tela X ou outras partes do app também?"
+- "Tem um exemplo visual (screenshot) ou mensagem de erro que posso ver?"
+- "Isso deve funcionar apenas para novos dados ou também corrigir dados existentes?"
+
+Não assuma o contexto — **pergunte primeiro, implemente depois**.
+
+---
+
 ## Regra Principal: Atualizar CONTEXT.md
 
 **Sempre que fizer qualquer alteração no projeto** (nova funcionalidade, nova rota, novo componente, mudança de banco de dados, nova dependência, alteração de lógica, etc.), você **deve atualizar o arquivo `CONTEXT.md`** na raiz do repositório.

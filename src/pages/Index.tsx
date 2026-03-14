@@ -493,7 +493,7 @@ interface FormLancamentoProps { inicial?: Registro | null; loteInicial?: Registr
 
 const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, registros: todosRegistros = [], turnosConfig = [] }: FormLancamentoProps) => {
   const { t } = useI18n();
-  const isEdit = !!inicial;
+  const isEdit = !!inicial && !loteInicial?.length;
   const isLoteEdit = !!loteInicial?.length;
   const base = loteInicial?.[0] ?? inicial;
 
@@ -558,21 +558,22 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
       const validPessoas = pessoas.filter(p => p.nome.trim().length > 2);
       // Verifica duplicatas (mesmo nome + mesma data já existente nos registros)
       if (!force) {
-        // 1) Duplicatas dentro do próprio lote
+        // 1) Duplicatas dentro do próprio lote (case-insensitive)
         const nomesNoLote = validPessoas.map(p => p.nome.trim());
+        const nomesNorm = nomesNoLote.map(n => n.toLowerCase());
         const duplicatasInternas = nomesNoLote.filter(
-          (nome, idx) => nomesNoLote.indexOf(nome) !== idx
+          (_, idx) => nomesNorm.indexOf(nomesNorm[idx]) !== idx
         );
         if (duplicatasInternas.length > 0) {
           setDupTipo("interna");
           setDupAviso([...new Set(duplicatasInternas)]);
           return;
         }
-        // 2) Duplicatas contra registros já existentes no banco
+        // 2) Duplicatas contra registros já existentes no banco (case-insensitive)
         const editIds = new Set(isLoteEdit ? loteInicial!.map(r => r.id) : []);
         const duplicatas = nomesNoLote
           .filter(nome => todosRegistros.some(r =>
-            !editIds.has(r.id) && r.nome === nome && r.data === comum.data
+            !editIds.has(r.id) && r.nome.toLowerCase() === nome.toLowerCase() && r.data === comum.data
           ));
         if (duplicatas.length > 0) {
           setDupTipo("banco");
@@ -802,7 +803,10 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig }: { regist
 
   const salvar = (novos: Registro[]) => {
     if (modal === "new") {
-      setRegistros([...registros, ...novos]);
+      // Salvaguarda: remove duplicatas intra-lote antes de inserir
+      const nomesNovos = novos.map(r => r.nome.toLowerCase());
+      const semDup = novos.filter((r, idx) => nomesNovos.indexOf(r.nome.toLowerCase()) === idx);
+      setRegistros([...registros, ...semDup]);
     } else if (Array.isArray(modal)) {
       const ids = new Set(modal.map(r => r.id));
       setRegistros([...registros.filter(r => !ids.has(r.id)), ...novos]);
