@@ -489,9 +489,9 @@ const AutocompleteNome = ({ value, onChange, suggestions, placeholder, style }: 
 
 // ─── FORM DE LANÇAMENTO ─────────────────────────────────────────
 interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; }
-interface FormLancamentoProps { inicial?: Registro | null; loteInicial?: Registro[]; onSave: (registros: Registro[]) => void; onCancel: () => void; opcoes: Opcoes; registros?: Registro[]; }
+interface FormLancamentoProps { inicial?: Registro | null; loteInicial?: Registro[]; onSave: (registros: Registro[]) => void; onCancel: () => void; opcoes: Opcoes; registros?: Registro[]; turnosConfig?: TurnoConfig[]; }
 
-const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, registros: todosRegistros = [] }: FormLancamentoProps) => {
+const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, registros: todosRegistros = [], turnosConfig = [] }: FormLancamentoProps) => {
   const { t } = useI18n();
   const isEdit = !!inicial;
   const isLoteEdit = !!loteInicial?.length;
@@ -520,6 +520,14 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
   const setC = (k: string, v: string) => {
     if (k === "horaEntrada") setPessoas(ps => ps.map(p => p.horaEntrada === comum.horaEntrada ? { ...p, horaEntrada: v } : p));
     if (k === "horaSaida")   setPessoas(ps => ps.map(p => p.horaSaida   === comum.horaSaida   ? { ...p, horaSaida: v }   : p));
+    if (k === "turno") {
+      const tc = turnosConfig.find(c => c.turno === v);
+      if (tc) {
+        setPessoas(ps => ps.map(p => ({ ...p, horaEntrada: tc.horaInicio, horaSaida: tc.horaFim })));
+        setComum(prev => ({ ...prev, turno: v, horaEntrada: tc.horaInicio, horaSaida: tc.horaFim }));
+        return;
+      }
+    }
     setComum(prev => ({ ...prev, [k]: v }));
   };
 
@@ -731,7 +739,7 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
 // ─── TELA: LANÇAMENTOS ──────────────────────────────────────────
 interface Filtros { data: string; turno: string; fornecedor: string; unidade: string; busca: string; }
 
-const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[]; setRegistros: (val: Registro[]) => void; opcoes: Opcoes }) => {
+const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig }: { registros: Registro[]; setRegistros: (val: Registro[]) => void; opcoes: Opcoes; turnosConfig: TurnoConfig[] }) => {
   const { t, lang } = useI18n();
   const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", busca: "" });
   const [modal, setModal]     = useState<null | "new" | Registro | Registro[]>(null);
@@ -896,7 +904,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
           <FormLancamento
             inicial={modal === "new" || Array.isArray(modal) ? null : modal as Registro}
             loteInicial={Array.isArray(modal) ? modal : undefined}
-            onSave={salvar} onCancel={() => setModal(null)} opcoes={opcoes} registros={registros} />
+            onSave={salvar} onCancel={() => setModal(null)} opcoes={opcoes} registros={registros} turnosConfig={turnosConfig} />
         </Modal>
       )}
 
@@ -2337,6 +2345,14 @@ const Index = () => {
   const [privacyAccepted, acceptPrivacy]          = usePrivacyAccepted();
   const [dpoCfg, setDpoCfg]                       = useState<{ nome: string; email: string }>({ nome: "", email: "" });
   const [isAdmin, setIsAdmin]                     = useState(false);
+  const [turnosConfig, setTurnosConfig]           = useState<TurnoConfig[]>([]);
+
+  useEffect(() => {
+    authReady.then(async () => {
+      const { data: tcData } = await supabase.from("turnos_config").select("*").order("turno");
+      if (tcData) setTurnosConfig(tcData.map(dbToTurnoConfig));
+    });
+  }, []);
 
   useEffect(() => {
     authReady.then(() => {
@@ -2452,7 +2468,7 @@ const Index = () => {
         ) : (
           <>
             {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} />}
-            {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} />}
+            {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} turnosConfig={turnosConfig} />}
             {tab === "fornecedores"  && <Fornecedores registros={registros} opcoes={opcoes} />}
             {tab === "fechamento"    && <FechamentoTab registros={registros} opcoes={opcoes} />}
             {tab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} registros={registros} setRegistros={setRegistros} isAdmin={isAdmin} />}
