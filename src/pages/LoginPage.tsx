@@ -1,7 +1,16 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useI18n } from "@/hooks/use-i18n";
+import type { Lang } from "@/lib/i18n-translations";
+import { mapSupabaseError } from "@/lib/i18n-translations";
+
+const LANGS: { value: Lang; label: string; flag: string }[] = [
+  { value: "pt-BR", label: "Português", flag: "🇧🇷" },
+  { value: "en-US", label: "English",   flag: "🇺🇸" },
+];
 
 export default function LoginPage() {
+  const { lang, setLang, t } = useI18n();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading]   = useState(false);
@@ -16,13 +25,7 @@ export default function LoginPage() {
     setLoading(false);
 
     if (error) {
-      if (error.message.includes("Invalid login credentials")) {
-        setErro("E-mail ou senha incorretos.");
-      } else if (error.message.includes("Email not confirmed")) {
-        setErro("E-mail ainda não confirmado. Verifique sua caixa de entrada.");
-      } else {
-        setErro(error.message);
-      }
+      setErro(mapSupabaseError(error.message, lang));
     }
     // Se ok: App.tsx detecta a sessão via onAuthStateChange e renderiza o Index
   };
@@ -40,6 +43,27 @@ export default function LoginPage() {
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');*{box-sizing:border-box}input:focus{border-color:#1A56DB!important;box-shadow:0 0 0 3px #1A56DB1A!important;outline:none!important}`}</style>
 
       <div style={{ width: "100%", maxWidth: 420 }}>
+        {/* Seletor de idioma */}
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12, gap: 6 }}>
+          {LANGS.map(l => (
+            <button
+              key={l.value}
+              onClick={() => setLang(l.value)}
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                padding: "5px 11px", borderRadius: 8, cursor: "pointer",
+                fontFamily: "inherit", fontWeight: 600, fontSize: 12,
+                border: lang === l.value ? "1.5px solid #1A56DB" : "1.5px solid #E2E6EC",
+                background: lang === l.value ? "#EFF6FF" : "#fff",
+                color: lang === l.value ? "#1A56DB" : "#64748B",
+                transition: "all .15s",
+              }}
+            >
+              <span style={{ fontSize: 16 }}>{l.flag}</span> {l.label}
+            </button>
+          ))}
+        </div>
+
         {/* Logotipo */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 32 }}>
           <div style={{ width: 44, height: 44, background: "linear-gradient(135deg,#1A56DB,#3B82F6)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -56,20 +80,20 @@ export default function LoginPage() {
         {/* Card */}
         <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,.08)", overflow: "hidden" }}>
           <div style={{ background: "linear-gradient(135deg,#0B1628,#1A2C4A)", padding: "24px 28px" }}>
-            <div style={{ color: "#F8FAFC", fontWeight: 700, fontSize: 18 }}>Entrar</div>
-            <div style={{ color: "#64748B", fontSize: 12, marginTop: 4 }}>Acesse o sistema de controle de terceirizados</div>
+            <div style={{ color: "#F8FAFC", fontWeight: 700, fontSize: 18 }}>{t("login_title")}</div>
+            <div style={{ color: "#64748B", fontSize: 12, marginTop: 4 }}>{t("login_subtitle")}</div>
           </div>
 
           <form onSubmit={handleLogin} style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 18 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <label htmlFor="email" style={{ fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: .7 }}>
-                E-mail
+                {t("login_email")}
               </label>
               <input
                 id="email"
                 type="email"
                 autoComplete="email"
-                placeholder="seu@email.com"
+                placeholder={t("login_placeholder_email")}
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
@@ -79,13 +103,13 @@ export default function LoginPage() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <label htmlFor="password" style={{ fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: .7 }}>
-                Senha
+                {t("login_password")}
               </label>
               <input
                 id="password"
                 type="password"
                 autoComplete="current-password"
-                placeholder="Sua senha"
+                placeholder={t("login_placeholder_pass")}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
@@ -110,11 +134,11 @@ export default function LoginPage() {
                 fontFamily: "inherit", transition: "all .15s",
               }}
             >
-              {loading ? "Entrando…" : "Entrar"}
+              {loading ? t("login_btn_loading") : t("login_btn")}
             </button>
 
             <div style={{ textAlign: "center", fontSize: 12, color: "#94A3B8", marginTop: -4 }}>
-              Para criar uma nova conta, entre em contato com o administrador.
+              {t("login_no_account")}
             </div>
           </form>
         </div>

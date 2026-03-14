@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { useI18n } from "@/hooks/use-i18n";
+import { mapSupabaseError } from "@/lib/i18n-translations";
 
 type Profile = {
   id: string;
@@ -18,6 +20,7 @@ const Icon = ({ d, size = 16 }: { d: string; size?: number }) => (
 
 export default function AdminPage() {
   const navigate = useNavigate();
+  const { t, lang } = useI18n();
   const [loading, setLoading]     = useState(true);
   const [isAdmin, setIsAdmin]     = useState(false);
   const [myEmail, setMyEmail]     = useState("");
@@ -77,22 +80,22 @@ export default function AdminPage() {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
-    const msg = error ? `Erro: ${error.message}` : "E-mail de redefinição enviado!";
+    const msg = error ? `${t("admin_err_reset")} ${error.message}` : t("admin_email_sent");
     setResetFeedback(p => ({ ...p, [userId]: msg }));
     setTimeout(() => setResetFeedback(p => { const n = { ...p }; delete n[userId]; return n; }), 5000);
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPass !== confirmPass) { setPassMsg({ ok: false, text: "As senhas não coincidem." }); return; }
-    if (newPass.length < 6) { setPassMsg({ ok: false, text: "Mínimo de 6 caracteres." }); return; }
+    if (newPass !== confirmPass) { setPassMsg({ ok: false, text: t("admin_pass_mismatch") }); return; }
+    if (newPass.length < 6) { setPassMsg({ ok: false, text: t("admin_pass_short") }); return; }
     setPassLoading(true);
     const { error } = await supabase.auth.updateUser({ password: newPass });
     setPassLoading(false);
     if (error) {
-      setPassMsg({ ok: false, text: `Erro: ${error.message}` });
+      setPassMsg({ ok: false, text: mapSupabaseError(error.message, lang) });
     } else {
-      setPassMsg({ ok: true, text: "Senha alterada com sucesso!" });
+      setPassMsg({ ok: true, text: t("admin_pass_success") });
       setNewPass(""); setConfirmPass("");
     }
     setTimeout(() => setPassMsg(null), 5000);

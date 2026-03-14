@@ -44,11 +44,15 @@ src/
 │   └── ui/                  # Todos os componentes shadcn/ui
 ├── hooks/
 │   ├── use-mobile.tsx
-│   └── use-toast.ts
+│   ├── use-toast.ts
+│   └── use-i18n.ts            # Hook useI18n() para acesso ao contexto de idioma
 ├── lib/
 │   ├── attendance-storage.ts  # CRUD de registros via Supabase
 │   ├── options-storage.ts     # CRUD de opções via Supabase
 │   ├── supabase.ts            # Client Supabase + authReady promise
+│   ├── i18n-translations.ts   # Traduções pt-BR/en-US + mapSupabaseError()
+│   ├── i18n-context.ts        # React.createContext do sistema i18n
+│   ├── i18n.tsx               # I18nProvider (componente de contexto)
 │   └── utils.ts               # cn() helper
 ├── pages/
 │   ├── Index.tsx              # Página principal (lançamento + listagem)
@@ -249,7 +253,45 @@ pnpm preview    # preview do build
 
 ---
 
-## 11. Convenções de Código
+## 12. Internacionalização (i18n)
+
+O app suporta **pt-BR** (padrão) e **en-US**, com persistência em `localStorage("app_lang")`.
+
+### Arquitetura
+
+| Arquivo | Responsabilidade |
+|---|---|
+| `src/lib/i18n-translations.ts` | Objeto `translations` com todas as chaves, tipo `Lang`, tipo `TranslationKey`, função `mapSupabaseError()` |
+| `src/lib/i18n-context.ts` | `createContext<I18nContext>` com valor padrão |
+| `src/lib/i18n.tsx` | Componente `I18nProvider` (envolve `<App>`) |
+| `src/hooks/use-i18n.ts` | Hook `useI18n()` → retorna `{ lang, setLang, t }` |
+
+### Uso
+
+```tsx
+import { useI18n } from "@/hooks/use-i18n";
+import { mapSupabaseError } from "@/lib/i18n-translations";
+
+const { lang, setLang, t } = useI18n();
+// t("login_btn") → "Entrar" ou "Sign in"
+// mapSupabaseError(error.message, lang) → mensagem traduzida
+```
+
+### Seletor de Idioma
+
+- Exibido na `LoginPage` acima do logo
+- Dois botões: 🇧🇷 Português / 🇺🇸 English
+- Troca de idioma em tempo real sem recarregar
+
+### Páginas Traduzidas
+
+- `LoginPage` — completa (labels, placeholders, erros, aviso de conta)
+- `ResetPasswordPage` — completa (labels, erros, mensagens de status)
+- `AdminPage` — mensagens de feedback (e-mail enviado, erros de senha)
+
+---
+
+## 13. Convenções de Código
 
 - Todo código fonte em `src/`
 - Páginas em `src/pages/`, componentes em `src/components/`
@@ -261,9 +303,10 @@ pnpm preview    # preview do build
 
 ---
 
-## 12. Histórico de Alterações
+## 14. Histórico de Alterações
 
 | Data | Alteração |
 |---|---|
 | 2026-03-14 | Arquivo de contexto criado com levantamento completo do projeto |
 | 2026-03-14 | Corrigido fluxo de redefinição de senha: rota /reset-password dedicada, AppRoutes com useNavigate dentro do BrowserRouter, ResetPasswordPage autônoma sem prop onDone |
+| 2026-03-14 | Implementado sistema i18n pt-BR/en-US: i18n-translations.ts, i18n-context.ts, i18n.tsx (provider), use-i18n.ts (hook); seletor de idioma na LoginPage; tradução de LoginPage, ResetPasswordPage e AdminPage; mapSupabaseError para mensagens de erro do Supabase em português/inglês |

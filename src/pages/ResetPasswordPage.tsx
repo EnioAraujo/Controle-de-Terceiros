@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { useI18n } from "@/hooks/use-i18n";
+import { mapSupabaseError } from "@/lib/i18n-translations";
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
+  const { t, lang } = useI18n();
   const [newPass, setNewPass]         = useState("");
   const [confirmPass, setConfirmPass] = useState("");
   const [loading, setLoading]         = useState(false);
@@ -19,17 +22,17 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPass !== confirmPass) { setMsg({ ok: false, text: "As senhas não coincidem." }); return; }
-    if (newPass.length < 6)     { setMsg({ ok: false, text: "Mínimo de 6 caracteres." }); return; }
+    if (newPass !== confirmPass) { setMsg({ ok: false, text: t("reset_err_mismatch") }); return; }
+    if (newPass.length < 6)     { setMsg({ ok: false, text: t("reset_err_short") }); return; }
 
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password: newPass });
     setLoading(false);
 
     if (error) {
-      setMsg({ ok: false, text: `Erro: ${error.message}` });
+      setMsg({ ok: false, text: mapSupabaseError(error.message, lang) });
     } else {
-      setMsg({ ok: true, text: "Senha redefinida com sucesso! Redirecionando…" });
+      setMsg({ ok: true, text: t("reset_success") });
       await supabase.auth.signOut();
       setTimeout(() => navigate("/login", { replace: true }), 2000);
     }
@@ -38,7 +41,7 @@ export default function ResetPasswordPage() {
   if (hasSession === null) {
     return (
       <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif" }}>
-        <div style={{ fontSize: 14, color: "#64748B", fontWeight: 600 }}>Verificando…</div>
+        <div style={{ fontSize: 14, color: "#64748B", fontWeight: 600 }}>{t("reset_checking")}</div>
       </div>
     );
   }
@@ -47,8 +50,8 @@ export default function ResetPasswordPage() {
     return (
       <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif", padding: 24 }}>
         <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", boxShadow: "0 4px 24px rgba(0,0,0,.08)", maxWidth: 420, width: "100%", textAlign: "center" }}>
-          <div style={{ fontSize: 14, color: "#E02424", fontWeight: 600 }}>Link inválido ou expirado.</div>
-          <div style={{ fontSize: 13, color: "#64748B", marginTop: 8 }}>Redirecionando para o login…</div>
+          <div style={{ fontSize: 14, color: "#E02424", fontWeight: 600 }}>{t("reset_invalid_link")}</div>
+          <div style={{ fontSize: 13, color: "#64748B", marginTop: 8 }}>{t("reset_redirecting")}</div>
         </div>
       </div>
     );
@@ -74,30 +77,30 @@ export default function ResetPasswordPage() {
 
         <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,.08)", overflow: "hidden" }}>
           <div style={{ background: "linear-gradient(135deg,#0B1628,#1A2C4A)", padding: "24px 28px" }}>
-            <div style={{ color: "#F8FAFC", fontWeight: 700, fontSize: 18 }}>Redefinir senha</div>
-            <div style={{ color: "#64748B", fontSize: 12, marginTop: 4 }}>Digite sua nova senha abaixo</div>
+            <div style={{ color: "#F8FAFC", fontWeight: 700, fontSize: 18 }}>{t("reset_title")}</div>
+            <div style={{ color: "#64748B", fontSize: 12, marginTop: 4 }}>{t("reset_subtitle")}</div>
           </div>
 
           <form onSubmit={handleSubmit} style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: .7 }}>Nova senha</label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: .7 }}>{t("reset_label_new")}</label>
               <input
                 type="password"
                 value={newPass}
                 onChange={e => setNewPass(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
+                placeholder={t("reset_placeholder_new")}
                 required
                 style={{ border: "1.5px solid #E2E6EC", borderRadius: 9, padding: "11px 14px", fontSize: 14, fontFamily: "inherit", background: "#FAFBFC" }}
               />
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: .7 }}>Confirmar nova senha</label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: .7 }}>{t("reset_label_confirm")}</label>
               <input
                 type="password"
                 value={confirmPass}
                 onChange={e => setConfirmPass(e.target.value)}
-                placeholder="Repita a senha"
+                placeholder={t("reset_placeholder_confirm")}
                 required
                 style={{ border: "1.5px solid #E2E6EC", borderRadius: 9, padding: "11px 14px", fontSize: 14, fontFamily: "inherit", background: "#FAFBFC" }}
               />
@@ -124,7 +127,7 @@ export default function ResetPasswordPage() {
                 color: "#fff", fontWeight: 700, fontSize: 15, fontFamily: "inherit",
               }}
             >
-              {loading ? "Salvando…" : "Salvar nova senha"}
+              {loading ? t("reset_btn_loading") : t("reset_btn")}
             </button>
           </form>
         </div>
