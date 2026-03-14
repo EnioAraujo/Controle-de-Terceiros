@@ -1,11 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 
-export default function ResetPasswordPage({ onDone }: { onDone: () => void }) {
+export default function ResetPasswordPage() {
+  const navigate = useNavigate();
   const [newPass, setNewPass]         = useState("");
   const [confirmPass, setConfirmPass] = useState("");
   const [loading, setLoading]         = useState(false);
   const [msg, setMsg]                 = useState<{ ok: boolean; text: string } | null>(null);
+  const [hasSession, setHasSession]   = useState<boolean | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setHasSession(!!session);
+      if (!session) setTimeout(() => navigate("/login", { replace: true }), 3000);
+    });
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,9 +30,29 @@ export default function ResetPasswordPage({ onDone }: { onDone: () => void }) {
       setMsg({ ok: false, text: `Erro: ${error.message}` });
     } else {
       setMsg({ ok: true, text: "Senha redefinida com sucesso! Redirecionando…" });
-      setTimeout(() => onDone(), 2000);
+      await supabase.auth.signOut();
+      setTimeout(() => navigate("/login", { replace: true }), 2000);
     }
   };
+
+  if (hasSession === null) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif" }}>
+        <div style={{ fontSize: 14, color: "#64748B", fontWeight: 600 }}>Verificando…</div>
+      </div>
+    );
+  }
+
+  if (!hasSession) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif", padding: 24 }}>
+        <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", boxShadow: "0 4px 24px rgba(0,0,0,.08)", maxWidth: 420, width: "100%", textAlign: "center" }}>
+          <div style={{ fontSize: 14, color: "#E02424", fontWeight: 600 }}>Link inválido ou expirado.</div>
+          <div style={{ fontSize: 13, color: "#64748B", marginTop: 8 }}>Redirecionando para o login…</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "#F0F2F5", fontFamily: "'DM Sans',system-ui,sans-serif", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>

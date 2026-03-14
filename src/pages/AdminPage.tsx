@@ -75,7 +75,7 @@ export default function AdminPage() {
 
   const handleResetPassword = async (email: string, userId: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/login`,
+      redirectTo: `${window.location.origin}/reset-password`,
     });
     const msg = error ? `Erro: ${error.message}` : "E-mail de redefinição enviado!";
     setResetFeedback(p => ({ ...p, [userId]: msg }));

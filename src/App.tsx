@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import Index from "./pages/Index";
@@ -14,31 +14,35 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => {
+// Componente interno que fica dentro do BrowserRouter para poder usar useNavigate
+const AppRoutes = () => {
+  const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isRecovery, setIsRecovery] = useState(false);
 
   useEffect(() => {
+    // Se a URL contém token de recuperação, aguarda o evento PASSWORD_RECOVERY
+    // antes de definir loading=false para evitar flash da página principal
+    const isRecoveryUrl = window.location.hash.includes("type=recovery");
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setLoading(false);
+      if (!isRecoveryUrl) setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
-        setIsRecovery(true);
         setSession(session);
+        navigate("/reset-password", { replace: true });
         setLoading(false);
         return;
       }
-      setIsRecovery(false);
       setSession(session);
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   if (loading) {
     return (
@@ -49,21 +53,26 @@ const App = () => {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={session && !isRecovery ? <Navigate to="/" replace /> : isRecovery ? <ResetPasswordPage onDone={() => setIsRecovery(false)} /> : <LoginPage />} />
-            <Route path="/" element={isRecovery ? <ResetPasswordPage onDone={() => setIsRecovery(false)} /> : session ? <Index /> : <Navigate to="/login" replace />} />
-            <Route path="/admin" element={isRecovery ? <ResetPasswordPage onDone={() => setIsRecovery(false)} /> : session ? <AdminPage /> : <Navigate to="/login" replace />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <Routes>
+      <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />
+      <Route path="/" element={session ? <Index /> : <Navigate to="/login" replace />} />
+      <Route path="/admin" element={session ? <AdminPage /> : <Navigate to="/login" replace />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 };
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;
