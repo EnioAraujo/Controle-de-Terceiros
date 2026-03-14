@@ -489,9 +489,9 @@ const AutocompleteNome = ({ value, onChange, suggestions, placeholder, style }: 
 
 // ─── FORM DE LANÇAMENTO ─────────────────────────────────────────
 interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; }
-interface FormLancamentoProps { inicial?: Registro | null; loteInicial?: Registro[]; onSave: (registros: Registro[]) => void; onCancel: () => void; opcoes: Opcoes; }
+interface FormLancamentoProps { inicial?: Registro | null; loteInicial?: Registro[]; onSave: (registros: Registro[]) => void; onCancel: () => void; opcoes: Opcoes; registros?: Registro[]; }
 
-const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: FormLancamentoProps) => {
+const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, registros: todosRegistros = [] }: FormLancamentoProps) => {
   const { t } = useI18n();
   const isEdit = !!inicial;
   const isLoteEdit = !!loteInicial?.length;
@@ -538,13 +538,28 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
   const validCount = pessoas.filter(p => p.nome.trim().length > 2).length;
   const valid = isEdit ? pessoas[0]?.nome.trim().length > 2 : validCount > 0;
 
-  const handleSave = () => {
+  const [dupAviso, setDupAviso] = useState<string[]>([]);
+
+  const handleSave = (force = false) => {
     if (!valid) return;
     if (isEdit) {
       const p = pessoas[0];
       onSave([{ ...inicial!, ...comum, nome: p.nome.trim(), horaEntrada: p.horaEntrada, horaSaida: p.horaSaida, totalHoras: calcHoras(p.horaEntrada, p.horaSaida) }]);
     } else {
       const validPessoas = pessoas.filter(p => p.nome.trim().length > 2);
+      // Verifica duplicatas (mesmo nome + mesma data já existente nos registros)
+      if (!force) {
+        const editIds = new Set(isLoteEdit ? loteInicial!.map(r => r.id) : []);
+        const duplicatas = validPessoas
+          .map(p => p.nome.trim())
+          .filter(nome => todosRegistros.some(r =>
+            !editIds.has(r.id) && r.nome === nome && r.data === comum.data
+          ));
+        if (duplicatas.length > 0) {
+          setDupAviso(duplicatas);
+          return;
+        }
+      }
       const lId = isLoteEdit ? loteInicial![0].loteId : (validPessoas.length > 1 ? uuid() : undefined);
       onSave(validPessoas.map((p, i) => ({
         id: isLoteEdit ? (loteInicial![i]?.id ?? uuid()) : uuid(),
@@ -686,6 +701,29 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
         <Btn variant="ghost" onClick={onCancel}>{t("form_btn_cancel")}</Btn>
         <Btn onClick={handleSave} disabled={!valid} icon={<Icon d="M5 13l4 4L19 7" />}>{btnLabel}</Btn>
       </div>
+
+      {/* Aviso de duplicidade */}
+      {dupAviso.length > 0 && (
+        <div style={{ background:"#FEF2F2", border:"1.5px solid #FCA5A5", borderRadius:10, padding:"14px 18px", display:"flex", flexDirection:"column", gap:10 }}>
+          <div style={{ fontWeight:700, color:"#E02424", fontSize:13 }}>
+            ⚠️ Lançamento duplicado detectado!
+          </div>
+          <div style={{ fontSize:12, color:"#7F1D1D" }}>
+            {dupAviso.length === 1
+              ? `<strong>${dupAviso[0]}</strong> já possui um registro em ${fmt(comum.data, "pt-BR")}.`
+              : `${dupAviso.length} colaboradores já possuem registro em ${fmt(comum.data, "pt-BR")}: ${dupAviso.join(", ")}.`
+            }
+          </div>
+          <div style={{ fontSize:12, color:"#374151" }}>Para continuar, <strong>informe um motivo</strong> no campo Obs ou <strong>corrija os nomes/data</strong>. Então clique em "Confirmar mesmo assim".</div>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+            <Btn variant="ghost" onClick={() => setDupAviso([])}>{t("form_btn_cancel")}</Btn>
+            <Btn onClick={() => { setDupAviso([]); handleSave(true); }}
+              style={{ background:"#E02424" }}>
+              Confirmar mesmo assim
+            </Btn>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -858,7 +896,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
           <FormLancamento
             inicial={modal === "new" || Array.isArray(modal) ? null : modal as Registro}
             loteInicial={Array.isArray(modal) ? modal : undefined}
-            onSave={salvar} onCancel={() => setModal(null)} opcoes={opcoes} />
+            onSave={salvar} onCancel={() => setModal(null)} opcoes={opcoes} registros={registros} />
         </Modal>
       )}
 
@@ -1997,6 +2035,7 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
         t("fech_col_diaria"),
         t("fech_col_vlr_hora"),
         t("fech_col_vlr_dia"),
+        t("fech_col_diff"),
         t("fech_col_obs"),
       ]],
       body: itens.map(i => [
@@ -2007,9 +2046,10 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
         fmtCurrency(i.valorDiaria),
         fmtCurrency(i.valorHora),
         fmtCurrency(i.valorCalculado),
+        (() => { const d = i.valorCalculado - i.valorDiaria; return d !== 0 ? fmtCurrency(d) : "—"; })(),
         i.obs ?? "",
       ]),
-      foot: [["", "", "", "", "", t("fech_total"), fmtCurrency(total), ""]],
+      foot: [["", "", "", "", "", t("fech_total"), fmtCurrency(total), "", ""]],
       styles: { fontSize: 9, cellPadding: 3 },
       headStyles: { fillColor: [26, 86, 219], textColor: 255, fontStyle: "bold" },
       footStyles: { fillColor: [241, 245, 249], textColor: [15, 28, 46], fontStyle: "bold" },
@@ -2029,6 +2069,7 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
       [t("fech_col_diaria")]: i.valorDiaria,
       [t("fech_col_vlr_hora")]: i.valorHora,
       [t("fech_col_vlr_dia")]: i.valorCalculado,
+      [t("fech_col_diff")]: i.valorCalculado - i.valorDiaria,
       [t("fech_col_obs")]: i.obs,
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -2145,7 +2186,7 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: "#F1F5F9", textAlign: "left" }}>
-                      {[t("fech_col_nome"), t("fech_col_data"), t("fech_col_turno"), t("fech_col_horas"), t("fech_col_diaria"), t("fech_col_vlr_hora"), t("fech_col_vlr_dia"), t("fech_col_obs"), t("fech_col_acoes")].map(h => (
+                      {[t("fech_col_nome"), t("fech_col_data"), t("fech_col_turno"), t("fech_col_horas"), t("fech_col_diaria"), t("fech_col_vlr_hora"), t("fech_col_vlr_dia"), t("fech_col_diff"), t("fech_col_obs"), t("fech_col_acoes")].map(h => (
                         <th key={h} style={{ padding: "8px 10px", fontWeight: 700, color: "#475569", borderBottom: "2px solid #E2E6EC", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
@@ -2165,6 +2206,7 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
                               <input type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)}
                                 style={{ width: 80, border: "1.5px solid #1A56DB", borderRadius: 5, padding: "4px 6px", fontSize: 12, fontFamily: "inherit", outline: "none" }} />
                             </td>
+                            <td></td>
                             <td style={{ padding: "4px 6px" }}>
                               <input value={editObs} onChange={e => setEditObs(e.target.value)} placeholder={t("fech_col_obs")}
                                 style={{ width: 100, border: "1.5px solid #E2E6EC", borderRadius: 5, padding: "4px 6px", fontSize: 12, fontFamily: "inherit", outline: "none" }} />
@@ -2177,6 +2219,11 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
                         ) : (
                           <>
                             <td style={{ padding: "7px 10px", fontWeight: 700, color: item.ajusteManual ? "#D97706" : "#0E9F6E" }}>{fmtCurrency(item.valorCalculado)}</td>
+                            {(() => { const diff = item.valorCalculado - item.valorDiaria; return (
+                              <td style={{ padding: "7px 10px", fontWeight: 700, color: diff < 0 ? "#E02424" : diff > 0 ? "#0E9F6E" : "#94A3B8" }}>
+                                {diff !== 0 ? fmtCurrency(diff) : "—"}
+                              </td>
+                            ); })()}
                             <td style={{ padding: "7px 10px", color: "#94A3B8", fontSize: 11, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.obs}</td>
                             <td style={{ padding: "7px 10px" }}>
                               <button onClick={() => { setEditIdx(idx); setEditValor(String(item.valorCalculado)); setEditObs(item.obs); }}
@@ -2194,7 +2241,7 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
                     <tr style={{ background: "#F1F5F9" }}>
                       <td colSpan={6} style={{ padding: "8px 10px", fontWeight: 800, color: "#0F1C2E", textAlign: "right" }}>{t("fech_total")}</td>
                       <td style={{ padding: "8px 10px", fontWeight: 800, color: "#0E9F6E" }}>{fmtCurrency(total)}</td>
-                      <td colSpan={2}></td>
+                      <td colSpan={3}></td>
                     </tr>
                   </tfoot>
                 </table>
