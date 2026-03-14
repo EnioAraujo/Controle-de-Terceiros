@@ -547,6 +547,7 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
   const valid = isEdit ? pessoas[0]?.nome.trim().length > 2 : validCount > 0;
 
   const [dupAviso, setDupAviso] = useState<string[]>([]);
+  const [dupTipo, setDupTipo] = useState<"interna" | "banco">("banco");
 
   const handleSave = (force = false) => {
     if (!valid) return;
@@ -557,13 +558,24 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
       const validPessoas = pessoas.filter(p => p.nome.trim().length > 2);
       // Verifica duplicatas (mesmo nome + mesma data já existente nos registros)
       if (!force) {
+        // 1) Duplicatas dentro do próprio lote
+        const nomesNoLote = validPessoas.map(p => p.nome.trim());
+        const duplicatasInternas = nomesNoLote.filter(
+          (nome, idx) => nomesNoLote.indexOf(nome) !== idx
+        );
+        if (duplicatasInternas.length > 0) {
+          setDupTipo("interna");
+          setDupAviso([...new Set(duplicatasInternas)]);
+          return;
+        }
+        // 2) Duplicatas contra registros já existentes no banco
         const editIds = new Set(isLoteEdit ? loteInicial!.map(r => r.id) : []);
-        const duplicatas = validPessoas
-          .map(p => p.nome.trim())
+        const duplicatas = nomesNoLote
           .filter(nome => todosRegistros.some(r =>
             !editIds.has(r.id) && r.nome === nome && r.data === comum.data
           ));
         if (duplicatas.length > 0) {
+          setDupTipo("banco");
           setDupAviso(duplicatas);
           return;
         }
@@ -717,18 +729,28 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
             ⚠️ Lançamento duplicado detectado!
           </div>
           <div style={{ fontSize:12, color:"#7F1D1D" }}>
-            {dupAviso.length === 1
-              ? `<strong>${dupAviso[0]}</strong> já possui um registro em ${fmt(comum.data, "pt-BR")}.`
-              : `${dupAviso.length} colaboradores já possuem registro em ${fmt(comum.data, "pt-BR")}: ${dupAviso.join(", ")}.`
+            {dupTipo === "interna"
+              ? (dupAviso.length === 1
+                  ? `O nome "${dupAviso[0]}" aparece mais de uma vez neste lote.`
+                  : `${dupAviso.length} nomes estão repetidos neste lote: ${dupAviso.join(", ")}.`)
+              : (dupAviso.length === 1
+                  ? `"${dupAviso[0]}" já possui um registro em ${fmt(comum.data, "pt-BR")}.`
+                  : `${dupAviso.length} colaboradores já possuem registro em ${fmt(comum.data, "pt-BR")}: ${dupAviso.join(", ")}.`)
             }
           </div>
-          <div style={{ fontSize:12, color:"#374151" }}>Para continuar, <strong>informe um motivo</strong> no campo Obs ou <strong>corrija os nomes/data</strong>. Então clique em "Confirmar mesmo assim".</div>
+          <div style={{ fontSize:12, color:"#374151" }}>
+            {dupTipo === "interna"
+              ? "Corrija ou remova os nomes duplicados antes de salvar."
+              : "Para continuar, informe um motivo no campo Obs ou corrija os nomes/data. Então clique em \"Confirmar mesmo assim\"."}
+          </div>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
             <Btn variant="ghost" onClick={() => setDupAviso([])}>{t("form_btn_cancel")}</Btn>
-            <Btn onClick={() => { setDupAviso([]); handleSave(true); }}
-              style={{ background:"#E02424" }}>
-              Confirmar mesmo assim
-            </Btn>
+            {dupTipo === "banco" && (
+              <Btn onClick={() => { setDupAviso([]); handleSave(true); }}
+                style={{ background:"#E02424" }}>
+                Confirmar mesmo assim
+              </Btn>
+            )}
           </div>
         </div>
       )}

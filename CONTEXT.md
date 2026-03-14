@@ -366,3 +366,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-14 | Removido card "HORAS" do resumo do FechamentoTab (redundante com a tabela detalhada) |
 | 2026-03-14 | Adicionada coluna "Dif." na tabela de fechamento mostrando valorCalculado - valorDiaria, colorida em vermelho (negativo), verde (positivo) ou cinza (zero); exportações XLSX e PDF também incluem a coluna |
 | 2026-03-14 | Validação de duplicidade no FormLancamento: ao salvar, verifica se já existe registro com mesmo nome + mesma data; se sim, bloqueia, mantém modal aberto e exibe aviso com opção de confirmar mesmo assim (force=true) |
+| 2026-03-14 | Corrigida detecção de duplicatas no FormLancamento: adicionada verificação de nomes repetidos dentro do próprio lote (intra-lote) antes da verificação contra o banco; mensagem e botões de aviso diferenciados por tipo (interna vs banco); duplicata interna não permite confirmar mesmo assim |
