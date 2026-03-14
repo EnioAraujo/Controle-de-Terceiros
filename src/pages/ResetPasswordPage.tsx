@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
@@ -13,11 +13,14 @@ export default function ResetPasswordPage() {
   const [msg, setMsg]                 = useState<{ ok: boolean; text: string } | null>(null);
   const [hasSession, setHasSession]   = useState<boolean | null>(null);
 
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setHasSession(!!session);
-      if (!session) setTimeout(() => navigate("/login", { replace: true }), 3000);
+      if (!session) timerRef.current = setTimeout(() => navigate("/login", { replace: true }), 3000);
     });
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {

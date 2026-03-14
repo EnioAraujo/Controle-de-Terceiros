@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect, ReactNode, InputHTMLAttributes, SelectHTMLAttributes, CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
+import DOMPurify from "dompurify";
 import { Registro } from "@/types/attendance";
 import { supabase, authReady } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
@@ -38,8 +39,12 @@ const OPCOES_DEFAULT: Opcoes = {
 
 // ─── UTILITÁRIOS ─────────────────────────────────────────────────
 const hoje     = () => new Date().toISOString().slice(0, 10);
-const fmt      = (d: string) => d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "—";
-const fmtMes   = (ym: string) => { const [y, m] = ym.split("-"); return ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"][+m-1] + "/" + y; };
+const fmt      = (d: string, locale = "pt-BR") => d ? new Date(d + "T00:00:00").toLocaleDateString(locale) : "—";
+const fmtMes   = (ym: string, locale = "pt-BR") => {
+  const d = new Date(ym + "-01");
+  if (locale === "en-US") return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  const [y, m] = ym.split("-"); return ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"][+m-1] + "/" + y;
+};
 const mesAtual = () => new Date().toISOString().slice(0, 7);
 const calcHoras = (e: string, s: string) => {
   if (!e || !s) return "";
@@ -49,7 +54,7 @@ const calcHoras = (e: string, s: string) => {
   if (m < 0) m += 1440;
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 };
-const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+const uuid = () => crypto.randomUUID();
 
 // ─── LGPD ─────────────────────────────────────────────────────────
 const RETENCAO_ANOS = 5;
@@ -80,12 +85,7 @@ const logAudit = (
 const FORN_PALETTE = ["#D97706","#1A56DB","#0E9F6E","#6C63FF","#E02424","#0891B2","#CA8A04","#7C3AED","#0F766E","#64748B"];
 const fornCor = (forn: string, lista: string[]) => FORN_PALETTE[lista.indexOf(forn) % FORN_PALETTE.length] || "#64748B";
 
-// ─── SEED ────────────────────────────────────────────────────────
-const SEED: Registro[] = [
-  { id: uuid(), data: hoje(), turno: "1ª TURNO", horaEntrada: "05:20", horaSaida: "13:40", totalHoras: "08:20", nome: "WILSON CERQUEIRA", cargo: "AUXILIAR DE DEPÓSITO", setor: "RECEBIMENTO", unidade: "HUB", cc: "100002 - SOUZA CRUZ-HUB", motivo: "OPERAÇÃO BAT HUB BRASIL", fornecedor: "LIDER MASTER", obs: "" },
-  { id: uuid(), data: hoje(), turno: "1ª TURNO", horaEntrada: "05:30", horaSaida: "13:50", totalHoras: "08:20", nome: "PATRICIA SOUZA LIMA", cargo: "CONFERENTE JR", setor: "EXPEDIÇÃO", unidade: "HUB", cc: "100002 - SOUZA CRUZ-HUB", motivo: "REFORÇO TURNO", fornecedor: "TRANSLOG", obs: "" },
-  { id: uuid(), data: hoje(), turno: "2ª TURNO", horaEntrada: "13:50", horaSaida: "22:10", totalHoras: "08:20", nome: "ROBERTO ALVES NETO", cargo: "OPERADOR DE EMPILHADEIRA", setor: "SEPARAÇÃO", unidade: "COD DIURNO", cc: "100001 - SOUZA CRUZ-COD", motivo: "COBERTURA FALTA", fornecedor: "SERVILOG", obs: "" },
-];
+
 
 // ─── MAPEAMENTO DB ↔ MODELO ─────────────────────────────────────
 type DbRegistro = Record<string, unknown>;
@@ -203,7 +203,7 @@ const useStorage = (): [Registro[], (val: Registro[]) => void, boolean] => {
         .then(({ error }) => {
           if (error) console.error("Erro ao salvar registros:", error.message);
           else toUpsert.forEach(r => {
-            const isNew = !prevRef.current.find(p => p.id === r.id);
+            const isNew = !prevMap.has(r.id);
             logAudit(isNew ? "INSERT" : "UPDATE", "registros", r.id);
           });
         });
@@ -352,12 +352,12 @@ const PrivacyNotice = ({ dpoNome, dpoEmail, onAccept }: { dpoNome: string; dpoEm
 
         <section>
           <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>{t("privacy_legal_title")}</div>
-          <p style={{ margin:0, fontSize:12 }} dangerouslySetInnerHTML={{ __html: t("privacy_legal_text") }} />
+          <p style={{ margin:0, fontSize:12 }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(t("privacy_legal_text")) }} />
         </section>
 
         <section>
           <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>{t("privacy_ret_title")}</div>
-          <p style={{ margin:0, fontSize:12 }} dangerouslySetInnerHTML={{ __html: t("privacy_ret_text").replace("{years}", String(RETENCAO_ANOS)) }} />
+          <p style={{ margin:0, fontSize:12 }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(t("privacy_ret_text").replace("{years}", String(RETENCAO_ANOS))) }} />
         </section>
 
         <section>
@@ -562,11 +562,9 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
   );
 
   const setC = (k: string, v: string) => {
-    setComum(prev => {
-      if (k === "horaEntrada") setPessoas(ps => ps.map(p => p.horaEntrada === prev.horaEntrada ? { ...p, horaEntrada: v } : p));
-      if (k === "horaSaida")   setPessoas(ps => ps.map(p => p.horaSaida   === prev.horaSaida   ? { ...p, horaSaida: v }   : p));
-      return { ...prev, [k]: v };
-    });
+    if (k === "horaEntrada") setPessoas(ps => ps.map(p => p.horaEntrada === comum.horaEntrada ? { ...p, horaEntrada: v } : p));
+    if (k === "horaSaida")   setPessoas(ps => ps.map(p => p.horaSaida   === comum.horaSaida   ? { ...p, horaSaida: v }   : p));
+    setComum(prev => ({ ...prev, [k]: v }));
   };
 
   const handleQtd = (n: number) => {
@@ -604,9 +602,10 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
     }
   };
 
-  const G = ({ children, cols = 2 }: { children: ReactNode; cols?: number }) => (
-    <div style={{ display:"grid", gridTemplateColumns:`repeat(${cols},1fr)`, gap:14 }}>{children}</div>
-  );
+  const G = ({ children, cols = 2 }: { children: ReactNode; cols?: number }) => {
+    const cls = cols >= 4 ? "rsp-grid-4" : cols === 3 ? "rsp-grid-3" : "rsp-grid-2";
+    return <div className={cls} style={{ display:"grid", gridTemplateColumns:`repeat(${cols},1fr)`, gap:14 }}>{children}</div>;
+  };
 
   const totalPadrao = calcHoras(comum.horaEntrada, comum.horaSaida);
   const btnLabel = (isEdit || isLoteEdit)
@@ -697,6 +696,8 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
           {isEdit ? t("form_block_5") : `${t("form_block_5_multi")} — ${pessoas.length} ${pessoas.length !== 1 ? t("form_persons") : t("form_person")}`}
         </div>
         <div style={{ border:"1px solid #E2E6EC", borderRadius:10, overflow:"hidden" }}>
+          <div style={{ overflowX:"auto" }}>
+          <div style={{ minWidth:460 }}>
           <div style={{ display:"grid", gridTemplateColumns:"36px 1fr 124px 124px 72px", background:"#F8FAFC", borderBottom:"1px solid #E2E6EC", padding:"9px 14px", gap:8 }}>
             {[t("form_col_num"), t("form_col_nome"), t("form_col_entrada"), t("form_col_saida"), t("form_col_total")].map(h => (
               <div key={h} style={{ fontSize:10, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:.6 }}>{h}</div>
@@ -721,6 +722,8 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
               </div>
             );
           })}
+          </div>
+          </div>
         </div>
       </div>
 
@@ -736,7 +739,7 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
 interface Filtros { data: string; turno: string; fornecedor: string; unidade: string; setor: string; busca: string; }
 
 const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[]; setRegistros: (val: Registro[]) => void; opcoes: Opcoes }) => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", setor: "", busca: "" });
   const [modal, setModal]     = useState<null | "new" | Registro | Registro[]>(null);
   const [confirm, setConfirm] = useState<string[] | null>(null);
@@ -866,7 +869,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
                     onClick={() => setDetalhe(item)}
                     onMouseEnter={e => (e.currentTarget.style.background = "#F0F6FF")}
                     onMouseLeave={e => (e.currentTarget.style.background = bgBase)}>
-                    <td style={{ padding:"10px 12px", fontFamily:"monospace", fontSize:11, color:"#64748B" }}>{fmt(r.data)}</td>
+                    <td style={{ padding:"10px 12px", fontFamily:"monospace", fontSize:11, color:"#64748B" }}>{fmt(r.data, lang)}</td>
                     <td style={{ padding:"10px 12px" }}><Chip label={r.turno} color="#1A56DB" /></td>
                     <td style={{ padding:"10px 12px" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:6 }}>
@@ -912,14 +915,14 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
       {detalhe && (
         <Modal
           title={Array.isArray(detalhe) ? `${t("lanc_detail_lote")} — ${detalhe.length} ${detalhe.length !== 1 ? t("form_persons") : t("form_person")}` : t("lanc_detail_title")}
-          subtitle={Array.isArray(detalhe) ? `${fmt(detalhe[0].data)} · ${detalhe[0].turno}` : detalhe.nome}
+          subtitle={Array.isArray(detalhe) ? `${fmt(detalhe[0].data, lang)} · ${detalhe[0].turno}` : detalhe.nome}
           onClose={() => setDetalhe(null)} wide={!Array.isArray(detalhe)} xl={Array.isArray(detalhe)}>
           {Array.isArray(detalhe) ? (
             <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
               {/* Campos comuns */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 {([
-                  [t("detail_data"), fmt(detalhe[0].data)], [t("detail_turno"), detalhe[0].turno],
+                  [t("detail_data"), fmt(detalhe[0].data, lang)], [t("detail_turno"), detalhe[0].turno],
                   [t("detail_cargo"), detalhe[0].cargo], [t("detail_forn"), detalhe[0].fornecedor],
                   [t("detail_unidade"), detalhe[0].unidade], [t("detail_setor"), detalhe[0].setor],
                   [t("detail_cc"), detalhe[0].cc], [t("detail_motivo"), detalhe[0].motivo],
@@ -958,7 +961,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
               {([
                   [t("detail_nome"), detalhe.nome], [t("detail_cargo"), detalhe.cargo], [t("detail_forn"), detalhe.fornecedor],
-                  [t("detail_data"), fmt(detalhe.data)], [t("detail_turno"), detalhe.turno], [t("detail_setor"), detalhe.setor],
+                  [t("detail_data"), fmt(detalhe.data, lang)], [t("detail_turno"), detalhe.turno], [t("detail_setor"), detalhe.setor],
                   [t("detail_unidade"), detalhe.unidade], [t("detail_cc"), detalhe.cc],
                   [t("detail_entrada"), detalhe.horaEntrada], [t("detail_saida"), detalhe.horaSaida],
                   [t("detail_total_horas"), detalhe.totalHoras], [t("detail_motivo"), detalhe.motivo],
@@ -1002,7 +1005,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
 
 // ─── TELA: DASHBOARD ────────────────────────────────────────────
 const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoes }) => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [periodo, setPeriodo] = useState(mesAtual());
 
   const doMes  = useMemo(() => registros.filter(r => r.data.startsWith(periodo)), [registros, periodo]);
@@ -1057,13 +1060,13 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           <button onClick={() => { const d = new Date(periodo + "-01"); d.setMonth(d.getMonth() - 1); setPeriodo(d.toISOString().slice(0, 7)); }}
             style={{ background:"#F1F5F9", border:"none", borderRadius:8, padding:"8px 12px", cursor:"pointer", fontWeight:700 }}>‹</button>
-          <span style={{ fontSize:14, fontWeight:800, minWidth:100, textAlign:"center", color:"#0F1C2E" }}>{fmtMes(periodo)}</span>
+          <span style={{ fontSize:14, fontWeight:800, minWidth:100, textAlign:"center", color:"#0F1C2E" }}>{fmtMes(periodo, lang)}</span>
           <button onClick={() => { const d = new Date(periodo + "-01"); d.setMonth(d.getMonth() + 1); setPeriodo(d.toISOString().slice(0, 7)); }}
             style={{ background:"#F1F5F9", border:"none", borderRadius:8, padding:"8px 12px", cursor:"pointer", fontWeight:700 }}>›</button>
         </div>
       </div>
 
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
+      <div className="rsp-grid-4" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
         <KPI label={t("dash_kpi_records")} value={doMes.length} sub={t("dash_kpi_today").replace("{n}", String(deHoje.length))} color="#1A56DB"
           icon={<Icon d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />} />
         <KPI label={t("dash_kpi_forn")} value={porFornecedor.length} sub={t("dash_kpi_period")} color="#D97706"
@@ -1074,7 +1077,7 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
           icon={<Icon d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />} />
       </div>
 
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+      <div className="rsp-grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
         <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
           <div style={{ fontWeight:700, fontSize:13, marginBottom:16, color:"#0F1C2E" }}>{t("dash_chart_forn")}</div>
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
@@ -1159,7 +1162,7 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
 
 // ─── TELA: FORNECEDORES ─────────────────────────────────────────
 const Fornecedores = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoes }) => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const resumo = useMemo(() => {
     return opcoes.fornecedores.map(forn => {
       const regs    = registros.filter(r => r.fornecedor === forn);
@@ -1218,7 +1221,7 @@ const Fornecedores = ({ registros, opcoes }: { registros: Registro[]; opcoes: Op
                       {ultimos.map(r => (
                         <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:11, padding:"4px 0", borderBottom:"1px solid #F1F5F9" }}>
                           <span style={{ fontWeight:600, color:"#334155", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:160 }}>{r.nome}</span>
-                          <span style={{ color:"#94A3B8", fontFamily:"monospace", flexShrink:0, marginLeft:8 }}>{fmt(r.data)}</span>
+                          <span style={{ color:"#94A3B8", fontFamily:"monospace", flexShrink:0, marginLeft:8 }}>{fmt(r.data, lang)}</span>
                         </div>
                       ))}
                     </div>
@@ -1255,7 +1258,7 @@ const Configuracoes = ({
   registros: Registro[];
   setRegistros: (val: Registro[]) => void;
 }) => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   type OpcKey = keyof Opcoes;
   const [inputs, setInputs] = useState<Record<OpcKey, string>>({
     turnos: "", unidades: "", fornecedores: "", motivos: "", cargos: "", ccList: "", setores: "", nomes: ""
@@ -1434,7 +1437,7 @@ const Configuracoes = ({
           <div style={{ fontSize:12, color:"#94A3B8", marginLeft:4 }}>{t("cfg_nomes_desc")}</div>
         </div>
 
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+        <div className="rsp-grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
           {/* Lista de nomes */}
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             <div style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("cfg_nomes_list_label")}</div>
@@ -1494,7 +1497,7 @@ const Configuracoes = ({
           <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{t("dpo_title")}</div>
           <div style={{ fontSize:11, background:"#6C63FF18", color:"#6C63FF", fontWeight:700, borderRadius:99, padding:"2px 8px" }}>{t("dpo_badge")}</div>
         </div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:14 }}>
+        <div className="rsp-grid-3" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:14 }}>
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("dpo_label_nome")}</label>
             <input value={dpoNome} onChange={e => setDpoNome(e.target.value)} placeholder={t("dpo_ph_nome")}
@@ -1557,7 +1560,7 @@ const Configuracoes = ({
                 <div style={{ display:"flex", flexDirection:"column", gap:4, maxHeight:160, overflowY:"auto" }}>
                   {titularResult.slice(0, 5).map(r => (
                     <div key={r.id} style={{ display:"flex", gap:10, fontSize:11, color:"#475569", background:"#FFF5F5", borderRadius:6, padding:"5px 10px" }}>
-                      <span style={{ color:"#94A3B8", fontFamily:"monospace" }}>{fmt(r.data)}</span>
+                      <span style={{ color:"#94A3B8", fontFamily:"monospace" }}>{fmt(r.data, lang)}</span>
                       <span>{r.turno}</span>
                       <span>{r.fornecedor}</span>
                       <span style={{ color:"#64748B" }}>{r.horaEntrada}–{r.horaSaida}</span>
@@ -1612,7 +1615,7 @@ interface NavItem { id: TabId; label: string; icon: string; }
 
 const Index = () => {
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [tab, setTab]                             = useState<TabId>("lancamentos");
   const [registros, setRegistros, loadingRegs]    = useStorage();
   const [opcoes, setOpcoes, loadingOpts]           = useOpcoes();
@@ -1666,9 +1669,21 @@ const Index = () => {
         ::-webkit-scrollbar{width:5px;height:5px}
         ::-webkit-scrollbar-track{background:#F1F5F9}
         ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:99px}
+        @media(max-width:900px){
+          .rsp-grid-4{grid-template-columns:repeat(2,1fr)!important}
+          .rsp-grid-3{grid-template-columns:repeat(2,1fr)!important}
+        }
+        @media(max-width:640px){
+          .rsp-grid-4,.rsp-grid-3,.rsp-grid-2{grid-template-columns:1fr!important}
+          .rsp-main{padding:12px!important}
+          .rsp-nav-label{display:none!important}
+          .rsp-header-stats{display:none!important}
+          .rsp-header{flex-wrap:wrap;height:auto!important;padding:8px 12px!important;gap:8px!important}
+          .rsp-header-right{flex-wrap:wrap;gap:6px!important}
+        }
       `}</style>
 
-      <header style={{ background:"#0B1628", borderBottom:"1px solid #1E293B", height:58, display:"flex", alignItems:"center", padding:"0 24px", gap:0, position:"sticky", top:0, zIndex:200 }}>
+      <header className="rsp-header" style={{ background:"#0B1628", borderBottom:"1px solid #1E293B", height:58, display:"flex", alignItems:"center", padding:"0 24px", gap:0, position:"sticky", top:0, zIndex:200 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, paddingRight:28, borderRight:"1px solid #1E293B", marginRight:20 }}>
           <div style={{ width:34, height:34, background:"linear-gradient(135deg,#1A56DB,#3B82F6)", borderRadius:9, display:"flex", alignItems:"center", justifyContent:"center" }}>
             <Icon d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8zM5.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM18.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" size={18} />
@@ -1687,13 +1702,13 @@ const Index = () => {
               background: tab === n.id ? "#1A56DB" : "transparent",
               color: tab === n.id ? "#fff" : "#64748B",
             }}>
-              <Icon d={n.icon} size={15} />{n.label}
+              <Icon d={n.icon} size={15} /><span className="rsp-nav-label">{n.label}</span>
             </button>
           ))}
         </nav>
 
-        <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-          <div style={{ display:"flex", gap:12, fontSize:11 }}>
+        <div className="rsp-header-right" style={{ display:"flex", alignItems:"center", gap:16 }}>
+          <div className="rsp-header-stats" style={{ display:"flex", gap:12, fontSize:11 }}>
             <div style={{ color:"#64748B" }}>{t("nav_hoje")} <strong style={{ color:"#F8FAFC" }}>{hoje_}</strong></div>
             <div style={{ color:"#64748B" }}>{t("nav_mes")} <strong style={{ color:"#F8FAFC" }}>{mes_}</strong></div>
           </div>
@@ -1710,7 +1725,7 @@ const Index = () => {
           )}
           <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"#475569", fontFamily:"'DM Mono',monospace" }}>
             <div style={{ width:7, height:7, borderRadius:"50%", background:"#0E9F6E", boxShadow:"0 0 0 3px #0E9F6E30" }} />
-            {new Date().toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" })}
+            {new Date().toLocaleTimeString(lang, { hour:"2-digit", minute:"2-digit" })}
           </div>
           {isAdmin && (
             <button
@@ -1732,7 +1747,7 @@ const Index = () => {
           </button>        </div>
       </header>
 
-      <main style={{ flex:1, padding:"24px", maxWidth:1440, width:"100%", margin:"0 auto" }}>
+      <main className="rsp-main" style={{ flex:1, padding:"24px", maxWidth:1440, width:"100%", margin:"0 auto" }}>
         {loading ? (
           <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"60vh", gap:16 }}>
             <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="#1A56DB" strokeWidth={2} style={{ animation:"spin 1s linear infinite" }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>

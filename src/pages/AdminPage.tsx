@@ -37,7 +37,7 @@ export default function AdminPage() {
   const [passLoading, setPassLoading] = useState(false);
 
   // Per-user feedback
-  const [resetFeedback, setResetFeedback]   = useState<Record<string, string>>({});
+  const [resetFeedback, setResetFeedback]   = useState<Record<string, { text: string; ok: boolean }>>({});
   const [toggleLoading, setToggleLoading]   = useState<string | null>(null);
 
   // User CRUD modal
@@ -91,7 +91,7 @@ export default function AdminPage() {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     const msg = error ? `${t("admin_err_reset")} ${error.message}` : t("admin_email_sent");
-    setResetFeedback(p => ({ ...p, [userId]: msg }));
+    setResetFeedback(p => ({ ...p, [userId]: { text: msg, ok: !error } }));
     setTimeout(() => setResetFeedback(p => { const n = { ...p }; delete n[userId]; return n; }), 5000);
   };
 
@@ -235,10 +235,17 @@ export default function AdminPage() {
         ::-webkit-scrollbar{width:5px;height:5px}
         ::-webkit-scrollbar-track{background:#F1F5F9}
         ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:99px}
+        @media(max-width:900px){.rsp-grid-3{grid-template-columns:repeat(2,1fr)!important}}
+        @media(max-width:640px){
+          .rsp-grid-4,.rsp-grid-3,.rsp-grid-2{grid-template-columns:1fr!important}
+          .rsp-main-admin{padding:12px!important}
+          .rsp-admin-header{flex-wrap:wrap;height:auto!important;padding:8px 12px!important;gap:8px!important}
+          .rsp-admin-header-right{flex-wrap:wrap;gap:6px!important}
+        }
       `}</style>
 
       {/* Header */}
-      <header style={{ background: "#0B1628", borderBottom: "1px solid #1E293B", height: 58, display: "flex", alignItems: "center", padding: "0 24px", gap: 0, position: "sticky", top: 0, zIndex: 200 }}>
+      <header className="rsp-admin-header" style={{ background: "#0B1628", borderBottom: "1px solid #1E293B", height: 58, display: "flex", alignItems: "center", padding: "0 24px", gap: 0, position: "sticky", top: 0, zIndex: 200 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, paddingRight: 24, borderRight: "1px solid #1E293B", marginRight: 20 }}>
           <div style={{ width: 34, height: 34, background: "linear-gradient(135deg,#1A56DB,#3B82F6)", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Icon d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8zM5.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM18.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" size={18} />
@@ -258,7 +265,7 @@ export default function AdminPage() {
 
         <div style={{ flex: 1 }} />
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="rsp-admin-header-right" style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ fontSize: 11, color: "#475569" }}>{myEmail}</div>
           <button onClick={() => navigate("/")} style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", border: "1px solid #1E293B", borderRadius: 8, padding: "4px 12px", cursor: "pointer", color: "#64748B", fontSize: 11, fontFamily: "inherit", fontWeight: 600 }}>
               <Icon d="M15 18l-6-6 6-6" size={12} /> {t("admin_back_app")}
@@ -270,7 +277,7 @@ export default function AdminPage() {
       </header>
 
       {/* Main */}
-      <main style={{ flex: 1, padding: "28px 24px", maxWidth: 1100, width: "100%", margin: "0 auto" }}>
+      <main className="rsp-main-admin" style={{ flex: 1, padding: "28px 24px", maxWidth: 1100, width: "100%", margin: "0 auto" }}>
         {/* Page title */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>{t("admin_section_sys")}</div>
@@ -300,7 +307,7 @@ export default function AdminPage() {
         {tab === "usuarios" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {/* Stats */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+            <div className="rsp-grid-3" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
               {[
                 [t("admin_stat_total"),   users.length,                          "#1A56DB", "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"],
                 [t("admin_stat_admins"), users.filter(u => u.is_admin).length,   "#6C63FF", "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"],
@@ -341,7 +348,8 @@ export default function AdminPage() {
               {filtered.length === 0 ? (
                 <div style={{ padding: "40px", textAlign: "center", fontSize: 13, color: "#94A3B8" }}>{t("admin_no_users")}</div>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
                   <thead>
                     <tr style={{ background: "#F8FAFC" }}>
                       {[t("admin_col_email"), t("admin_col_profile"), t("admin_col_created"), t("admin_col_actions")].map(h => (
@@ -378,7 +386,7 @@ export default function AdminPage() {
                           </span>
                         </td>
                         <td style={{ padding: "12px 20px", fontSize: 12, color: "#64748B", fontFamily: "'DM Mono',monospace" }}>
-                          {new Date(user.created_at).toLocaleDateString("pt-BR")}
+                          {new Date(user.created_at).toLocaleDateString(lang)}
                         </td>
                         <td style={{ padding: "12px 20px" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
@@ -438,8 +446,8 @@ export default function AdminPage() {
                             )}
 
                             {resetFeedback[user.id] && (
-                              <span style={{ fontSize: 11, color: resetFeedback[user.id].startsWith("Erro") ? "#E02424" : "#0E9F6E", fontWeight: 600 }}>
-                                {resetFeedback[user.id]}
+                              <span style={{ fontSize: 11, color: resetFeedback[user.id].ok ? "#0E9F6E" : "#E02424", fontWeight: 600 }}>
+                                {resetFeedback[user.id].text}
                               </span>
                             )}
                           </div>
@@ -448,6 +456,7 @@ export default function AdminPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           </div>
