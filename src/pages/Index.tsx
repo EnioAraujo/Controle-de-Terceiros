@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect, ReactNode, InputHTMLAttributes, SelectHTMLAttributes, CSSProperties } from "react";
+import { useNavigate } from "react-router-dom";
 import { Registro } from "@/types/attendance";
 import { supabase, authReady } from "@/lib/supabase";
 
@@ -1592,6 +1593,7 @@ type TabId = "dashboard" | "lancamentos" | "fornecedores" | "configuracoes";
 interface NavItem { id: TabId; label: string; icon: string; }
 
 const Index = () => {
+  const navigate = useNavigate();
   const [tab, setTab]                             = useState<TabId>("lancamentos");
   const [registros, setRegistros, loadingRegs]    = useStorage();
   const [opcoes, setOpcoes, loadingOpts]           = useOpcoes();
@@ -1693,7 +1695,7 @@ const Index = () => {
           </div>
           {isAdmin && (
             <button
-              onClick={() => { window.location.href = "/admin"; }}
+              onClick={() => navigate("/admin")}
               title="Painel de administração"
               style={{ display:"flex", alignItems:"center", gap:5, background:"#1A56DB18", border:"1px solid #1A56DB44", borderRadius:8, padding:"4px 10px", cursor:"pointer", color:"#1A56DB", fontSize:11, fontFamily:"inherit", fontWeight:600 }}
             >
