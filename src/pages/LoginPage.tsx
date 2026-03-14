@@ -64,19 +64,6 @@ export default function LoginPage() {
           ))}
         </div>
 
-        {/* Logotipo */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 32 }}>
-          <div style={{ width: 44, height: 44, background: "linear-gradient(135deg,#1A56DB,#3B82F6)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8zM5.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM18.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
-            </svg>
-          </div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: -.5, color: "#0F1C2E", lineHeight: 1.1 }}>Controle de</div>
-            <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: -.5, color: "#1A56DB", lineHeight: 1.1 }}>Terceiros</div>
-          </div>
-        </div>
-
         {/* Card */}
         <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,.08)", overflow: "hidden" }}>
           <div style={{ background: "linear-gradient(135deg,#0B1628,#1A2C4A)", padding: "24px 28px" }}>
