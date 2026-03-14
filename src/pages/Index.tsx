@@ -2041,6 +2041,46 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
     }
   };
 
+  // ── Exportar PDF ──
+  const exportarPdf = async () => {
+    const { default: jsPDF } = await import("jspdf");
+    const { default: autoTable } = await import("jspdf-autotable");
+    const doc = new jsPDF({ orientation: "landscape" });
+    const title = `Fechamento — ${fornecedor} (${intervalo.inicio} a ${intervalo.fim})`;
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.text(title, 14, 16);
+    autoTable(doc, {
+      startY: 22,
+      head: [[
+        t("fech_col_nome"),
+        t("fech_col_data"),
+        t("fech_col_turno"),
+        t("fech_col_horas"),
+        t("fech_col_diaria"),
+        t("fech_col_vlr_hora"),
+        t("fech_col_vlr_dia"),
+        t("fech_col_obs"),
+      ]],
+      body: itens.map(i => [
+        i.nome,
+        fmt(i.data, lang),
+        i.turno,
+        i.horas,
+        fmtCurrency(i.valorDiaria),
+        fmtCurrency(i.valorHora),
+        fmtCurrency(i.valorCalculado),
+        i.obs ?? "",
+      ]),
+      foot: [["", "", "", "", "", t("fech_total"), fmtCurrency(total), ""]],
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [26, 86, 219], textColor: 255, fontStyle: "bold" },
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 28, 46], fontStyle: "bold" },
+      columnStyles: { 6: { textColor: [14, 159, 110] } },
+    });
+    doc.save(`fechamento_${fornecedor}_${intervalo.inicio}_${intervalo.fim}.pdf`);
+  };
+
   // ── Exportar XLSX ──
   const exportarXlsx = async () => {
     const XLSX = await import("xlsx");
@@ -2169,21 +2209,6 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
             <div style={{ padding: 32, textAlign: "center", color: "#94A3B8", fontSize: 13 }}>{t("fech_sem_registros")}</div>
           ) : (
             <>
-              {/* ── Resumo por pessoa ── */}
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#0F1C2E", marginBottom: 8 }}>{t("fech_resumo_pessoa")}</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {resumoPessoas.map(rp => (
-                    <div key={rp.nome} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F8FAFC", borderRadius: 8, padding: "8px 14px", fontSize: 12 }}>
-                      <span style={{ fontWeight: 700, color: "#0F1C2E", flex: 1 }}>{rp.nome}</span>
-                      <span style={{ color: "#64748B", minWidth: 60, textAlign: "center" }}>{rp.dias} {t("fech_dias")}</span>
-                      <span style={{ color: "#64748B", fontFamily: "monospace", minWidth: 60, textAlign: "center" }}>{decimalToHoras(rp.totalHoras)}</span>
-                      <span style={{ fontWeight: 700, color: "#0E9F6E", minWidth: 100, textAlign: "right" }}>{fmtCurrency(rp.valorTotal)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* ── Tabela detalhada ── */}
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -2265,6 +2290,10 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
                 <button onClick={exportarXlsx}
                   style={{ background: "#0E9F6E", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
                   {t("fech_exportar_xlsx")}
+                </button>
+                <button onClick={exportarPdf}
+                  style={{ background: "#E02424", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
+                  {t("fech_exportar_pdf")}
                 </button>
                 {feedback && (
                   <div style={{ fontSize: 12, fontWeight: 600, color: feedback === t("fech_salvo_sucesso") ? "#0E9F6E" : "#E02424", background: feedback === t("fech_salvo_sucesso") ? "#E6F9F4" : "#FEF2F2", borderRadius: 7, padding: "6px 14px" }}>
