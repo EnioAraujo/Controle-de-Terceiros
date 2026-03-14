@@ -1205,11 +1205,13 @@ const Configuracoes = ({
   setOpcoes,
   registros,
   setRegistros,
+  isAdmin,
 }: {
   opcoes: Opcoes;
   setOpcoes: (val: Opcoes) => void;
   registros: Registro[];
   setRegistros: (val: Registro[]) => void;
+  isAdmin: boolean;
 }) => {
   const { t, lang } = useI18n();
   type OpcKey = keyof Opcoes;
@@ -1538,7 +1540,8 @@ const Configuracoes = ({
         </div>
       </div>
 
-      {/* ── LGPD: DPO (Art. 41) ── */}
+      {/* ── LGPD: DPO (Art. 41) — somente admin ── */}
+      {isAdmin && (
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
           <div style={{ width:10, height:10, borderRadius:"50%", background:"#6C63FF", flexShrink:0 }} />
@@ -1572,8 +1575,10 @@ const Configuracoes = ({
           {t("dpo_desc")}
         </div>
       </div>
+      )}
 
-      {/* ── LGPD: Exclusão por Solicitação (Art. 18) ── */}
+      {/* ── LGPD: Exclusão por Solicitação (Art. 18) — somente admin ── */}
+      {isAdmin && (
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
           <div style={{ width:10, height:10, borderRadius:"50%", background:"#E02424", flexShrink:0 }} />
@@ -1651,6 +1656,7 @@ const Configuracoes = ({
           </div>
         )}
       </div>
+      )}
     </div>
   );
 };
@@ -1788,7 +1794,7 @@ const Index = () => {
             {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} />}
             {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} />}
             {tab === "fornecedores"  && <Fornecedores registros={registros} opcoes={opcoes} />}
-            {tab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} registros={registros} setRegistros={setRegistros} />}
+            {tab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} registros={registros} setRegistros={setRegistros} isAdmin={isAdmin} />}
           </>
         )}
       </main>
