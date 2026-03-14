@@ -1253,6 +1253,11 @@ const OPCOES_CONFIG: { key: keyof Omit<Opcoes, "nomes">; label: string; cor: str
   { key: "setores",      label: "Setores",          cor: "#475569" },
 ];
 
+const KEY_TO_FIELD: Record<string, keyof Registro> = {
+  turnos: "turno", unidades: "unidade", fornecedores: "fornecedor",
+  motivos: "motivo", cargos: "cargo", ccList: "cc", setores: "setor",
+};
+
 const Configuracoes = ({
   opcoes,
   setOpcoes,
@@ -1272,6 +1277,14 @@ const Configuracoes = ({
   const [nomesBulk, setNomesBulk] = useState("");
   const [nomeBusca, setNomeBusca] = useState("");
   const [bulkFeedback, setBulkFeedback] = useState("");
+
+  // ── Estado de edição inline e busca por card ──
+  const emptyByKey = { turnos: "", unidades: "", fornecedores: "", motivos: "", cargos: "", ccList: "", setores: "", nomes: "" };
+  const [editing, setEditing] = useState<{ key: OpcKey; idx: number; value: string } | null>(null);
+  const [cardSearch, setCardSearch] = useState<Record<OpcKey, string>>(emptyByKey);
+  const [importOpen, setImportOpen] = useState<OpcKey | null>(null);
+  const [importTexts, setImportTexts] = useState<Record<OpcKey, string>>(emptyByKey);
+  const [importFeedbacks, setImportFeedbacks] = useState<Record<OpcKey, string>>(emptyByKey);
 
   // ── DPO (Art. 41 LGPD)
   const [dpoNome,       setDpoNome]       = useState("");
@@ -1354,39 +1367,73 @@ const Configuracoes = ({
     setOpcoes({ ...opcoes, [key]: arr });
   };
 
-  const importNomes = async () => {
-    const novos = [...new Set(
-      nomesBulk
-        .split("\n")
-        .map(n => n.trim().toUpperCase())
-        .filter(n => n.length > 2)
-    )].filter(n => !opcoes.nomes.includes(n));
-
-    if (novos.length === 0) { setBulkFeedback(t("cfg_import_none")); return; }
-
-    setBulkFeedback(t("cfg_import_saving"));
-
-    const CHUNK = 100;
-    let erroMsg = "";
-    for (let i = 0; i < novos.length; i += CHUNK) {
-      const batch = novos.slice(i, i + CHUNK);
-      const { error } = await supabase
-        .from("terceiros")
-        .upsert(batch.map(nome => ({ nome })), { onConflict: "nome", ignoreDuplicates: true });
-      if (error) { erroMsg = error.message; break; }
+  const renameItem = (key: OpcKey, idx: number, newValue: string) => {
+    const v = newValue.trim().toUpperCase();
+    const oldValue = opcoes[key][idx];
+    setEditing(null);
+    if (!v || v === oldValue) return;
+    if (opcoes[key].includes(v)) return;
+    const arr = [...opcoes[key]];
+    arr[idx] = v;
+    setOpcoes({ ...opcoes, [key]: arr });
+    // Propaga renomeação para registros locais + DB (via useStorage.save)
+    const field = key === "nomes" ? "nome" : KEY_TO_FIELD[key];
+    if (field) {
+      setRegistros(registros.map(r => r[field] === oldValue ? { ...r, [field]: v } : r));
     }
+    logAudit("UPDATE", key === "nomes" ? "terceiros" : "opcoes", undefined, {
+      chave: key, valorAnterior: oldValue, valorNovo: v,
+    });
+  };
 
-    if (erroMsg) {
-      setBulkFeedback(`${t("cfg_import_error")} ${erroMsg}`);
+  const importItems = async (key: OpcKey) => {
+    const text = key === "nomes" ? nomesBulk : importTexts[key];
+    const novos = [...new Set(
+      text.split("\n").map(n => n.trim().toUpperCase()).filter(n => n.length > 0)
+    )].filter(n => !opcoes[key].includes(n));
+
+    if (novos.length === 0) {
+      if (key === "nomes") setBulkFeedback(t("cfg_import_none"));
+      else setImportFeedbacks(p => ({ ...p, [key]: t("cfg_import_none") }));
       return;
     }
 
-    const novaLista = [...opcoes.nomes, ...novos];
-    setOpcoes({ ...opcoes, nomes: novaLista });
-    setNomesBulk("");
+    if (key === "nomes") setBulkFeedback(t("cfg_import_saving"));
+    else setImportFeedbacks(p => ({ ...p, [key]: t("cfg_import_saving") }));
+
+    const CHUNK = 100;
+    const table = key === "nomes" ? "terceiros" : "opcoes";
+    for (let i = 0; i < novos.length; i += CHUNK) {
+      const batch = novos.slice(i, i + CHUNK);
+      const payload = key === "nomes"
+        ? batch.map(nome => ({ nome }))
+        : batch.map(valor => ({ chave: key, valor }));
+      const conflict = key === "nomes" ? "nome" : "chave,valor";
+      const { error } = await supabase.from(table)
+        .upsert(payload, { onConflict: conflict, ignoreDuplicates: true });
+      if (error) {
+        const msg = `${t("cfg_import_error")} ${error.message}`;
+        if (key === "nomes") setBulkFeedback(msg);
+        else setImportFeedbacks(p => ({ ...p, [key]: msg }));
+        return;
+      }
+    }
+
+    setOpcoes({ ...opcoes, [key]: [...opcoes[key], ...novos] });
     const s = novos.length > 1 ? "s" : "";
-    setBulkFeedback(t("cfg_import_success").replace("{n}", String(novos.length)).replace(/\{s\}/g, s));
-    setTimeout(() => setBulkFeedback(""), 4000);
+    const successMsg = key === "nomes"
+      ? t("cfg_import_success").replace("{n}", String(novos.length)).replace(/\{s\}/g, s)
+      : t("cfg_opt_import_success").replace("{n}", String(novos.length));
+
+    if (key === "nomes") {
+      setNomesBulk("");
+      setBulkFeedback(successMsg);
+      setTimeout(() => setBulkFeedback(""), 4000);
+    } else {
+      setImportTexts(p => ({ ...p, [key]: "" }));
+      setImportFeedbacks(p => ({ ...p, [key]: successMsg }));
+      setTimeout(() => setImportFeedbacks(p => ({ ...p, [key]: "" })), 4000);
+    }
   };
 
   const nomesFiltrados = opcoes.nomes.filter(n => n.toLowerCase().includes(nomeBusca.toLowerCase()));
@@ -1401,37 +1448,102 @@ const Configuracoes = ({
         <div style={{ fontSize:12, color:"#64748B", marginTop:4 }}>{t("cfg_desc")}</div>
       </div>
 
-      {/* Grade de listas de opções */}
+      {/* Grade de listas de opções — CRUD completo */}
       <div className="rsp-grid-autofill" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:14 }}>
-        {OPCOES_CONFIG.map(({ key, label, cor }) => (
-          <div key={key} style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:18, display:"flex", flexDirection:"column", gap:12 }}>
+        {OPCOES_CONFIG.map(({ key, cor }) => {
+          const items = opcoes[key];
+          const search = cardSearch[key];
+          const filtered = search ? items.filter(v => v.toLowerCase().includes(search.toLowerCase())) : items;
+          return (
+          <div key={key} style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:18, display:"flex", flexDirection:"column", gap:10 }}>
+            {/* Header */}
             <div style={{ display:"flex", alignItems:"center", gap:8 }}>
               <div style={{ width:10, height:10, borderRadius:"50%", background:cor, flexShrink:0 }} />
               <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{t(("cfg_opt_" + key) as Parameters<typeof t>[0])}</div>
-              <div style={{ marginLeft:"auto", fontSize:11, background:cor + "18", color:cor, fontWeight:700, borderRadius:99, padding:"2px 8px" }}>{opcoes[key].length}</div>
+              <div style={{ marginLeft:"auto", fontSize:11, background:cor + "18", color:cor, fontWeight:700, borderRadius:99, padding:"2px 8px" }}>{items.length}</div>
             </div>
 
-            <div style={{ display:"flex", flexDirection:"column", gap:3, maxHeight:160, overflowY:"auto" }}>
-              {opcoes[key].length === 0 && <div style={{ color:"#CBD5E1", fontSize:11, textAlign:"center", padding:"10px 0" }}>{t("cfg_opt_empty")}</div>}
-              {opcoes[key].map((item, idx) => (
-                <div key={idx} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"5px 8px", background:"#F8FAFC", borderRadius:6, fontSize:12 }}>
-                  <span style={{ color:"#334155", fontWeight:500 }}>{item}</span>
-                  <button onClick={() => removeItem(key, idx)} style={{ background:"none", border:"none", cursor:"pointer", color:"#CBD5E1", padding:2, display:"flex", lineHeight:1, flexShrink:0 }}>
-                    <Icon d="M18 6L6 18M6 6l12 12" size={12} />
-                  </button>
+            {/* Busca (se >3 itens) */}
+            {items.length > 3 && (
+              <input value={search} onChange={e => setCardSearch(p => ({ ...p, [key]: e.target.value }))}
+                placeholder={t("cfg_opt_search")}
+                style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"5px 10px", fontSize:11, fontFamily:"inherit", outline:"none", background:"#FAFBFC" }} />
+            )}
+
+            {/* Lista de itens com edição inline */}
+            <div style={{ display:"flex", flexDirection:"column", gap:3, maxHeight:200, overflowY:"auto" }}>
+              {items.length === 0 && <div style={{ color:"#CBD5E1", fontSize:11, textAlign:"center", padding:"10px 0" }}>{t("cfg_opt_empty")}</div>}
+              {filtered.map((item) => {
+                const realIdx = items.indexOf(item);
+                const isEditing = editing?.key === key && editing?.idx === realIdx;
+                return (
+                <div key={realIdx} style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 8px", background:"#F8FAFC", borderRadius:6, fontSize:12 }}>
+                  {isEditing ? (
+                    <input autoFocus value={editing.value}
+                      onChange={e => setEditing({ ...editing, value: e.target.value })}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") renameItem(key, realIdx, editing.value);
+                        if (e.key === "Escape") setEditing(null);
+                      }}
+                      onBlur={() => renameItem(key, realIdx, editing.value)}
+                      style={{ ...inStyle, flex:1, padding:"3px 6px", fontSize:12 }} />
+                  ) : (
+                    <span style={{ color:"#334155", fontWeight:500, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item}</span>
+                  )}
+                  {!isEditing && (
+                    <div style={{ display:"flex", gap:2, flexShrink:0 }}>
+                      <button onClick={() => setEditing({ key, idx: realIdx, value: item })}
+                        style={{ background:"none", border:"none", cursor:"pointer", color:"#94A3B8", padding:2, display:"flex", lineHeight:1 }}
+                        title="Editar">
+                        <Icon d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" size={12} />
+                      </button>
+                      <button onClick={() => removeItem(key, realIdx)}
+                        style={{ background:"none", border:"none", cursor:"pointer", color:"#CBD5E1", padding:2, display:"flex", lineHeight:1 }}>
+                        <Icon d="M18 6L6 18M6 6l12 12" size={12} />
+                      </button>
+                    </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
 
+            {/* Adicionar item */}
             <div style={{ display:"flex", gap:6 }}>
               <input value={inputs[key]} onChange={e => setInputs(p => ({ ...p, [key]: e.target.value }))}
                 onKeyDown={e => e.key === "Enter" && addItem(key, inputs[key])}
                 placeholder={t("cfg_opt_placeholder")} style={inStyle} />
               <button onClick={() => addItem(key, inputs[key])}
                 style={{ background:cor, border:"none", borderRadius:7, padding:"6px 14px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>+</button>
+              <button onClick={() => setImportOpen(importOpen === key ? null : key)}
+                title={t("cfg_opt_import_toggle")}
+                style={{ background: importOpen === key ? cor+"20" : "#F1F5F9", border:"none", borderRadius:7, padding:"6px 10px", cursor:"pointer", color: importOpen === key ? cor : "#94A3B8", fontWeight:700, fontSize:12, fontFamily:"inherit", display:"flex", alignItems:"center" }}>
+                <Icon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" size={14} />
+              </button>
             </div>
+
+            {/* Importação em massa (colapsável) */}
+            {importOpen === key && (
+              <div style={{ display:"flex", flexDirection:"column", gap:6, borderTop:"1px solid #E2E6EC", paddingTop:10 }}>
+                <div style={{ fontSize:10, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("cfg_opt_import_toggle")}</div>
+                <textarea value={importTexts[key]} onChange={e => setImportTexts(p => ({ ...p, [key]: e.target.value }))}
+                  placeholder={t("cfg_opt_import_ph")}
+                  style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:11, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", resize:"vertical", minHeight:80, lineHeight:1.8 }} />
+                <button onClick={() => importItems(key)}
+                  style={{ background:cor, border:"none", borderRadius:7, padding:"7px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:12, fontFamily:"inherit" }}>
+                  {t("cfg_opt_import_btn")}
+                </button>
+                {importFeedbacks[key] && (
+                  <div style={{ fontSize:11, color:"#0E9F6E", fontWeight:600, background:"#E6F9F4", borderRadius:6, padding:"5px 10px" }}>
+                    {importFeedbacks[key]}
+                  </div>
+                )}
+                <div style={{ fontSize:10, color:"#94A3B8" }}>{t("cfg_opt_import_hint")}</div>
+              </div>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Base de Nomes */}
@@ -1457,12 +1569,34 @@ const Configuracoes = ({
               )}
               {nomesFiltrados.map((nome, idx) => {
                 const realIdx = opcoes.nomes.indexOf(nome);
+                const isEditing = editing?.key === "nomes" && editing?.idx === realIdx;
                 return (
-                  <div key={idx} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 12px", borderBottom: idx < nomesFiltrados.length - 1 ? "1px solid #F1F5F9" : "none", fontSize:12 }}>
-                    <span style={{ color:"#334155", fontWeight:500 }}>{nome}</span>
-                    <button onClick={() => removeItem("nomes", realIdx)} style={{ background:"none", border:"none", cursor:"pointer", color:"#CBD5E1", padding:2, display:"flex" }}>
-                      <Icon d="M18 6L6 18M6 6l12 12" size={12} />
-                    </button>
+                  <div key={idx} style={{ display:"flex", alignItems:"center", gap:4, padding:"8px 12px", borderBottom: idx < nomesFiltrados.length - 1 ? "1px solid #F1F5F9" : "none", fontSize:12 }}>
+                    {isEditing ? (
+                      <input autoFocus value={editing.value}
+                        onChange={e => setEditing({ ...editing, value: e.target.value })}
+                        onKeyDown={e => {
+                          if (e.key === "Enter") renameItem("nomes", realIdx, editing.value);
+                          if (e.key === "Escape") setEditing(null);
+                        }}
+                        onBlur={() => renameItem("nomes", realIdx, editing.value)}
+                        style={{ ...inStyle, flex:1, padding:"3px 6px", fontSize:12 }} />
+                    ) : (
+                      <span style={{ color:"#334155", fontWeight:500, flex:1 }}>{nome}</span>
+                    )}
+                    {!isEditing && (
+                      <div style={{ display:"flex", gap:2, flexShrink:0 }}>
+                        <button onClick={() => setEditing({ key: "nomes", idx: realIdx, value: nome })}
+                          style={{ background:"none", border:"none", cursor:"pointer", color:"#94A3B8", padding:2, display:"flex" }}
+                          title="Editar">
+                          <Icon d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" size={12} />
+                        </button>
+                        <button onClick={() => removeItem("nomes", realIdx)}
+                          style={{ background:"none", border:"none", cursor:"pointer", color:"#CBD5E1", padding:2, display:"flex" }}>
+                          <Icon d="M18 6L6 18M6 6l12 12" size={12} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1482,7 +1616,7 @@ const Configuracoes = ({
             <textarea value={nomesBulk} onChange={e => setNomesBulk(e.target.value)}
               placeholder={"JOÃO DA SILVA\nMARIA OLIVEIRA\nCARLOS SANTOS\n..."}
               style={{ border:"1.5px solid #E2E6EC", borderRadius:8, padding:"9px 11px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", resize:"vertical", minHeight:220, lineHeight:1.8 }} />
-            <button onClick={importNomes}
+            <button onClick={() => importItems("nomes")}
               style={{ background:"#1A56DB", border:"none", borderRadius:8, padding:"10px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
               {t("cfg_import_btn")}
             </button>
