@@ -1286,9 +1286,7 @@ const Configuracoes = ({
   const emptyByKey = { turnos: "", unidades: "", fornecedores: "", motivos: "", cargos: "", ccList: "", setores: "", nomes: "" };
   const [editing, setEditing] = useState<{ key: OpcKey; idx: number; value: string } | null>(null);
   const [cardSearch, setCardSearch] = useState<Record<OpcKey, string>>(emptyByKey);
-  const [importOpen, setImportOpen] = useState<OpcKey | null>(null);
-  const [importTexts, setImportTexts] = useState<Record<OpcKey, string>>(emptyByKey);
-  const [importFeedbacks, setImportFeedbacks] = useState<Record<OpcKey, string>>(emptyByKey);
+  const [bulkCategory, setBulkCategory] = useState<OpcKey>("nomes");
 
   // ── DPO (Art. 41 LGPD)
   const [dpoNome,       setDpoNome]       = useState("");
@@ -1391,19 +1389,16 @@ const Configuracoes = ({
   };
 
   const importItems = async (key: OpcKey) => {
-    const text = key === "nomes" ? nomesBulk : importTexts[key];
     const novos = [...new Set(
-      text.split("\n").map(n => n.trim().toUpperCase()).filter(n => n.length > 0)
+      nomesBulk.split("\n").map(n => n.trim().toUpperCase()).filter(n => n.length > 0)
     )].filter(n => !opcoes[key].includes(n));
 
     if (novos.length === 0) {
-      if (key === "nomes") setBulkFeedback(t("cfg_import_none"));
-      else setImportFeedbacks(p => ({ ...p, [key]: t("cfg_import_none") }));
+      setBulkFeedback(t("cfg_import_none"));
       return;
     }
 
-    if (key === "nomes") setBulkFeedback(t("cfg_import_saving"));
-    else setImportFeedbacks(p => ({ ...p, [key]: t("cfg_import_saving") }));
+    setBulkFeedback(t("cfg_import_saving"));
 
     const CHUNK = 100;
     const table = key === "nomes" ? "terceiros" : "opcoes";
@@ -1416,28 +1411,17 @@ const Configuracoes = ({
       const { error } = await supabase.from(table)
         .upsert(payload, { onConflict: conflict, ignoreDuplicates: true });
       if (error) {
-        const msg = `${t("cfg_import_error")} ${error.message}`;
-        if (key === "nomes") setBulkFeedback(msg);
-        else setImportFeedbacks(p => ({ ...p, [key]: msg }));
+        setBulkFeedback(`${t("cfg_import_error")} ${error.message}`);
         return;
       }
     }
 
     setOpcoes({ ...opcoes, [key]: [...opcoes[key], ...novos] });
     const s = novos.length > 1 ? "s" : "";
-    const successMsg = key === "nomes"
-      ? t("cfg_import_success").replace("{n}", String(novos.length)).replace(/\{s\}/g, s)
-      : t("cfg_opt_import_success").replace("{n}", String(novos.length));
-
-    if (key === "nomes") {
-      setNomesBulk("");
-      setBulkFeedback(successMsg);
-      setTimeout(() => setBulkFeedback(""), 4000);
-    } else {
-      setImportTexts(p => ({ ...p, [key]: "" }));
-      setImportFeedbacks(p => ({ ...p, [key]: successMsg }));
-      setTimeout(() => setImportFeedbacks(p => ({ ...p, [key]: "" })), 4000);
-    }
+    const successMsg = t("cfg_import_success").replace("{n}", String(novos.length)).replace(/\{s\}/g, s);
+    setNomesBulk("");
+    setBulkFeedback(successMsg);
+    setTimeout(() => setBulkFeedback(""), 4000);
   };
 
   const nomesFiltrados = opcoes.nomes.filter(n => n.toLowerCase().includes(nomeBusca.toLowerCase()));
@@ -1519,32 +1503,7 @@ const Configuracoes = ({
                 placeholder={t("cfg_opt_placeholder")} style={inStyle} />
               <button onClick={() => addItem(key, inputs[key])}
                 style={{ background:cor, border:"none", borderRadius:7, padding:"6px 14px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>+</button>
-              <button onClick={() => setImportOpen(importOpen === key ? null : key)}
-                title={t("cfg_opt_import_toggle")}
-                style={{ background: importOpen === key ? cor+"20" : "#F1F5F9", border:"none", borderRadius:7, padding:"6px 10px", cursor:"pointer", color: importOpen === key ? cor : "#94A3B8", fontWeight:700, fontSize:12, fontFamily:"inherit", display:"flex", alignItems:"center" }}>
-                <Icon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" size={14} />
-              </button>
             </div>
-
-            {/* Importação em massa (colapsável) */}
-            {importOpen === key && (
-              <div style={{ display:"flex", flexDirection:"column", gap:6, borderTop:"1px solid #E2E6EC", paddingTop:10 }}>
-                <div style={{ fontSize:10, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("cfg_opt_import_toggle")}</div>
-                <textarea value={importTexts[key]} onChange={e => setImportTexts(p => ({ ...p, [key]: e.target.value }))}
-                  placeholder={t("cfg_opt_import_ph")}
-                  style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:11, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", resize:"vertical", minHeight:80, lineHeight:1.8 }} />
-                <button onClick={() => importItems(key)}
-                  style={{ background:cor, border:"none", borderRadius:7, padding:"7px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:12, fontFamily:"inherit" }}>
-                  {t("cfg_opt_import_btn")}
-                </button>
-                {importFeedbacks[key] && (
-                  <div style={{ fontSize:11, color:"#0E9F6E", fontWeight:600, background:"#E6F9F4", borderRadius:6, padding:"5px 10px" }}>
-                    {importFeedbacks[key]}
-                  </div>
-                )}
-                <div style={{ fontSize:10, color:"#94A3B8" }}>{t("cfg_opt_import_hint")}</div>
-              </div>
-            )}
           </div>
           );
         })}
@@ -1614,13 +1573,20 @@ const Configuracoes = ({
             </div>
           </div>
 
-          {/* Importação em massa */}
+          {/* Importação em massa — unificada com seletor de categoria */}
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             <div style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("cfg_import_label")}</div>
+            <select value={bulkCategory} onChange={e => { setBulkCategory(e.target.value as OpcKey); setNomesBulk(""); setBulkFeedback(""); }}
+              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none", cursor:"pointer" }}>
+              <option value="nomes">{t("cfg_nomes_title")}</option>
+              {OPCOES_CONFIG.map(({ key }) => (
+                <option key={key} value={key}>{t(("cfg_opt_" + key) as Parameters<typeof t>[0])}</option>
+              ))}
+            </select>
             <textarea value={nomesBulk} onChange={e => setNomesBulk(e.target.value)}
-              placeholder={"JOÃO DA SILVA\nMARIA OLIVEIRA\nCARLOS SANTOS\n..."}
+              placeholder={t("cfg_import_ph")}
               style={{ border:"1.5px solid #E2E6EC", borderRadius:8, padding:"9px 11px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", resize:"vertical", minHeight:220, lineHeight:1.8 }} />
-            <button onClick={() => importItems("nomes")}
+            <button onClick={() => importItems(bulkCategory)}
               style={{ background:"#1A56DB", border:"none", borderRadius:8, padding:"10px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
               {t("cfg_import_btn")}
             </button>
