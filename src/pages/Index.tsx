@@ -817,20 +817,20 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
 
       {/* Filtros */}
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:"14px 18px", display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
-        <Input label={t("form_label_data")} type="date" value={filtros.data} onChange={e => set("data", e.target.value)} style={{ flex:"1 1 120px", minWidth:120 }} />
-        <Select label={t("form_label_turno")} value={filtros.turno} onChange={e => set("turno", e.target.value)} style={{ flex:"1 1 120px", minWidth:120 }}>
+        <Input label={t("form_label_data")} type="date" value={filtros.data} onChange={e => set("data", e.target.value)} style={{ width:150 }} />
+        <Select label={t("form_label_turno")} value={filtros.turno} onChange={e => set("turno", e.target.value)} style={{ width:150 }}>
           <option value="">{t("lanc_filter_all_m")}</option>{opcoes.turnos.map(opt => <option key={opt}>{opt}</option>)}
         </Select>
-        <Select label={t("form_label_forn")} value={filtros.fornecedor} onChange={e => set("fornecedor", e.target.value)} style={{ flex:"1 1 120px", minWidth:120 }}>
+        <Select label={t("form_label_forn")} value={filtros.fornecedor} onChange={e => set("fornecedor", e.target.value)} style={{ width:150 }}>
           <option value="">{t("lanc_filter_all_m")}</option>{opcoes.fornecedores.map(opt => <option key={opt}>{opt}</option>)}
         </Select>
-        <Select label={t("form_label_unidade")} value={filtros.unidade} onChange={e => set("unidade", e.target.value)} style={{ flex:"1 1 120px", minWidth:120 }}>
+        <Select label={t("form_label_unidade")} value={filtros.unidade} onChange={e => set("unidade", e.target.value)} style={{ width:150 }}>
           <option value="">{t("lanc_filter_all_f")}</option>{opcoes.unidades.map(opt => <option key={opt}>{opt}</option>)}
         </Select>
-        <Select label={t("form_label_setor")} value={filtros.setor} onChange={e => set("setor", e.target.value)} style={{ flex:"1 1 120px", minWidth:120 }}>
+        <Select label={t("form_label_setor")} value={filtros.setor} onChange={e => set("setor", e.target.value)} style={{ width:150 }}>
           <option value="">{t("lanc_filter_all_m")}</option>{opcoes.setores.map(opt => <option key={opt}>{opt}</option>)}
         </Select>
-        <Input label={t("lanc_filter_busca")} value={filtros.busca} onChange={e => set("busca", e.target.value)} placeholder="Nome…" style={{ flex:"1 1 140px", minWidth:140 }} />
+        <Input label={t("lanc_filter_busca")} value={filtros.busca} onChange={e => set("busca", e.target.value)} placeholder="Nome…" style={{ width:180 }} />
         <div style={{ marginLeft:"auto", alignSelf:"flex-end" }}>
           <Btn variant="ghost" small onClick={() => setFiltros({ data:"", turno:"", fornecedor:"", unidade:"", setor:"", busca:"" })}>{t("lanc_filter_clear")}</Btn>
         </div>
