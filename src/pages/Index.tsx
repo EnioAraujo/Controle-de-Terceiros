@@ -222,9 +222,13 @@ const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
     authReady.then(async () => {
       // Carrega opções (sem nomes) e nomes em paralelo
       const [opcoesRes, nomesRes] = await Promise.all([
-        supabase.from("opcoes").select("chave, valor").order("id", { ascending: true }),
+        supabase.from("opcoes").select("chave, valor").neq("chave", "nomes").order("id", { ascending: true }),
         supabase.from("terceiros").select("nome").order("nome", { ascending: true }),
       ]);
+
+      // Limpeza: remove nomes residuais da tabela opcoes (devem estar apenas em terceiros)
+      supabase.from("opcoes").delete().eq("chave", "nomes")
+        .then(({ error }) => { if (error) console.error("Erro ao limpar nomes residuais:", error.message); });
 
       if (opcoesRes.error) console.error("Erro ao carregar opções:", opcoesRes.error.message);
       if (nomesRes.error)  console.error("Erro ao carregar nomes:", nomesRes.error.message);
