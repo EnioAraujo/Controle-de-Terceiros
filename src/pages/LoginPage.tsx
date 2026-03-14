@@ -4,9 +4,9 @@ import { useI18n } from "@/hooks/use-i18n";
 import type { Lang } from "@/lib/i18n-translations";
 import { mapSupabaseError } from "@/lib/i18n-translations";
 
-const LANGS: { value: Lang; label: string; flag: string }[] = [
-  { value: "pt-BR", label: "Português", flag: "🇧🇷" },
-  { value: "en-US", label: "English",   flag: "🇺🇸" },
+const LANGS: { value: Lang; label: string; code: string }[] = [
+  { value: "pt-BR", label: "Português", code: "BR" },
+  { value: "en-US", label: "English",   code: "US" },
 ];
 
 export default function LoginPage() {
@@ -59,7 +59,8 @@ export default function LoginPage() {
                 transition: "all .15s",
               }}
             >
-              <span style={{ fontSize: 16 }}>{l.flag}</span> {l.label}
+              <span style={{ fontWeight: 800, fontSize: 10, letterSpacing: .5 }}>{l.code}</span>
+              <span>{l.label}</span>
             </button>
           ))}
         </div>

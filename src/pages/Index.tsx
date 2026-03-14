@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect, ReactNode, InputHTML
 import { useNavigate } from "react-router-dom";
 import { Registro } from "@/types/attendance";
 import { supabase, authReady } from "@/lib/supabase";
+import { useI18n } from "@/hooks/use-i18n";
 
 // ─── CONSTANTES DEFAULT ──────────────────────────────────────────
 const D_TURNOS       = ["1ª TURNO", "2ª TURNO", "3ª TURNO", "INTERMEDIÁRIO"];
@@ -318,7 +319,9 @@ const usePrivacyAccepted = () => {
   return [accepted, accept] as const;
 };
 
-const PrivacyNotice = ({ dpoNome, dpoEmail, onAccept }: { dpoNome: string; dpoEmail: string; onAccept: () => void }) => (
+const PrivacyNotice = ({ dpoNome, dpoEmail, onAccept }: { dpoNome: string; dpoEmail: string; onAccept: () => void }) => {
+  const { t } = useI18n();
+  return (
   <div style={{ position:"fixed", inset:0, zIndex:9999, background:"rgba(11,22,40,.92)", display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
     <div style={{ background:"#fff", borderRadius:16, maxWidth:620, width:"100%", maxHeight:"90vh", overflowY:"auto", boxShadow:"0 24px 80px rgba(0,0,0,.4)" }}>
       <div style={{ background:"linear-gradient(135deg,#0B1628,#1A2C4A)", padding:"24px 28px", borderRadius:"16px 16px 0 0", display:"flex", alignItems:"center", gap:12 }}>
@@ -326,73 +329,66 @@ const PrivacyNotice = ({ dpoNome, dpoEmail, onAccept }: { dpoNome: string; dpoEm
           <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
         <div>
-          <div style={{ color:"#F8FAFC", fontWeight:800, fontSize:16 }}>Aviso de Privacidade e Proteção de Dados</div>
-          <div style={{ color:"#64748B", fontSize:12, marginTop:2 }}>Lei Geral de Proteção de Dados Pessoais — Lei nº 13.709/2018</div>
+          <div style={{ color:"#F8FAFC", fontWeight:800, fontSize:16 }}>{t("privacy_title")}</div>
+          <div style={{ color:"#64748B", fontSize:12, marginTop:2 }}>{t("privacy_law")}</div>
         </div>
       </div>
 
       <div style={{ padding:"24px 28px", display:"flex", flexDirection:"column", gap:18, fontSize:13, color:"#334155", lineHeight:1.7 }}>
         <div style={{ background:"#EFF6FF", border:"1px solid #BFDBFE", borderRadius:10, padding:"12px 16px", fontSize:12, color:"#1A56DB", fontWeight:600 }}>
-          Este sistema trata dados pessoais de trabalhadores terceirizados. Leia as informações abaixo antes de continuar.
+          {t("privacy_intro")}
         </div>
 
         <section>
-          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>📋 Quais dados são coletados</div>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>{t("privacy_col_title")}</div>
           <ul style={{ paddingLeft:18, margin:0, display:"flex", flexDirection:"column", gap:3, fontSize:12 }}>
-            <li>Nome completo do colaborador</li>
-            <li>Cargo e empresa fornecedora</li>
-            <li>Data, horário de entrada/saída e total de horas trabalhadas</li>
-            <li>Setor, unidade e centro de custo de lotação</li>
-            <li>Motivo do acionamento</li>
+            <li>{t("privacy_col_1")}</li>
+            <li>{t("privacy_col_2")}</li>
+            <li>{t("privacy_col_3")}</li>
+            <li>{t("privacy_col_4")}</li>
+            <li>{t("privacy_col_5")}</li>
           </ul>
         </section>
 
         <section>
-          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>⚖️ Base legal e finalidade (Art. 7º, II e V)</div>
-          <p style={{ margin:0, fontSize:12 }}>
-            O tratamento se baseia no <strong>cumprimento de obrigação legal</strong> (controle trabalhista, fiscal e de segurança) e na <strong>execução de contrato</strong> com as empresas fornecedoras de mão de obra. Os dados são usados exclusivamente para controle de presença e gestão operacional.
-          </p>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>{t("privacy_legal_title")}</div>
+          <p style={{ margin:0, fontSize:12 }} dangerouslySetInnerHTML={{ __html: t("privacy_legal_text") }} />
         </section>
 
         <section>
-          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>🗓️ Retenção de dados (Art. 15 e 16)</div>
-          <p style={{ margin:0, fontSize:12 }}>
-            Os registros são mantidos por <strong>até {RETENCAO_ANOS} anos</strong> a partir da data do lançamento, após os quais são excluídos automaticamente.
-          </p>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>{t("privacy_ret_title")}</div>
+          <p style={{ margin:0, fontSize:12 }} dangerouslySetInnerHTML={{ __html: t("privacy_ret_text").replace("{years}", String(RETENCAO_ANOS)) }} />
         </section>
 
         <section>
-          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>🔒 Segurança</div>
-          <p style={{ margin:0, fontSize:12 }}>
-            Os dados são armazenados com Row Level Security (RLS) no Supabase. Todas as operações de escrita requerem sessão autenticada e são registradas em log de auditoria.
-          </p>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>{t("privacy_sec_title")}</div>
+          <p style={{ margin:0, fontSize:12 }}>{t("privacy_sec_text")}</p>
         </section>
 
         <section>
-          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>📌 Direitos do titular (Art. 18)</div>
-          <p style={{ margin:0, fontSize:12 }}>
-            O titular pode solicitar acesso, correção ou exclusão de seus dados a qualquer momento, mediante requisição ao Encarregado de Dados (DPO).
-          </p>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>{t("privacy_rights_title")}</div>
+          <p style={{ margin:0, fontSize:12 }}>{t("privacy_rights_text")}</p>
         </section>
 
         {(dpoNome || dpoEmail) && (
           <section style={{ background:"#F8FAFC", border:"1px solid #E2E6EC", borderRadius:10, padding:"12px 16px" }}>
-            <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>👤 Encarregado de Dados (DPO) — Art. 41</div>
-            {dpoNome  && <div style={{ fontSize:12 }}><strong>Nome:</strong> {dpoNome}</div>}
-            {dpoEmail && <div style={{ fontSize:12 }}><strong>E-mail:</strong> {dpoEmail}</div>}
+            <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>{t("privacy_dpo_title")}</div>
+            {dpoNome  && <div style={{ fontSize:12 }}><strong>{t("privacy_dpo_name")}</strong> {dpoNome}</div>}
+            {dpoEmail && <div style={{ fontSize:12 }}><strong>{t("privacy_dpo_email_lbl")}</strong> {dpoEmail}</div>}
           </section>
         )}
 
         <button onClick={onAccept} style={{ background:"#1A56DB", border:"none", borderRadius:10, padding:"14px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:14, fontFamily:"inherit", marginTop:4 }}>
-          Entendi e aceito — Continuar
+          {t("privacy_accept_btn")}
         </button>
         <div style={{ fontSize:11, color:"#94A3B8", textAlign:"center", marginTop:-8 }}>
-          Ao continuar, você confirma que está ciente das práticas de tratamento de dados descritas acima.
+          {t("privacy_footer")}
         </div>
       </div>
     </div>
   </div>
-);
+  );
+};
 
 // ─── UI ATOMS ────────────────────────────────────────────────────
 const Icon = ({ d, size = 16 }: { d: string; size?: number }) => (
@@ -540,6 +536,7 @@ interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; }
 interface FormLancamentoProps { inicial?: Registro | null; loteInicial?: Registro[]; onSave: (registros: Registro[]) => void; onCancel: () => void; opcoes: Opcoes; }
 
 const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: FormLancamentoProps) => {
+  const { t } = useI18n();
   const isEdit = !!inicial;
   const isLoteEdit = !!loteInicial?.length;
   const base = loteInicial?.[0] ?? inicial;
@@ -612,7 +609,11 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
   );
 
   const totalPadrao = calcHoras(comum.horaEntrada, comum.horaSaida);
-  const btnLabel = (isEdit || isLoteEdit) ? "Salvar Alterações" : validCount > 1 ? `Salvar ${validCount} Lançamentos` : "Salvar Lançamento";
+  const btnLabel = (isEdit || isLoteEdit)
+    ? t("form_btn_save_edit")
+    : validCount > 1
+      ? t("form_btn_save_multi").replace("{n}", String(validCount))
+      : t("form_btn_save");
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
@@ -620,14 +621,14 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
       {/* Bloco 0 — Quantidade */}
       {!isEdit && !isLoteEdit && (
         <div style={{ background:"#F0F6FF", border:"1.5px solid #BFDBFE", borderRadius:12, padding:"12px 18px", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
-          <div style={{ fontSize:11, fontWeight:700, color:"#1A56DB", textTransform:"uppercase", letterSpacing:.8 }}>Quantidade de Pessoas</div>
+          <div style={{ fontSize:11, fontWeight:700, color:"#1A56DB", textTransform:"uppercase", letterSpacing:.8 }}>{t("form_block_qty")}</div>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
             <button onClick={() => handleQtd(pessoas.length - 1)} style={{ width:28, height:28, borderRadius:7, border:"1.5px solid #BFDBFE", background:"#fff", cursor:"pointer", fontWeight:800, fontSize:15, color:"#1A56DB", display:"flex", alignItems:"center", justifyContent:"center" }}>−</button>
             <input type="number" min={1} max={20} value={pessoas.length} onChange={e => handleQtd(Number(e.target.value))}
               style={{ width:48, textAlign:"center", border:"1.5px solid #BFDBFE", borderRadius:7, padding:"5px 6px", fontSize:15, fontWeight:800, color:"#1A56DB", fontFamily:"inherit", background:"#fff", outline:"none" }} />
             <button onClick={() => handleQtd(pessoas.length + 1)} style={{ width:28, height:28, borderRadius:7, border:"none", background:"#1A56DB", cursor:"pointer", fontWeight:800, fontSize:15, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
           </div>
-          <div style={{ fontSize:12, color:"#64748B" }}>pessoa{pessoas.length !== 1 ? "s" : ""} neste lançamento</div>
+          <div style={{ fontSize:12, color:"#64748B" }}>{pessoas.length !== 1 ? t("form_persons") : t("form_person")} {t("form_suffix")}</div>
         </div>
       )}
 
@@ -635,11 +636,11 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
       <div>
         <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
           <div style={{ width:20, height:20, borderRadius:6, background:"#1A56DB", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>1</div>
-          Identificação
+          {t("form_block_1")}
         </div>
         <G cols={2}>
-          <Select label="Cargo" value={comum.cargo} onChange={e => setC("cargo", e.target.value)}>{opcoes.cargos.map(c => <option key={c}>{c}</option>)}</Select>
-          <Select label="Fornecedor" value={comum.fornecedor} onChange={e => setC("fornecedor", e.target.value)}>{opcoes.fornecedores.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label={t("form_label_cargo")} value={comum.cargo} onChange={e => setC("cargo", e.target.value)}>{opcoes.cargos.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label={t("form_label_forn")} value={comum.fornecedor} onChange={e => setC("fornecedor", e.target.value)}>{opcoes.fornecedores.map(c => <option key={c}>{c}</option>)}</Select>
         </G>
       </div>
 
@@ -647,12 +648,12 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
       <div>
         <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
           <div style={{ width:20, height:20, borderRadius:6, background:"#0E9F6E", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>2</div>
-          Lotação
+          {t("form_block_2")}
         </div>
         <G cols={3}>
-          <Select label="Unidade" value={comum.unidade} onChange={e => setC("unidade", e.target.value)}>{opcoes.unidades.map(c => <option key={c}>{c}</option>)}</Select>
-          <Select label="Setor" value={comum.setor} onChange={e => setC("setor", e.target.value)}>{opcoes.setores.map(c => <option key={c}>{c}</option>)}</Select>
-          <Select label="Centro de Custo" value={comum.cc} onChange={e => setC("cc", e.target.value)}>{opcoes.ccList.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label={t("form_label_unidade")} value={comum.unidade} onChange={e => setC("unidade", e.target.value)}>{opcoes.unidades.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label={t("form_label_setor")} value={comum.setor} onChange={e => setC("setor", e.target.value)}>{opcoes.setores.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label={t("form_label_cc")} value={comum.cc} onChange={e => setC("cc", e.target.value)}>{opcoes.ccList.map(c => <option key={c}>{c}</option>)}</Select>
         </G>
       </div>
 
@@ -660,19 +661,19 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
       <div>
         <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
           <div style={{ width:20, height:20, borderRadius:6, background:"#D97706", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>3</div>
-          Jornada
-          {!isEdit && <span style={{ fontSize:10, color:"#94A3B8", fontWeight:400, letterSpacing:.3, marginLeft:4 }}>— horários padrão (altere individualmente abaixo se necessário)</span>}
+          {t("form_block_3")}
+          {!isEdit && <span style={{ fontSize:10, color:"#94A3B8", fontWeight:400, letterSpacing:.3, marginLeft:4 }}>{t("form_block_3_note")}</span>}
         </div>
         <G cols={4}>
-          <Input label="Data" type="date" value={comum.data} onChange={e => setC("data", e.target.value)} />
-          <Select label="Turno" value={comum.turno} onChange={e => setC("turno", e.target.value)}>{opcoes.turnos.map(c => <option key={c}>{c}</option>)}</Select>
-          <Input label={isEdit ? "Hora Entrada" : "Entrada Padrão"} type="time" value={comum.horaEntrada} onChange={e => setC("horaEntrada", e.target.value)} />
-          <Input label={isEdit ? "Hora Saída" : "Saída Padrão"} type="time" value={comum.horaSaida} onChange={e => setC("horaSaida", e.target.value)} />
+          <Input label={t("form_label_data")} type="date" value={comum.data} onChange={e => setC("data", e.target.value)} />
+          <Select label={t("form_label_turno")} value={comum.turno} onChange={e => setC("turno", e.target.value)}>{opcoes.turnos.map(c => <option key={c}>{c}</option>)}</Select>
+          <Input label={isEdit ? t("form_label_entrada") : t("form_label_entrada_padrao")} type="time" value={comum.horaEntrada} onChange={e => setC("horaEntrada", e.target.value)} />
+          <Input label={isEdit ? t("form_label_saida") : t("form_label_saida_padrao")} type="time" value={comum.horaSaida} onChange={e => setC("horaSaida", e.target.value)} />
         </G>
         {totalPadrao && (
           <div style={{ marginTop:10, display:"inline-flex", alignItems:"center", gap:8, background:"#E6F9F4", borderRadius:8, padding:"8px 14px" }}>
             <Icon d="M12 8v4l3 3M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0" size={14} />
-            <span style={{ fontSize:13, fontWeight:700, color:"#0E9F6E", fontFamily:"monospace" }}>{isEdit ? "Total:" : "Padrão:"} {totalPadrao}</span>
+            <span style={{ fontSize:13, fontWeight:700, color:"#0E9F6E", fontFamily:"monospace" }}>{isEdit ? t("form_total") : t("form_padrao")} {totalPadrao}</span>
           </div>
         )}
       </div>
@@ -681,11 +682,11 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
       <div>
         <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
           <div style={{ width:20, height:20, borderRadius:6, background:"#6C63FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>4</div>
-          Motivo e Observações
+          {t("form_block_4")}
         </div>
         <G cols={1}>
-          <Select label="Motivo" value={comum.motivo} onChange={e => setC("motivo", e.target.value)}>{opcoes.motivos.map(c => <option key={c}>{c}</option>)}</Select>
-          <Input label="Observação" value={comum.obs} onChange={e => setC("obs", e.target.value)} placeholder="Informações adicionais (opcional)" />
+          <Select label={t("form_label_motivo")} value={comum.motivo} onChange={e => setC("motivo", e.target.value)}>{opcoes.motivos.map(c => <option key={c}>{c}</option>)}</Select>
+          <Input label={t("form_label_obs")} value={comum.obs} onChange={e => setC("obs", e.target.value)} placeholder={t("form_obs_placeholder")} />
         </G>
       </div>
 
@@ -693,11 +694,11 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
       <div>
         <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
           <div style={{ width:20, height:20, borderRadius:6, background:"#0891B2", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>5</div>
-          {isEdit ? "Colaborador" : `Colaboradores — ${pessoas.length} pessoa${pessoas.length !== 1 ? "s" : ""}`}
+          {isEdit ? t("form_block_5") : `${t("form_block_5_multi")} — ${pessoas.length} ${pessoas.length !== 1 ? t("form_persons") : t("form_person")}`}
         </div>
         <div style={{ border:"1px solid #E2E6EC", borderRadius:10, overflow:"hidden" }}>
           <div style={{ display:"grid", gridTemplateColumns:"36px 1fr 124px 124px 72px", background:"#F8FAFC", borderBottom:"1px solid #E2E6EC", padding:"9px 14px", gap:8 }}>
-            {["#", "Nome Completo *", "Hora Entrada", "Hora Saída", "Total"].map(h => (
+            {[t("form_col_num"), t("form_col_nome"), t("form_col_entrada"), t("form_col_saida"), t("form_col_total")].map(h => (
               <div key={h} style={{ fontSize:10, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:.6 }}>{h}</div>
             ))}
           </div>
@@ -710,7 +711,7 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
                   value={p.nome}
                   onChange={v => setP(i, "nome", v)}
                   suggestions={opcoes.nomes}
-                  placeholder="NOME COMPLETO"
+                  placeholder={t("form_placeholder_nome")}
                 />
                 <input type="time" value={p.horaEntrada} onChange={e => setP(i, "horaEntrada", e.target.value)}
                   style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:12, fontFamily:"monospace", background:"#FAFBFC", width:"100%", outline:"none" }} />
@@ -724,7 +725,7 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
       </div>
 
       <div style={{ display:"flex", justifyContent:"flex-end", gap:8, paddingTop:16, borderTop:"1px solid #F1F5F9" }}>
-        <Btn variant="ghost" onClick={onCancel}>Cancelar</Btn>
+        <Btn variant="ghost" onClick={onCancel}>{t("form_btn_cancel")}</Btn>
         <Btn onClick={handleSave} disabled={!valid} icon={<Icon d="M5 13l4 4L19 7" />}>{btnLabel}</Btn>
       </div>
     </div>
@@ -735,6 +736,7 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes }: Form
 interface Filtros { data: string; turno: string; fornecedor: string; unidade: string; setor: string; busca: string; }
 
 const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[]; setRegistros: (val: Registro[]) => void; opcoes: Opcoes }) => {
+  const { t } = useI18n();
   const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", setor: "", busca: "" });
   const [modal, setModal]     = useState<null | "new" | Registro | Registro[]>(null);
   const [confirm, setConfirm] = useState<string[] | null>(null);
@@ -799,39 +801,39 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
         <div>
-          <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>Registros</div>
-          <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>Lançamentos de Terceiros</div>
+          <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{t("lanc_section")}</div>
+          <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>{t("lanc_title")}</div>
         </div>
         <div style={{ display:"flex", gap:8 }}>
-          <Btn variant="ghost" onClick={exportCSV} icon={<Icon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />}>Exportar CSV</Btn>
-          <Btn onClick={() => setModal("new")} icon={<Icon d="M12 5v14M5 12h14" />}>Novo Lançamento</Btn>
+          <Btn variant="ghost" onClick={exportCSV} icon={<Icon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />}>{t("lanc_btn_export")}</Btn>
+          <Btn onClick={() => setModal("new")} icon={<Icon d="M12 5v14M5 12h14" />}>{t("lanc_btn_new")}</Btn>
         </div>
       </div>
 
       {/* Filtros */}
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:"14px 18px", display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
-        <Input label="Data" type="date" value={filtros.data} onChange={e => set("data", e.target.value)} style={{ width:150 }} />
-        <Select label="Turno" value={filtros.turno} onChange={e => set("turno", e.target.value)} style={{ width:150 }}>
-          <option value="">Todos</option>{opcoes.turnos.map(t => <option key={t}>{t}</option>)}
+        <Input label={t("form_label_data")} type="date" value={filtros.data} onChange={e => set("data", e.target.value)} style={{ width:150 }} />
+        <Select label={t("form_label_turno")} value={filtros.turno} onChange={e => set("turno", e.target.value)} style={{ width:150 }}>
+          <option value="">{t("lanc_filter_all_m")}</option>{opcoes.turnos.map(opt => <option key={opt}>{opt}</option>)}
         </Select>
-        <Select label="Fornecedor" value={filtros.fornecedor} onChange={e => set("fornecedor", e.target.value)} style={{ width:150 }}>
-          <option value="">Todos</option>{opcoes.fornecedores.map(t => <option key={t}>{t}</option>)}
+        <Select label={t("form_label_forn")} value={filtros.fornecedor} onChange={e => set("fornecedor", e.target.value)} style={{ width:150 }}>
+          <option value="">{t("lanc_filter_all_m")}</option>{opcoes.fornecedores.map(opt => <option key={opt}>{opt}</option>)}
         </Select>
-        <Select label="Unidade" value={filtros.unidade} onChange={e => set("unidade", e.target.value)} style={{ width:150 }}>
-          <option value="">Todas</option>{opcoes.unidades.map(t => <option key={t}>{t}</option>)}
+        <Select label={t("form_label_unidade")} value={filtros.unidade} onChange={e => set("unidade", e.target.value)} style={{ width:150 }}>
+          <option value="">{t("lanc_filter_all_f")}</option>{opcoes.unidades.map(opt => <option key={opt}>{opt}</option>)}
         </Select>
-        <Select label="Setor" value={filtros.setor} onChange={e => set("setor", e.target.value)} style={{ width:150 }}>
-          <option value="">Todos</option>{opcoes.setores.map(t => <option key={t}>{t}</option>)}
+        <Select label={t("form_label_setor")} value={filtros.setor} onChange={e => set("setor", e.target.value)} style={{ width:150 }}>
+          <option value="">{t("lanc_filter_all_m")}</option>{opcoes.setores.map(opt => <option key={opt}>{opt}</option>)}
         </Select>
-        <Input label="Buscar nome" value={filtros.busca} onChange={e => set("busca", e.target.value)} placeholder="Nome…" style={{ width:180 }} />
+        <Input label={t("lanc_filter_busca")} value={filtros.busca} onChange={e => set("busca", e.target.value)} placeholder="Nome…" style={{ width:180 }} />
         <div style={{ marginLeft:"auto", alignSelf:"flex-end" }}>
-          <Btn variant="ghost" small onClick={() => setFiltros({ data:"", turno:"", fornecedor:"", unidade:"", setor:"", busca:"" })}>Limpar filtros</Btn>
+          <Btn variant="ghost" small onClick={() => setFiltros({ data:"", turno:"", fornecedor:"", unidade:"", setor:"", busca:"" })}>{t("lanc_filter_clear")}</Btn>
         </div>
       </div>
 
       {/* Contador */}
       <div style={{ fontSize:12, color:"#94A3B8", paddingLeft:2 }}>
-        Exibindo <strong style={{ color:"#0F1C2E" }}>{filtered.length}</strong> de <strong style={{ color:"#0F1C2E" }}>{registros.length}</strong> registros
+        {t("lanc_showing").replace("{n}", String(filtered.length)).replace("{total}", String(registros.length))}
       </div>
 
       {/* Tabela */}
@@ -840,7 +842,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
             <thead>
               <tr style={{ background:"#F8FAFC" }}>
-                {["Data","Turno","Nome","Cargo","Fornecedor","Setor","Unidade","Entrada","Saída","Horas","Motivo","Ações"].map(h => (
+                {[t("lanc_col_data"),t("lanc_col_turno"),t("lanc_col_nome"),t("lanc_col_cargo"),t("lanc_col_forn"),t("lanc_col_setor"),t("lanc_col_unidade"),t("lanc_col_entrada"),t("lanc_col_saida"),t("lanc_col_horas"),t("lanc_col_motivo"),t("lanc_col_acoes")].map(h => (
                   <th key={h} style={{ padding:"10px 12px", textAlign:"left", color:"#64748B", fontWeight:700, fontSize:10, textTransform:"uppercase", letterSpacing:.7, whiteSpace:"nowrap", borderBottom:"2px solid #E2E6EC" }}>{h}</th>
                 ))}
               </tr>
@@ -849,7 +851,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
               {grupos.length === 0 && (
                 <tr><td colSpan={12} style={{ textAlign:"center", padding:48, color:"#94A3B8" }}>
                   <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
-                  Nenhum registro encontrado
+                  {t("lanc_empty")}
                 </td></tr>
               )}
               {grupos.map((item, i) => {
@@ -898,7 +900,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
 
       {modal && (
         <Modal
-          title={modal === "new" ? "Novo Lançamento" : Array.isArray(modal) ? `Editar Lote — ${modal.length} pessoas` : "Editar Lançamento"}
+          title={modal === "new" ? t("lanc_modal_new") : Array.isArray(modal) ? `${t("lanc_modal_edit_lote")} — ${modal.length} ${modal.length !== 1 ? t("form_persons") : t("form_person")}` : t("lanc_modal_edit")}
           subtitle="Controle de Terceiros" onClose={() => setModal(null)} xl>
           <FormLancamento
             inicial={modal === "new" || Array.isArray(modal) ? null : modal as Registro}
@@ -909,7 +911,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
 
       {detalhe && (
         <Modal
-          title={Array.isArray(detalhe) ? `Lote — ${detalhe.length} colaboradores` : "Detalhes do Lançamento"}
+          title={Array.isArray(detalhe) ? `${t("lanc_detail_lote")} — ${detalhe.length} ${detalhe.length !== 1 ? t("form_persons") : t("form_person")}` : t("lanc_detail_title")}
           subtitle={Array.isArray(detalhe) ? `${fmt(detalhe[0].data)} · ${detalhe[0].turno}` : detalhe.nome}
           onClose={() => setDetalhe(null)} wide={!Array.isArray(detalhe)} xl={Array.isArray(detalhe)}>
           {Array.isArray(detalhe) ? (
@@ -917,10 +919,10 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
               {/* Campos comuns */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 {([
-                  ["Data", fmt(detalhe[0].data)], ["Turno", detalhe[0].turno],
-                  ["Cargo", detalhe[0].cargo], ["Fornecedor", detalhe[0].fornecedor],
-                  ["Unidade", detalhe[0].unidade], ["Setor", detalhe[0].setor],
-                  ["Centro de Custo", detalhe[0].cc], ["Motivo", detalhe[0].motivo],
+                  [t("detail_data"), fmt(detalhe[0].data)], [t("detail_turno"), detalhe[0].turno],
+                  [t("detail_cargo"), detalhe[0].cargo], [t("detail_forn"), detalhe[0].fornecedor],
+                  [t("detail_unidade"), detalhe[0].unidade], [t("detail_setor"), detalhe[0].setor],
+                  [t("detail_cc"), detalhe[0].cc], [t("detail_motivo"), detalhe[0].motivo],
                 ] as [string, string][]).map(([k, v]) => (
                   <div key={k} style={{ background:"#F8FAFC", borderRadius:8, padding:"10px 14px" }}>
                     <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{k}</div>
@@ -930,10 +932,10 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
               </div>
               {/* Lista de colaboradores */}
               <div>
-                <div style={{ fontSize:11, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Colaboradores ({detalhe.length})</div>
+                <div style={{ fontSize:11, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>{t("lanc_detail_cols")} ({detalhe.length})</div>
                 <div style={{ border:"1px solid #E2E6EC", borderRadius:8, overflow:"hidden" }}>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 96px 96px 72px", background:"#F8FAFC", padding:"8px 14px", gap:8, borderBottom:"1px solid #E2E6EC" }}>
-                    {["Nome","Entrada","Saída","Total"].map(h => <div key={h} style={{ fontSize:10, fontWeight:700, color:"#64748B", textTransform:"uppercase" }}>{h}</div>)}
+                    {[t("detail_col_nome"),t("detail_col_entrada"),t("detail_col_saida"),t("detail_col_total")].map(h => <div key={h} style={{ fontSize:10, fontWeight:700, color:"#64748B", textTransform:"uppercase" }}>{h}</div>)}
                   </div>
                   {detalhe.map((rec, idx) => (
                     <div key={rec.id} style={{ display:"grid", gridTemplateColumns:"1fr 96px 96px 72px", gap:8, padding:"8px 14px", background: idx%2===0?"#fff":"#FAFBFC", borderTop: idx > 0 ? "1px solid #F1F5F9" : "none" }}>
@@ -947,7 +949,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
               </div>
               {detalhe[0].obs && (
                 <div style={{ background:"#FEF3C7", borderRadius:8, padding:"10px 14px" }}>
-                  <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>Observação</div>
+                  <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{t("lanc_detail_obs")}</div>
                   <div style={{ fontSize:13, color:"#0F1C2E" }}>{detalhe[0].obs}</div>
                 </div>
               )}
@@ -955,11 +957,11 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
           ) : (
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
               {([
-                ["Nome", detalhe.nome], ["Cargo", detalhe.cargo], ["Fornecedor", detalhe.fornecedor],
-                ["Data", fmt(detalhe.data)], ["Turno", detalhe.turno], ["Setor", detalhe.setor],
-                ["Unidade", detalhe.unidade], ["Centro de Custo", detalhe.cc],
-                ["Hora Entrada", detalhe.horaEntrada], ["Hora Saída", detalhe.horaSaida],
-                ["Total de Horas", detalhe.totalHoras], ["Motivo", detalhe.motivo],
+                  [t("detail_nome"), detalhe.nome], [t("detail_cargo"), detalhe.cargo], [t("detail_forn"), detalhe.fornecedor],
+                  [t("detail_data"), fmt(detalhe.data)], [t("detail_turno"), detalhe.turno], [t("detail_setor"), detalhe.setor],
+                  [t("detail_unidade"), detalhe.unidade], [t("detail_cc"), detalhe.cc],
+                  [t("detail_entrada"), detalhe.horaEntrada], [t("detail_saida"), detalhe.horaSaida],
+                  [t("detail_total_horas"), detalhe.totalHoras], [t("detail_motivo"), detalhe.motivo],
               ] as [string, string][]).map(([k, v]) => (
                 <div key={k} style={{ background:"#F8FAFC", borderRadius:8, padding:"10px 14px" }}>
                   <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{k}</div>
@@ -968,29 +970,29 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
               ))}
               {detalhe.obs && (
                 <div style={{ gridColumn:"span 2", background:"#FEF3C7", borderRadius:8, padding:"10px 14px" }}>
-                  <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>Observação</div>
+                  <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{t("lanc_detail_obs")}</div>
                   <div style={{ fontSize:13, color:"#0F1C2E" }}>{detalhe.obs}</div>
                 </div>
               )}
             </div>
           )}
           <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:16, paddingTop:16, borderTop:"1px solid #F1F5F9" }}>
-            <Btn variant="ghost" onClick={() => setDetalhe(null)}>Fechar</Btn>
-            <Btn onClick={() => { setModal(detalhe); setDetalhe(null); }}>Editar</Btn>
+            <Btn variant="ghost" onClick={() => setDetalhe(null)}>{t("lanc_detail_close")}</Btn>
+            <Btn onClick={() => { setModal(detalhe); setDetalhe(null); }}>{t("lanc_detail_edit")}</Btn>
           </div>
         </Modal>
       )}
 
       {confirm && (
-        <Modal title="Confirmar exclusão" onClose={() => setConfirm(null)}>
+        <Modal title={t("lanc_confirm_title")} onClose={() => setConfirm(null)}>
           <p style={{ color:"#475569", fontSize:13, lineHeight:1.6 }}>
             {confirm.length > 1
-              ? `Tem certeza que deseja excluir este lote (${confirm.length} registros)? Esta ação não poderá ser desfeita.`
-              : "Tem certeza que deseja excluir este lançamento? Esta ação não poderá ser desfeita."}
+              ? t("lanc_confirm_lote").replace("{n}", String(confirm.length))
+              : t("lanc_confirm_single")}
           </p>
           <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20 }}>
-            <Btn variant="ghost" onClick={() => setConfirm(null)}>Cancelar</Btn>
-            <Btn variant="danger" onClick={() => excluir(confirm)}>Excluir</Btn>
+            <Btn variant="ghost" onClick={() => setConfirm(null)}>{t("lanc_confirm_cancel")}</Btn>
+            <Btn variant="danger" onClick={() => excluir(confirm)}>{t("lanc_confirm_delete")}</Btn>
           </div>
         </Modal>
       )}
@@ -1000,6 +1002,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes }: { registros: Registro[
 
 // ─── TELA: DASHBOARD ────────────────────────────────────────────
 const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoes }) => {
+  const { t } = useI18n();
   const [periodo, setPeriodo] = useState(mesAtual());
 
   const doMes  = useMemo(() => registros.filter(r => r.data.startsWith(periodo)), [registros, periodo]);
@@ -1048,8 +1051,8 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
         <div>
-          <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>Visão Analítica</div>
-          <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>Dashboard de Terceiros</div>
+          <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{t("dash_section")}</div>
+          <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>{t("dash_title")}</div>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           <button onClick={() => { const d = new Date(periodo + "-01"); d.setMonth(d.getMonth() - 1); setPeriodo(d.toISOString().slice(0, 7)); }}
@@ -1061,21 +1064,21 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
       </div>
 
       <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
-        <KPI label="Registros no Mês" value={doMes.length} sub={`${deHoje.length} hoje`} color="#1A56DB"
+        <KPI label={t("dash_kpi_records")} value={doMes.length} sub={t("dash_kpi_today").replace("{n}", String(deHoje.length))} color="#1A56DB"
           icon={<Icon d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />} />
-        <KPI label="Fornecedores Ativos" value={porFornecedor.length} sub="no período" color="#D97706"
+        <KPI label={t("dash_kpi_forn")} value={porFornecedor.length} sub={t("dash_kpi_period")} color="#D97706"
           icon={<Icon d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />} />
-        <KPI label="Total de Horas" value={totalHorasMes} sub="horas trabalhadas" color="#0E9F6E"
+        <KPI label={t("dash_kpi_horas")} value={totalHorasMes} sub={t("dash_kpi_horas_sub")} color="#0E9F6E"
           icon={<Icon d="M12 8v4l3 3M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0" />} />
-        <KPI label="Setores Cobertos" value={porSetor.length} sub="no período" color="#6C63FF"
+        <KPI label={t("dash_kpi_setores")} value={porSetor.length} sub={t("dash_kpi_period")} color="#6C63FF"
           icon={<Icon d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />} />
       </div>
 
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
         <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
-          <div style={{ fontWeight:700, fontSize:13, marginBottom:16, color:"#0F1C2E" }}>Registros por Fornecedor</div>
+          <div style={{ fontWeight:700, fontSize:13, marginBottom:16, color:"#0F1C2E" }}>{t("dash_chart_forn")}</div>
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {porFornecedor.length === 0 && <div style={{ color:"#94A3B8", fontSize:12, textAlign:"center", padding:20 }}>Sem dados no período</div>}
+            {porFornecedor.length === 0 && <div style={{ color:"#94A3B8", fontSize:12, textAlign:"center", padding:20 }}>{t("dash_no_data")}</div>}
             {porFornecedor.map(([forn, n], i) => {
               const pct = doMes.length ? (n / doMes.length * 100) : 0;
               const cor = CHART_CORES[i % CHART_CORES.length];
@@ -1095,9 +1098,9 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
         </div>
 
         <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
-          <div style={{ fontWeight:700, fontSize:13, marginBottom:16, color:"#0F1C2E" }}>Registros por Setor</div>
+          <div style={{ fontWeight:700, fontSize:13, marginBottom:16, color:"#0F1C2E" }}>{t("dash_chart_setor")}</div>
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {porSetor.length === 0 && <div style={{ color:"#94A3B8", fontSize:12, textAlign:"center", padding:20 }}>Sem dados no período</div>}
+            {porSetor.length === 0 && <div style={{ color:"#94A3B8", fontSize:12, textAlign:"center", padding:20 }}>{t("dash_no_data")}</div>}
             {porSetor.map(([setor, n], i) => {
               const pct = doMes.length ? (n / doMes.length * 100) : 0;
               const cor = CHART_CORES[(i + 2) % CHART_CORES.length];
@@ -1118,30 +1121,30 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
       </div>
 
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
-        <div style={{ fontWeight:700, fontSize:13, marginBottom:14, color:"#0F1C2E" }}>Distribuição por Turno</div>
+        <div style={{ fontWeight:700, fontSize:13, marginBottom:14, color:"#0F1C2E" }}>{t("dash_chart_turno")}</div>
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-          {opcoes.turnos.map((t, i) => {
-            const doMes_t  = doMes.filter(r => r.turno === t);
+          {opcoes.turnos.map((turno, i) => {
+            const doMes_t  = doMes.filter(r => r.turno === turno);
             const n        = doMes_t.length;
             const pct      = doMes.length ? (n / doMes.length * 100).toFixed(0) : 0;
             const cor      = CHART_CORES[i % CHART_CORES.length];
             const diasTurno = new Set(doMes_t.map(r => r.data)).size;
             const mediaDia  = diasTurno > 0 ? (n / diasTurno).toFixed(1) : "—";
-            const allTurno  = registros.filter(r => r.turno === t);
+            const allTurno  = registros.filter(r => r.turno === turno);
             const mesesTurno = new Set(allTurno.map(r => r.data.slice(0, 7))).size;
             const mediaMes  = mesesTurno > 0 ? (allTurno.length / mesesTurno).toFixed(1) : "—";
             return (
-              <div key={t} style={{ flex:1, minWidth:140, background: cor + "0F", border:`1.5px solid ${cor}33`, borderRadius:10, padding:"12px 16px" }}>
-                <div style={{ fontSize:11, color:cor, fontWeight:700, marginBottom:8 }}>{t}</div>
+              <div key={turno} style={{ flex:1, minWidth:140, background: cor + "0F", border:`1.5px solid ${cor}33`, borderRadius:10, padding:"12px 16px" }}>
+                <div style={{ fontSize:11, color:cor, fontWeight:700, marginBottom:8 }}>{turno}</div>
                 <div style={{ fontSize:26, fontWeight:800, color:cor, lineHeight:1 }}>{n}</div>
-                <div style={{ fontSize:11, color:"#94A3B8", marginTop:2, marginBottom:10 }}>{pct}% do período</div>
+                <div style={{ fontSize:11, color:"#94A3B8", marginTop:2, marginBottom:10 }}>{pct}{t("dash_pct")}</div>
                 <div style={{ display:"flex", flexDirection:"column", gap:4, borderTop:`1px solid ${cor}22`, paddingTop:8 }}>
                   <div style={{ display:"flex", justifyContent:"space-between", fontSize:11 }}>
-                    <span style={{ color:"#94A3B8" }}>Média/dia</span>
+                    <span style={{ color:"#94A3B8" }}>{t("dash_media_dia")}</span>
                     <span style={{ fontWeight:700, color:cor, fontFamily:"monospace" }}>{mediaDia}</span>
                   </div>
                   <div style={{ display:"flex", justifyContent:"space-between", fontSize:11 }}>
-                    <span style={{ color:"#94A3B8" }}>Média/mês</span>
+                    <span style={{ color:"#94A3B8" }}>{t("dash_media_mes")}</span>
                     <span style={{ fontWeight:700, color:cor, fontFamily:"monospace" }}>{mediaMes}</span>
                   </div>
                 </div>
@@ -1156,6 +1159,7 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
 
 // ─── TELA: FORNECEDORES ─────────────────────────────────────────
 const Fornecedores = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoes }) => {
+  const { t } = useI18n();
   const resumo = useMemo(() => {
     return opcoes.fornecedores.map(forn => {
       const regs    = registros.filter(r => r.fornecedor === forn);
@@ -1172,13 +1176,13 @@ const Fornecedores = ({ registros, opcoes }: { registros: Registro[]; opcoes: Op
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
       <div>
-        <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>Visão</div>
-        <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>Painel de Fornecedores</div>
+        <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{t("forn_section")}</div>
+        <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>{t("forn_title")}</div>
       </div>
       {resumo.length === 0 && (
         <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:48, textAlign:"center", color:"#94A3B8" }}>
           <div style={{ fontSize:32, marginBottom:8 }}>🏢</div>
-          Nenhum lançamento registrado ainda
+          {t("forn_empty")}
         </div>
       )}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))", gap:14 }}>
@@ -1188,11 +1192,11 @@ const Fornecedores = ({ registros, opcoes }: { registros: Registro[]; opcoes: Op
             <div key={forn} style={{ background:"#fff", border:`1px solid ${cor}33`, borderRadius:12, overflow:"hidden", boxShadow:"0 1px 4px rgba(15,28,46,.06)" }}>
               <div style={{ background:cor, padding:"14px 18px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                 <div style={{ fontWeight:800, fontSize:14, color:"#fff" }}>{forn}</div>
-                <div style={{ background:"rgba(255,255,255,.2)", borderRadius:8, padding:"4px 10px", fontSize:12, fontWeight:700, color:"#fff" }}>{total} registros</div>
+                <div style={{ background:"rgba(255,255,255,.2)", borderRadius:8, padding:"4px 10px", fontSize:12, fontWeight:700, color:"#fff" }}>{total} {t("forn_registros")}</div>
               </div>
               <div style={{ padding:"14px 18px" }}>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:14 }}>
-                  {([["Hoje", hj, cor], ["Este Mês", mes, "#334155"], ["Total Horas", horas, "#0E9F6E"]] as [string, string | number, string][]).map(([l, v, c]) => (
+                  {([[t("forn_card_today"), hj, cor], [t("forn_card_mes"), mes, "#334155"], [t("forn_card_horas"), horas, "#0E9F6E"]] as [string, string | number, string][]).map(([l, v, c]) => (
                     <div key={l} style={{ background:"#F8FAFC", borderRadius:8, padding:"8px 10px", textAlign:"center" }}>
                       <div style={{ fontSize:10, color:"#94A3B8", textTransform:"uppercase", letterSpacing:.6, marginBottom:3 }}>{l}</div>
                       <div style={{ fontSize:14, fontWeight:800, color:c }}>{v}</div>
@@ -1201,7 +1205,7 @@ const Fornecedores = ({ registros, opcoes }: { registros: Registro[]; opcoes: Op
                 </div>
                 {setores.length > 0 && (
                   <div style={{ marginBottom:12 }}>
-                    <div style={{ fontSize:10, color:"#94A3B8", textTransform:"uppercase", letterSpacing:.6, marginBottom:6 }}>Setores atendidos</div>
+                    <div style={{ fontSize:10, color:"#94A3B8", textTransform:"uppercase", letterSpacing:.6, marginBottom:6 }}>{t("forn_setores")}</div>
                     <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
                       {setores.map(s => <Chip key={s} label={s} color={cor} size="sm" />)}
                     </div>
@@ -1209,7 +1213,7 @@ const Fornecedores = ({ registros, opcoes }: { registros: Registro[]; opcoes: Op
                 )}
                 {ultimos.length > 0 && (
                   <div>
-                    <div style={{ fontSize:10, color:"#94A3B8", textTransform:"uppercase", letterSpacing:.6, marginBottom:6 }}>Últimos lançamentos</div>
+                    <div style={{ fontSize:10, color:"#94A3B8", textTransform:"uppercase", letterSpacing:.6, marginBottom:6 }}>{t("forn_ultimos")}</div>
                     <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
                       {ultimos.map(r => (
                         <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:11, padding:"4px 0", borderBottom:"1px solid #F1F5F9" }}>
@@ -1251,6 +1255,7 @@ const Configuracoes = ({
   registros: Registro[];
   setRegistros: (val: Registro[]) => void;
 }) => {
+  const { t } = useI18n();
   type OpcKey = keyof Opcoes;
   const [inputs, setInputs] = useState<Record<OpcKey, string>>({
     turnos: "", unidades: "", fornecedores: "", motivos: "", cargos: "", ccList: "", setores: "", nomes: ""
@@ -1323,7 +1328,7 @@ const Configuracoes = ({
     setTitularResult(null);
     setTitularNome("");
     setExclusaoConfirm(false);
-    setExclusaoFeedback(`✓ ${ids.length} registro${ids.length > 1 ? "s" : ""} de "${q}" excluído${ids.length > 1 ? "s" : ""} com sucesso.`);
+    setExclusaoFeedback(t("lgpd_success").replace("{n}", String(ids.length)).replace(/\{s\}/g, ids.length > 1 ? "s" : "").replace("{name}", q));
     setTimeout(() => setExclusaoFeedback(""), 5000);
   };
 
@@ -1348,9 +1353,9 @@ const Configuracoes = ({
         .filter(n => n.length > 2)
     )].filter(n => !opcoes.nomes.includes(n));
 
-    if (novos.length === 0) { setBulkFeedback("Nenhum nome novo para importar."); return; }
+    if (novos.length === 0) { setBulkFeedback(t("cfg_import_none")); return; }
 
-    setBulkFeedback("Salvando…");
+    setBulkFeedback(t("cfg_import_saving"));
 
     const CHUNK = 100;
     let erroMsg = "";
@@ -1363,14 +1368,15 @@ const Configuracoes = ({
     }
 
     if (erroMsg) {
-      setBulkFeedback(`Erro ao salvar: ${erroMsg}`);
+      setBulkFeedback(`${t("cfg_import_error")} ${erroMsg}`);
       return;
     }
 
     const novaLista = [...opcoes.nomes, ...novos];
     setOpcoes({ ...opcoes, nomes: novaLista });
     setNomesBulk("");
-    setBulkFeedback(`${novos.length} nome${novos.length > 1 ? "s" : ""} importado${novos.length > 1 ? "s" : ""} com sucesso!`);
+    const s = novos.length > 1 ? "s" : "";
+    setBulkFeedback(t("cfg_import_success").replace("{n}", String(novos.length)).replace(/\{s\}/g, s));
     setTimeout(() => setBulkFeedback(""), 4000);
   };
 
@@ -1381,9 +1387,9 @@ const Configuracoes = ({
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
       <div>
-        <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>Personalização</div>
-        <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>Configurações</div>
-        <div style={{ fontSize:12, color:"#64748B", marginTop:4 }}>Gerencie as opções dos campos e a base de colaboradores.</div>
+        <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{t("cfg_section")}</div>
+        <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>{t("cfg_title")}</div>
+        <div style={{ fontSize:12, color:"#64748B", marginTop:4 }}>{t("cfg_desc")}</div>
       </div>
 
       {/* Grade de listas de opções */}
@@ -1392,12 +1398,12 @@ const Configuracoes = ({
           <div key={key} style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:18, display:"flex", flexDirection:"column", gap:12 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8 }}>
               <div style={{ width:10, height:10, borderRadius:"50%", background:cor, flexShrink:0 }} />
-              <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{label}</div>
+              <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{t(("cfg_opt_" + key) as Parameters<typeof t>[0])}</div>
               <div style={{ marginLeft:"auto", fontSize:11, background:cor + "18", color:cor, fontWeight:700, borderRadius:99, padding:"2px 8px" }}>{opcoes[key].length}</div>
             </div>
 
             <div style={{ display:"flex", flexDirection:"column", gap:3, maxHeight:160, overflowY:"auto" }}>
-              {opcoes[key].length === 0 && <div style={{ color:"#CBD5E1", fontSize:11, textAlign:"center", padding:"10px 0" }}>Nenhum item</div>}
+              {opcoes[key].length === 0 && <div style={{ color:"#CBD5E1", fontSize:11, textAlign:"center", padding:"10px 0" }}>{t("cfg_opt_empty")}</div>}
               {opcoes[key].map((item, idx) => (
                 <div key={idx} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"5px 8px", background:"#F8FAFC", borderRadius:6, fontSize:12 }}>
                   <span style={{ color:"#334155", fontWeight:500 }}>{item}</span>
@@ -1411,7 +1417,7 @@ const Configuracoes = ({
             <div style={{ display:"flex", gap:6 }}>
               <input value={inputs[key]} onChange={e => setInputs(p => ({ ...p, [key]: e.target.value }))}
                 onKeyDown={e => e.key === "Enter" && addItem(key, inputs[key])}
-                placeholder="Novo item..." style={inStyle} />
+                placeholder={t("cfg_opt_placeholder")} style={inStyle} />
               <button onClick={() => addItem(key, inputs[key])}
                 style={{ background:cor, border:"none", borderRadius:7, padding:"6px 14px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>+</button>
             </div>
@@ -1423,21 +1429,21 @@ const Configuracoes = ({
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
           <div style={{ width:10, height:10, borderRadius:"50%", background:"#334155", flexShrink:0 }} />
-          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>Base de Colaboradores</div>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{t("cfg_nomes_title")}</div>
           <div style={{ fontSize:11, background:"#33415518", color:"#334155", fontWeight:700, borderRadius:99, padding:"2px 8px" }}>{opcoes.nomes.length} nomes</div>
-          <div style={{ fontSize:12, color:"#94A3B8", marginLeft:4 }}>— usados para autocompletar o campo de nome nos lançamentos</div>
+          <div style={{ fontSize:12, color:"#94A3B8", marginLeft:4 }}>{t("cfg_nomes_desc")}</div>
         </div>
 
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
           {/* Lista de nomes */}
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            <div style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Colaboradores cadastrados</div>
-            <input value={nomeBusca} onChange={e => setNomeBusca(e.target.value)} placeholder="Buscar nome..."
+            <div style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("cfg_nomes_list_label")}</div>
+            <input value={nomeBusca} onChange={e => setNomeBusca(e.target.value)} placeholder={t("cfg_nomes_search")}
               style={{ ...inStyle, flex:"none" }} />
             <div style={{ border:"1px solid #E2E6EC", borderRadius:8, maxHeight:260, overflowY:"auto" }}>
               {nomesFiltrados.length === 0 && (
                 <div style={{ color:"#94A3B8", fontSize:12, textAlign:"center", padding:24 }}>
-                  {opcoes.nomes.length === 0 ? "Nenhum colaborador cadastrado" : "Nenhum resultado"}
+                  {opcoes.nomes.length === 0 ? t("cfg_nomes_none") : t("cfg_nomes_no_result")}
                 </div>
               )}
               {nomesFiltrados.map((nome, idx) => {
@@ -1455,7 +1461,7 @@ const Configuracoes = ({
             <div style={{ display:"flex", gap:6 }}>
               <input value={inputs.nomes} onChange={e => setInputs(p => ({ ...p, nomes: e.target.value }))}
                 onKeyDown={e => e.key === "Enter" && addItem("nomes", inputs.nomes)}
-                placeholder="Adicionar nome individual..." style={inStyle} />
+                placeholder={t("cfg_nomes_add_ph")} style={inStyle} />
               <button onClick={() => addItem("nomes", inputs.nomes)}
                 style={{ background:"#334155", border:"none", borderRadius:7, padding:"6px 14px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>+</button>
             </div>
@@ -1463,20 +1469,20 @@ const Configuracoes = ({
 
           {/* Importação em massa */}
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            <div style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Importar lista (um nome por linha)</div>
+            <div style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("cfg_import_label")}</div>
             <textarea value={nomesBulk} onChange={e => setNomesBulk(e.target.value)}
               placeholder={"JOÃO DA SILVA\nMARIA OLIVEIRA\nCARLOS SANTOS\n..."}
               style={{ border:"1.5px solid #E2E6EC", borderRadius:8, padding:"9px 11px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", resize:"vertical", minHeight:220, lineHeight:1.8 }} />
             <button onClick={importNomes}
               style={{ background:"#1A56DB", border:"none", borderRadius:8, padding:"10px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
-              Importar Nomes
+              {t("cfg_import_btn")}
             </button>
             {bulkFeedback && (
               <div style={{ fontSize:12, color:"#0E9F6E", fontWeight:600, background:"#E6F9F4", borderRadius:7, padding:"7px 12px" }}>
                 {bulkFeedback}
               </div>
             )}
-            <div style={{ fontSize:11, color:"#94A3B8" }}>Nomes duplicados são ignorados automaticamente. Cole diretamente de uma planilha Excel (uma coluna de nomes).</div>
+            <div style={{ fontSize:11, color:"#94A3B8" }}>{t("cfg_import_hint")}</div>
           </div>
         </div>
       </div>
@@ -1485,34 +1491,34 @@ const Configuracoes = ({
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
           <div style={{ width:10, height:10, borderRadius:"50%", background:"#6C63FF", flexShrink:0 }} />
-          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>Encarregado de Dados (DPO)</div>
-          <div style={{ fontSize:11, background:"#6C63FF18", color:"#6C63FF", fontWeight:700, borderRadius:99, padding:"2px 8px" }}>Art. 41 LGPD</div>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{t("dpo_title")}</div>
+          <div style={{ fontSize:11, background:"#6C63FF18", color:"#6C63FF", fontWeight:700, borderRadius:99, padding:"2px 8px" }}>{t("dpo_badge")}</div>
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:14 }}>
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Nome</label>
-            <input value={dpoNome} onChange={e => setDpoNome(e.target.value)} placeholder="Nome do responsável"
+            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("dpo_label_nome")}</label>
+            <input value={dpoNome} onChange={e => setDpoNome(e.target.value)} placeholder={t("dpo_ph_nome")}
               style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>E-mail</label>
-            <input type="email" value={dpoEmail} onChange={e => setDpoEmail(e.target.value)} placeholder="dpo@empresa.com.br"
+            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("dpo_label_email")}</label>
+            <input type="email" value={dpoEmail} onChange={e => setDpoEmail(e.target.value)} placeholder={t("dpo_ph_email")}
               style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Telefone</label>
-            <input value={dpoTelefone} onChange={e => setDpoTelefone(e.target.value)} placeholder="(00) 00000-0000"
+            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("dpo_label_tel")}</label>
+            <input value={dpoTelefone} onChange={e => setDpoTelefone(e.target.value)} placeholder={t("dpo_ph_tel")}
               style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
           </div>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
           <button onClick={saveDpo} style={{ background:"#6C63FF", border:"none", borderRadius:8, padding:"9px 22px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
-            Salvar DPO
+            {t("dpo_btn_save")}
           </button>
-          {dpoSaved && <span style={{ fontSize:12, color:"#0E9F6E", fontWeight:600 }}>✓ Salvo com sucesso</span>}
+          {dpoSaved && <span style={{ fontSize:12, color:"#0E9F6E", fontWeight:600 }}>{t("dpo_saved")}</span>}
         </div>
         <div style={{ fontSize:11, color:"#94A3B8", marginTop:10 }}>
-          As informações do DPO são exibidas no aviso de privacidade apresentado ao usuário no primeiro acesso. Obrigatório pela Lei nº 13.709/2018 (LGPD).
+          {t("dpo_desc")}
         </div>
       </div>
 
@@ -1520,32 +1526,32 @@ const Configuracoes = ({
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
           <div style={{ width:10, height:10, borderRadius:"50%", background:"#E02424", flexShrink:0 }} />
-          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>Direitos do Titular — Exclusão por Solicitação</div>
-          <div style={{ fontSize:11, background:"#E0242418", color:"#E02424", fontWeight:700, borderRadius:99, padding:"2px 8px" }}>Art. 18 LGPD</div>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{t("lgpd_title")}</div>
+          <div style={{ fontSize:11, background:"#E0242418", color:"#E02424", fontWeight:700, borderRadius:99, padding:"2px 8px" }}>{t("lgpd_badge")}</div>
         </div>
         <div style={{ fontSize:12, color:"#64748B", marginBottom:14 }}>
-          Para atender a uma solicitação de exclusão de dados de um colaborador, busque pelo nome exato abaixo. Todos os registros deste colaborador serão removidos permanentemente e o evento será registrado no log de auditoria.
+          {t("lgpd_desc")}
         </div>
         <div style={{ display:"flex", gap:8, marginBottom:14 }}>
           <input value={titularNome} onChange={e => setTitularNome(e.target.value)}
             onKeyDown={e => e.key === "Enter" && buscarTitular()}
-            placeholder="NOME COMPLETO DO COLABORADOR"
+            placeholder={t("lgpd_placeholder")}
             style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"8px 12px", fontSize:13, fontFamily:"inherit", background:"#FAFBFC", outline:"none", flex:1, textTransform:"uppercase" }} />
           <button onClick={buscarTitular} style={{ background:"#334155", border:"none", borderRadius:8, padding:"8px 20px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit", flexShrink:0 }}>
-            Buscar
+            {t("lgpd_search_btn")}
           </button>
         </div>
 
         {titularResult !== null && (
           <div style={{ border:"1px solid #E2E6EC", borderRadius:10, overflow:"hidden", marginBottom:12 }}>
             <div style={{ background:"#F8FAFC", padding:"10px 16px", fontSize:12, color:"#64748B", borderBottom:"1px solid #E2E6EC", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <span>Resultado para: <strong style={{ color:"#0F1C2E" }}>{titularNome.trim().toUpperCase()}</strong></span>
+              <span>{t("lgpd_result_for")} <strong style={{ color:"#0F1C2E" }}>{titularNome.trim().toUpperCase()}</strong></span>
               <span style={{ fontWeight:700, color: titularResult.length > 0 ? "#E02424" : "#0E9F6E" }}>
-                {titularResult.length} registro{titularResult.length !== 1 ? "s" : ""} encontrado{titularResult.length !== 1 ? "s" : ""}
+                {t("lgpd_found").replace("{n}", String(titularResult.length)).replace(/\{s\}/g, titularResult.length !== 1 ? "s" : "")}
               </span>
             </div>
             {titularResult.length === 0 ? (
-              <div style={{ padding:"20px 16px", fontSize:12, color:"#94A3B8", textAlign:"center" }}>Nenhum registro encontrado para este nome.</div>
+              <div style={{ padding:"20px 16px", fontSize:12, color:"#94A3B8", textAlign:"center" }}>{t("lgpd_not_found")}</div>
             ) : (
               <div style={{ padding:"12px 16px", display:"flex", flexDirection:"column", gap:10 }}>
                 <div style={{ display:"flex", flexDirection:"column", gap:4, maxHeight:160, overflowY:"auto" }}>
@@ -1557,25 +1563,28 @@ const Configuracoes = ({
                       <span style={{ color:"#64748B" }}>{r.horaEntrada}–{r.horaSaida}</span>
                     </div>
                   ))}
-                  {titularResult.length > 5 && <div style={{ fontSize:11, color:"#94A3B8", textAlign:"center" }}>+{titularResult.length - 5} registro{titularResult.length - 5 > 1 ? "s" : ""} não exibido{titularResult.length - 5 > 1 ? "s" : ""}</div>}
+                  {titularResult.length > 5 && <div style={{ fontSize:11, color:"#94A3B8", textAlign:"center" }}>{t("lgpd_hidden").replace("{n}", String(titularResult.length - 5)).replace(/\{s\}/g, titularResult.length - 5 > 1 ? "s" : "")}</div>}
                 </div>
                 {!exclusaoConfirm ? (
                   <button onClick={() => setExclusaoConfirm(true)}
                     style={{ background:"#FEF2F2", border:"1.5px solid #FECACA", borderRadius:8, padding:"9px 18px", cursor:"pointer", color:"#E02424", fontWeight:700, fontSize:13, fontFamily:"inherit", alignSelf:"flex-start" }}>
-                    Solicitar exclusão de {titularResult.length} registro{titularResult.length !== 1 ? "s" : ""}
+                    {t("lgpd_request_btn").replace("{n}", String(titularResult.length)).replace(/\{s\}/g, titularResult.length !== 1 ? "s" : "")}
                   </button>
                 ) : (
                   <div style={{ background:"#FFF5F5", border:"1.5px solid #FECACA", borderRadius:10, padding:"14px 16px", display:"flex", flexDirection:"column", gap:10 }}>
-                    <div style={{ fontSize:13, fontWeight:700, color:"#E02424" }}>⚠️ Confirmação de Exclusão Irreversível</div>
+                    <div style={{ fontSize:13, fontWeight:700, color:"#E02424" }}>{t("lgpd_confirm_title")}</div>
                     <div style={{ fontSize:12, color:"#475569" }}>
-                      Esta ação removerá <strong>{titularResult.length} registro{titularResult.length !== 1 ? "s" : ""}</strong> de <strong>{titularNome.trim().toUpperCase()}</strong> permanentemente. O evento será registrado no log de auditoria para fins de compliance com a LGPD.
+                      {t("lgpd_confirm_text")
+                        .replace("{n}", String(titularResult.length))
+                        .replace(/\{s\}/g, titularResult.length !== 1 ? "s" : "")
+                        .replace("{name}", titularNome.trim().toUpperCase())}
                     </div>
                     <div style={{ display:"flex", gap:8 }}>
                       <button onClick={excluirTitular} style={{ background:"#E02424", border:"none", borderRadius:8, padding:"9px 18px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
-                        Confirmar Exclusão
+                        {t("lgpd_confirm_btn")}
                       </button>
                       <button onClick={() => setExclusaoConfirm(false)} style={{ background:"#F1F5F9", border:"none", borderRadius:8, padding:"9px 18px", cursor:"pointer", color:"#475569", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
-                        Cancelar
+                        {t("lgpd_cancel_btn")}
                       </button>
                     </div>
                   </div>
@@ -1603,6 +1612,7 @@ interface NavItem { id: TabId; label: string; icon: string; }
 
 const Index = () => {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [tab, setTab]                             = useState<TabId>("lancamentos");
   const [registros, setRegistros, loadingRegs]    = useStorage();
   const [opcoes, setOpcoes, loadingOpts]           = useOpcoes();
@@ -1635,10 +1645,10 @@ const Index = () => {
   const mes_  = registros.filter(r => r.data.startsWith(mesAtual())).length;
 
   const NAV: NavItem[] = [
-    { id: "dashboard",      label: "Dashboard",      icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" },
-    { id: "lancamentos",    label: "Lançamentos",    icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" },
-    { id: "fornecedores",   label: "Fornecedores",   icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
-    { id: "configuracoes",  label: "Configurações",  icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.94 11a8 8 0 0 0-15.88 0H2v2h2.06a8 8 0 0 0 15.88 0H22v-2h-2.06z" },
+    { id: "dashboard",      label: t("nav_tab_dashboard"), icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" },
+    { id: "lancamentos",    label: t("nav_tab_lanc"),      icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" },
+    { id: "fornecedores",   label: t("nav_tab_forn"),      icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
+    { id: "configuracoes",  label: t("nav_tab_cfg"),       icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.94 11a8 8 0 0 0-15.88 0H2v2h2.06a8 8 0 0 0 15.88 0H22v-2h-2.06z" },
   ];
 
   return (
@@ -1684,18 +1694,18 @@ const Index = () => {
 
         <div style={{ display:"flex", alignItems:"center", gap:16 }}>
           <div style={{ display:"flex", gap:12, fontSize:11 }}>
-            <div style={{ color:"#64748B" }}>Hoje: <strong style={{ color:"#F8FAFC" }}>{hoje_}</strong></div>
-            <div style={{ color:"#64748B" }}>Mês: <strong style={{ color:"#F8FAFC" }}>{mes_}</strong></div>
+            <div style={{ color:"#64748B" }}>{t("nav_hoje")} <strong style={{ color:"#F8FAFC" }}>{hoje_}</strong></div>
+            <div style={{ color:"#64748B" }}>{t("nav_mes")} <strong style={{ color:"#F8FAFC" }}>{mes_}</strong></div>
           </div>
           {loading && (
             <div style={{ display:"flex", alignItems:"center", gap:6, background:"#1A56DB18", border:"1px solid #1A56DB33", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#1A56DB", fontWeight:600 }}>
               <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-              Carregando…
+              {t("nav_loading")}
             </div>
           )}
           {saved && !loading && (
             <div style={{ display:"flex", alignItems:"center", gap:5, background:"#0E9F6E22", border:"1px solid #0E9F6E44", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#0E9F6E", fontWeight:600 }}>
-              <Icon d="M5 13l4 4L19 7" size={12} /> Salvo
+              <Icon d="M5 13l4 4L19 7" size={12} /> {t("nav_saved")}
             </div>
           )}
           <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"#475569", fontFamily:"'DM Mono',monospace" }}>
@@ -1709,7 +1719,7 @@ const Index = () => {
               style={{ display:"flex", alignItems:"center", gap:5, background:"#1A56DB18", border:"1px solid #1A56DB44", borderRadius:8, padding:"4px 10px", cursor:"pointer", color:"#1A56DB", fontSize:11, fontFamily:"inherit", fontWeight:600 }}
             >
               <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              Admin
+              {t("nav_admin")}
             </button>
           )}
           <button
@@ -1718,7 +1728,7 @@ const Index = () => {
             style={{ display:"flex", alignItems:"center", gap:5, background:"transparent", border:"1px solid #1E293B", borderRadius:8, padding:"4px 10px", cursor:"pointer", color:"#64748B", fontSize:11, fontFamily:"inherit", fontWeight:600 }}
           >
             <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-            Sair
+            {t("nav_logout")}
           </button>        </div>
       </header>
 
@@ -1726,7 +1736,7 @@ const Index = () => {
         {loading ? (
           <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"60vh", gap:16 }}>
             <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="#1A56DB" strokeWidth={2} style={{ animation:"spin 1s linear infinite" }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-            <div style={{ fontSize:14, color:"#64748B", fontWeight:600 }}>Carregando dados do servidor…</div>
+            <div style={{ fontSize:14, color:"#64748B", fontWeight:600 }}>{t("nav_loading_data")}</div>
             <style>{"@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}"}</style>
           </div>
         ) : (

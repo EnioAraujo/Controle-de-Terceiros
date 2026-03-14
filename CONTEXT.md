@@ -307,14 +307,15 @@ const { lang, setLang, t } = useI18n();
 ### Seletor de Idioma
 
 - Exibido na `LoginPage` acima do logo
-- Dois botões: 🇧🇷 Português / 🇺🇸 English
+- Dois botões com código de texto: **BR** Português / **US** English (borda ativa = azul, inativo = cinza)
 - Troca de idioma em tempo real sem recarregar
 
-### Páginas Traduzidas
+### Páginas/Componentes Traduzidos
 
-- `LoginPage` — completa (labels, placeholders, erros, aviso de conta)
+- `LoginPage` — completa (labels, placeholders, erros, seletor de idioma)
 - `ResetPasswordPage` — completa (labels, erros, mensagens de status)
 - `AdminPage` — mensagens de feedback (e-mail enviado, erros de senha)
+- `Index.tsx` — completa: PrivacyNotice, FormLancamento, Lancamentos, Dashboard, Fornecedores, Configuracoes (incl. DPO e LGPD exclusão), navbar (Hoje/Mês/Admin/Sair/abas de navegação)
 
 ---
 
@@ -338,3 +339,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-14 | Corrigido fluxo de redefinição de senha: rota /reset-password dedicada, AppRoutes com useNavigate dentro do BrowserRouter, ResetPasswordPage autônoma sem prop onDone |
 | 2026-03-14 | Implementado sistema i18n pt-BR/en-US: i18n-translations.ts, i18n-context.ts, i18n.tsx (provider), use-i18n.ts (hook); seletor de idioma na LoginPage; tradução de LoginPage, ResetPasswordPage e AdminPage; mapSupabaseError para mensagens de erro do Supabase em português/inglês |
 | 2026-03-14 | Gerenciamento de usuários na AdminPage: criar, editar, excluir via Edge Function admin-users (service_role segura); modal CRUD; migração user_management.sql |
+| 2026-03-14 | Expandida internacionalização (i18n) para todo o app: Index.tsx coberto completamente (PrivacyNotice, FormLancamento, Lancamentos, Dashboard, Fornecedores, Configuracoes, Navbar); seletor de idioma reformatado para texto BR/US em vez de emojis |
