@@ -218,35 +218,35 @@ const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
   const prevRef               = useRef<Opcoes>(OPCOES_DEFAULT);
 
   useEffect(() => {
-    authReady.then(() =>
-      supabase
-        .from("opcoes")
-        .select("chave, valor")
-        .order("id", { ascending: true })
-        .then(({ data: rows, error }) => {
-          if (error) {
-            console.error("Erro ao carregar opções:", error.message);
-          } else if (rows) {
-            // Agrupar valores do DB por chave
-            const byKey = new Map<string, string[]>();
-            (rows as { chave: string; valor: string }[]).forEach(row => {
-              if (!byKey.has(row.chave)) byKey.set(row.chave, []);
-              byKey.get(row.chave)!.push(row.valor);
-            });
+    authReady.then(async () => {
+      // Carrega opções (sem nomes) e nomes em paralelo
+      const [opcoesRes, nomesRes] = await Promise.all([
+        supabase.from("opcoes").select("chave, valor").order("id", { ascending: true }),
+        supabase.from("terceiros").select("nome").order("nome", { ascending: true }),
+      ]);
 
-            // Partir dos defaults e sobrescrever apenas as chaves que existem no DB.
-            // Chaves sem registro no DB mantêm os valores default automaticamente.
-            const built: Opcoes = { ...OPCOES_DEFAULT };
-            byKey.forEach((vals, k) => {
-              if (k in built) (built as Record<string, string[]>)[k] = vals;
-            });
+      if (opcoesRes.error) console.error("Erro ao carregar opções:", opcoesRes.error.message);
+      if (nomesRes.error)  console.error("Erro ao carregar nomes:", nomesRes.error.message);
 
-            setData(built);
-            prevRef.current = built;
-          }
-          setLoading(false);
-        })
-    );
+      const rows  = opcoesRes.data ?? [];
+      const nomes = (nomesRes.data ?? []).map((r: { nome: string }) => r.nome);
+
+      const byKey = new Map<string, string[]>();
+      (rows as { chave: string; valor: string }[]).forEach(row => {
+        if (!byKey.has(row.chave)) byKey.set(row.chave, []);
+        byKey.get(row.chave)!.push(row.valor);
+      });
+
+      const built: Opcoes = { ...OPCOES_DEFAULT };
+      byKey.forEach((vals, k) => {
+        if (k in built && k !== "nomes") (built as Record<string, string[]>)[k] = vals;
+      });
+      built.nomes = nomes;
+
+      setData(built);
+      prevRef.current = built;
+      setLoading(false);
+    });
   }, []);
 
   const save = useCallback((newVal: Opcoes) => {
@@ -254,44 +254,56 @@ const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
     setData(newVal);
     prevRef.current = newVal;
 
-    const KEYS = Object.keys(newVal) as (keyof Opcoes)[];
+    // ── Salva opções (excepto nomes, que têm tabela própria) ──
+    const KEYS = (Object.keys(newVal) as (keyof Opcoes)[]).filter(k => k !== "nomes");
     for (const key of KEYS) {
       const prevList = prev[key] as string[];
       const nextList = newVal[key] as string[];
       if (JSON.stringify(prevList) === JSON.stringify(nextList)) continue;
 
-      // Abordagem diff: insere apenas itens realmente novos, deleta apenas os removidos.
-      // Evita deletar tudo e reinserir tudo — previne perda de dados se o insert falhar.
       const toAdd    = nextList.filter(v => !prevList.includes(v));
       const toRemove = prevList.filter(v => !nextList.includes(v));
 
       if (toAdd.length > 0) {
-        // Batches de 100 para evitar timeout em listas grandes.
-        // Usa upsert com ignoreDuplicates para ser idempotente.
         const CHUNK = 100;
         (async () => {
           for (let i = 0; i < toAdd.length; i += CHUNK) {
             const batch = toAdd.slice(i, i + CHUNK);
             const { error } = await supabase
               .from("opcoes")
-              .upsert(
-                batch.map(valor => ({ chave: key, valor })),
-                { onConflict: "chave,valor", ignoreDuplicates: true }
-              );
+              .upsert(batch.map(valor => ({ chave: key, valor })), { onConflict: "chave,valor", ignoreDuplicates: true });
             if (error) console.error(`Erro ao inserir opções [${key}]:`, error.message);
           }
         })();
       }
-
       if (toRemove.length > 0) {
-        supabase
-          .from("opcoes")
-          .delete()
-          .eq("chave", key)
-          .in("valor", toRemove)
-          .then(({ error }) => {
-            if (error) console.error(`Erro ao remover opções [${key}]:`, error.message);
-          });
+        supabase.from("opcoes").delete().eq("chave", key).in("valor", toRemove)
+          .then(({ error }) => { if (error) console.error(`Erro ao remover opções [${key}]:`, error.message); });
+      }
+    }
+
+    // ── Salva nomes na tabela terceiros ──
+    const prevNomes = prev.nomes;
+    const nextNomes = newVal.nomes;
+    if (JSON.stringify(prevNomes) !== JSON.stringify(nextNomes)) {
+      const toAdd    = nextNomes.filter(v => !prevNomes.includes(v));
+      const toRemove = prevNomes.filter(v => !nextNomes.includes(v));
+
+      if (toAdd.length > 0) {
+        const CHUNK = 100;
+        (async () => {
+          for (let i = 0; i < toAdd.length; i += CHUNK) {
+            const batch = toAdd.slice(i, i + CHUNK);
+            const { error } = await supabase
+              .from("terceiros")
+              .upsert(batch.map(nome => ({ nome })), { onConflict: "nome", ignoreDuplicates: true });
+            if (error) console.error("Erro ao inserir nomes:", error.message);
+          }
+        })();
+      }
+      if (toRemove.length > 0) {
+        supabase.from("terceiros").delete().in("nome", toRemove)
+          .then(({ error }) => { if (error) console.error("Erro ao remover nomes:", error.message); });
       }
     }
   }, []);
@@ -1329,7 +1341,6 @@ const Configuracoes = ({
   };
 
   const importNomes = async () => {
-    // Deduplica internamente E filtra já existentes
     const novos = [...new Set(
       nomesBulk
         .split("\n")
@@ -1341,14 +1352,13 @@ const Configuracoes = ({
 
     setBulkFeedback("Salvando…");
 
-    // Insere direto no DB em batches de 100 (com feedback real de erro)
     const CHUNK = 100;
     let erroMsg = "";
     for (let i = 0; i < novos.length; i += CHUNK) {
       const batch = novos.slice(i, i + CHUNK);
       const { error } = await supabase
-        .from("opcoes")
-        .insert(batch.map(valor => ({ chave: "nomes", valor })));
+        .from("terceiros")
+        .upsert(batch.map(nome => ({ nome })), { onConflict: "nome", ignoreDuplicates: true });
       if (error) { erroMsg = error.message; break; }
     }
 
@@ -1357,7 +1367,6 @@ const Configuracoes = ({
       return;
     }
 
-    // Atualiza estado local (sem re-disparar save no DB — já fizemos acima)
     const novaLista = [...opcoes.nomes, ...novos];
     setOpcoes({ ...opcoes, nomes: novaLista });
     setNomesBulk("");
