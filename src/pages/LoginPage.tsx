@@ -40,7 +40,7 @@ export default function LoginPage() {
       justifyContent: "center",
       padding: 24,
     }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');*{box-sizing:border-box}input:focus{border-color:#1A56DB!important;box-shadow:0 0 0 3px #1A56DB1A!important;outline:none!important}`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');`}</style>
 
       <div style={{ width: "100%", maxWidth: 420 }}>
         {/* Seletor de idioma */}
@@ -72,7 +72,7 @@ export default function LoginPage() {
             <div style={{ color: "#64748B", fontSize: 12, marginTop: 4 }}>{t("login_subtitle")}</div>
           </div>
 
-          <form onSubmit={handleLogin} style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 18 }}>
+          <form onSubmit={handleLogin} className="rsp-auth-card" style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 18 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <label htmlFor="email" style={{ fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: .7 }}>
                 {t("login_email")}

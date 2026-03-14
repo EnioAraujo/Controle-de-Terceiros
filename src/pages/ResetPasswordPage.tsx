@@ -62,7 +62,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#F0F2F5", fontFamily: "'DM Sans',system-ui,sans-serif", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');*{box-sizing:border-box}input:focus{border-color:#1A56DB!important;box-shadow:0 0 0 3px #1A56DB1A!important;outline:none!important}`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');`}</style>
 
       <div style={{ width: "100%", maxWidth: 420 }}>
         {/* Logo */}
@@ -84,7 +84,7 @@ export default function ResetPasswordPage() {
             <div style={{ color: "#64748B", fontSize: 12, marginTop: 4 }}>{t("reset_subtitle")}</div>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 16 }}>
+          <form onSubmit={handleSubmit} className="rsp-auth-card" style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: .7 }}>{t("reset_label_new")}</label>
               <input

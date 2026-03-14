@@ -99,3 +99,60 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ─── Estilos globais da aplicação ───────────────────────────── */
+* { box-sizing: border-box; }
+
+input:focus, select:focus, textarea:focus {
+  border-color: #1A56DB !important;
+  box-shadow: 0 0 0 3px rgba(26, 86, 219, .1) !important;
+  outline: none !important;
+}
+
+button { transition: all .15s; }
+button:hover:not(:disabled) { opacity: .88; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #F1F5F9; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ─── Classes responsivas (rsp-*) — usadas em todo o app ──────── */
+@media (max-width: 900px) {
+  .rsp-grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
+  .rsp-grid-3 { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+@media (max-width: 640px) {
+  .rsp-grid-4,
+  .rsp-grid-3,
+  .rsp-grid-2       { grid-template-columns: 1fr !important; }
+
+  .rsp-main,
+  .rsp-main-admin   { padding: 12px !important; }
+
+  .rsp-nav-label    { display: none !important; }
+  .rsp-header-stats { display: none !important; }
+  .rsp-hide-mobile  { display: none !important; }
+
+  .rsp-header,
+  .rsp-admin-header {
+    flex-wrap: wrap !important;
+    height: auto !important;
+    padding: 8px 12px !important;
+    gap: 8px !important;
+  }
+
+  .rsp-header-right,
+  .rsp-admin-header-right { flex-wrap: wrap !important; gap: 6px !important; }
+
+  /* Modais: conteúdo em coluna única em ecrãs pequenos */
+  .rsp-modal-grid   { grid-template-columns: 1fr !important; }
+
+  /* Login / Reset: card com padding menor */
+  .rsp-auth-card    { padding: 20px 16px !important; }
+}

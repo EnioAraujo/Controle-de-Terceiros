@@ -229,19 +229,6 @@ export default function AdminPage() {
     <div style={{ minHeight: "100vh", background: "#F0F2F5", fontFamily: "'DM Sans',system-ui,sans-serif", display: "flex", flexDirection: "column" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
-        *{box-sizing:border-box}
-        input:focus{border-color:#1A56DB!important;box-shadow:0 0 0 3px #1A56DB1A!important;outline:none!important}
-        button{transition:all .15s} button:hover:not(:disabled){opacity:.88}
-        ::-webkit-scrollbar{width:5px;height:5px}
-        ::-webkit-scrollbar-track{background:#F1F5F9}
-        ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:99px}
-        @media(max-width:900px){.rsp-grid-3{grid-template-columns:repeat(2,1fr)!important}}
-        @media(max-width:640px){
-          .rsp-grid-4,.rsp-grid-3,.rsp-grid-2{grid-template-columns:1fr!important}
-          .rsp-main-admin{padding:12px!important}
-          .rsp-admin-header{flex-wrap:wrap;height:auto!important;padding:8px 12px!important;gap:8px!important}
-          .rsp-admin-header-right{flex-wrap:wrap;gap:6px!important}
-        }
       `}</style>
 
       {/* Header */}
