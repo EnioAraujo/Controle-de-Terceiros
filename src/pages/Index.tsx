@@ -1220,26 +1220,33 @@ const DemandAnalysis = ({ registros, opcoes }: { registros: Registro[]; opcoes: 
     return dias;
   }, [range]);
 
-  // Médias históricas por turno (para projeção)
+  // Médias históricas por turno (para projeção — usa TODOS os registros, não só o mês filtrado)
   const mediasHistoricas = useMemo(() => {
+    const regsHist = registros.filter(r => {
+      if (fornFiltro && r.fornecedor !== fornFiltro) return false;
+      if (!TURNOS_DEMANDA.includes(r.turno)) return false;
+      return true;
+    });
     const porTurno: Record<string, number> = { "1ª TURNO": 0, "2ª TURNO": 0, "3ª TURNO": 0 };
-    for (const r of regsFiltrados) {
-      if (TURNOS_DEMANDA.includes(r.turno)) porTurno[r.turno]++;
+    for (const r of regsHist) {
+      porTurno[r.turno]++;
     }
-    const diasComDados = new Set(regsFiltrados.map(r => r.data)).size;
+    const diasComDados = new Set(regsHist.map(r => r.data)).size;
     const medias: Record<string, number> = {};
     for (const turno of TURNOS_DEMANDA) {
       medias[turno] = diasComDados > 0 ? porTurno[turno] / diasComDados : 0;
     }
     return medias;
-  }, [regsFiltrados]);
+  }, [registros, fornFiltro]);
 
-  // Dias de projeção futura
+  // Dias de projeção futura (auto-swap se datas invertidas)
   const diasProjecao = useMemo(() => {
-    if (!projInicio || !projFim || projInicio > projFim) return [];
+    if (!projInicio || !projFim) return [];
+    const inicio = projInicio < projFim ? projInicio : projFim;
+    const fimP = projInicio < projFim ? projFim : projInicio;
     const dias: string[] = [];
-    const d = new Date(projInicio + "T00:00:00");
-    const fim = new Date(projFim + "T00:00:00");
+    const d = new Date(inicio + "T00:00:00");
+    const fim = new Date(fimP + "T00:00:00");
     while (d <= fim) {
       dias.push(d.toISOString().slice(0, 10));
       d.setDate(d.getDate() + 1);
