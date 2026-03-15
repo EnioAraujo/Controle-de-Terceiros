@@ -78,10 +78,8 @@ supabase/
     ├── terceiros_table.sql    # Tabela de nomes de terceirizados
     └── user_management.sql    # ON DELETE CASCADE + trigger sync email
 supabase/functions/
-├── admin-users/
-│   └── index.ts               # Edge Function: criar, editar, excluir usuários
-└── send-whatsapp/
-    └── index.ts               # Edge Function: enviar mensagem para grupo via Evolution API
+└── admin-users/
+    └── index.ts               # Edge Function: criar, editar, excluir usuários
 ```
 
 ---
@@ -367,6 +365,7 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-14 | Removido bloco "Resumo por pessoa" do FechamentoTab (redundante com tabela detalhada); adicionada exportação PDF (jspdf + jspdf-autotable) com tabela completa e rodapé de total |
 | 2026-03-14 | Removido card "HORAS" do resumo do FechamentoTab (redundante com a tabela detalhada) |
 | 2026-03-15 | Integração WhatsApp via Evolution API: Edge Function send-whatsapp, painel de config em Configurações (admin), hook fire-and-forget em salvar(); chaves wpp_enabled/wpp_url/wpp_instance/wpp_key/wpp_group_id salvas na tabela opcoes |
+| 2026-03-15 | Remove integração WhatsApp completa (Edge Function send-whatsapp, estados e UI em Index.tsx, chamada em salvar()) |
 | 2026-03-15 | Renomeada coluna "Dif." para "Diferença" na tabela de fechamento (i18n pt-BR) |
 | 2026-03-14 | Adicionada coluna "Dif." na tabela de fechamento mostrando valorCalculado - valorDiaria, colorida em vermelho (negativo), verde (positivo) ou cinza (zero); exportações XLSX e PDF também incluem a coluna |
 | 2026-03-14 | Validação de duplicidade no FormLancamento: ao salvar, verifica se já existe registro com mesmo nome + mesma data; se sim, bloqueia, mantém modal aberto e exibe aviso com opção de confirmar mesmo assim (force=true) |

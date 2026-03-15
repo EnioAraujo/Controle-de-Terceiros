@@ -884,27 +884,6 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig }: { regist
     }
     setModal(null);
     setConflito(null);
-
-    // Notificar WhatsApp (fire-and-forget — não bloqueia o salvamento)
-    notificarWhatsApp(registrosFinais);
-  };
-
-  const notificarWhatsApp = (regs: Registro[]) => {
-    authReady.then(async () => {
-      try {
-        const { error } = await supabase.functions.invoke("send-whatsapp", {
-          body: { registros: regs },
-        });
-        if (error) {
-          console.warn("[WhatsApp] Falha ao notificar:", error.message);
-          // Toast não-bloqueante — imports já existem no arquivo
-          const { toast } = await import("@/utils/toast");
-          toast.warning("Lançamento salvo. Erro ao notificar WhatsApp: " + error.message);
-        }
-      } catch (e) {
-        console.warn("[WhatsApp] Erro inesperado:", e);
-      }
-    });
   };
 
   const excluir = (ids: string[]) => { setRegistros(registros.filter(r => !ids.includes(r.id))); setConfirm(null); };
@@ -1447,47 +1426,7 @@ const Configuracoes = ({
     setDiariasConfig(prev => prev.filter(x => x.id !== d.id));
   };
 
-  // ── WhatsApp (Z-API)
-  const [wppEnabled,        setWppEnabled]        = useState(false);
-  const [wppInstance,       setWppInstance]        = useState("");
-  const [wppKey,            setWppKey]             = useState("");
-  const [wppSecurityToken,  setWppSecurityToken]   = useState("");
-  const [wppGroupId,        setWppGroupId]         = useState("");
-  const [wppSaved,          setWppSaved]           = useState(false);
 
-  useEffect(() => {
-    authReady.then(async () => {
-      const { data: wData } = await supabase
-        .from("opcoes")
-        .select("chave, valor")
-        .in("chave", ["wpp_enabled", "wpp_instance", "wpp_key", "wpp_security_token", "wpp_group_id"]);
-      if (wData) {
-        wData.forEach((row: { chave: string; valor: string }) => {
-          if (row.chave === "wpp_enabled")        setWppEnabled(row.valor === "true");
-          if (row.chave === "wpp_instance")       setWppInstance(row.valor);
-          if (row.chave === "wpp_key")            setWppKey(row.valor);
-          if (row.chave === "wpp_security_token") setWppSecurityToken(row.valor);
-          if (row.chave === "wpp_group_id")       setWppGroupId(row.valor);
-        });
-      }
-    });
-  }, []);
-
-  const saveWpp = async () => {
-    const fields = [
-      { chave: "wpp_enabled",        valor: wppEnabled ? "true" : "false" },
-      { chave: "wpp_instance",       valor: wppInstance.trim() },
-      { chave: "wpp_key",            valor: wppKey.trim() },
-      { chave: "wpp_security_token", valor: wppSecurityToken.trim() },
-      { chave: "wpp_group_id",       valor: wppGroupId.trim() },
-    ];
-    for (const f of fields) {
-      await supabase.from("opcoes").delete().eq("chave", f.chave);
-      await supabase.from("opcoes").insert({ chave: f.chave, valor: f.valor });
-    }
-    setWppSaved(true);
-    setTimeout(() => setWppSaved(false), 2500);
-  };
 
   // ── DPO (Art. 41 LGPD)
   const [dpoNome,       setDpoNome]       = useState("");
@@ -2035,79 +1974,7 @@ const Configuracoes = ({
       </div>
       )}
 
-      {/* ── WhatsApp (Evolution API) — somente admin ── */}
-      {isAdmin && (
-      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
-          <div style={{ width:10, height:10, borderRadius:"50%", background:"#25D366", flexShrink:0 }} />
-          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>WhatsApp — Evolution API</div>
-          <div style={{ fontSize:11, background:"#25D36618", color:"#128C7E", fontWeight:700, borderRadius:99, padding:"2px 8px" }}>Integração</div>
-        </div>
-        <div style={{ fontSize:12, color:"#64748B", marginBottom:16 }}>
-          Envia uma mensagem para o grupo do WhatsApp a cada novo lançamento salvo. Requer uma instância ativa na Evolution API (<a href="https://github.com/EvolutionAPI/evolution-api" target="_blank" rel="noopener noreferrer" style={{ color:"#1A56DB" }}>GitHub</a>).
-        </div>
 
-        {/* Toggle ativo/inativo */}
-        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20, background:"#F8FAFC", borderRadius:8, padding:"10px 14px" }}>
-          <span style={{ fontSize:13, fontWeight:600, color:"#334155", flex:1 }}>Ativar notificações via WhatsApp</span>
-          <button
-            onClick={() => setWppEnabled(v => !v)}
-            style={{
-              width:44, height:24, borderRadius:99, border:"none", cursor:"pointer",
-              background: wppEnabled ? "#25D366" : "#CBD5E1",
-              position:"relative", transition:"background .2s", flexShrink:0,
-            }}>
-            <span style={{
-              position:"absolute", top:3, left: wppEnabled ? 22 : 3,
-              width:18, height:18, borderRadius:"50%", background:"#fff",
-              boxShadow:"0 1px 3px rgba(0,0,0,.2)", transition:"left .2s",
-            }} />
-          </button>
-          <span style={{ fontSize:12, color: wppEnabled ? "#25D366" : "#94A3B8", fontWeight:700, minWidth:50 }}>
-            {wppEnabled ? "ATIVO" : "INATIVO"}
-          </span>
-        </div>
-
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
-          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Instance ID (Z-API)</label>
-            <input value={wppInstance} onChange={e => setWppInstance(e.target.value)}
-              placeholder="3EB0XXXXXXXXXXXX"
-              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"monospace", background:"#FAFBFC", outline:"none" }} />
-            <span style={{ fontSize:10, color:"#94A3B8" }}>ID da instância no painel Z-API</span>
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Token da Instância</label>
-            <input value={wppKey} onChange={e => setWppKey(e.target.value)}
-              type="password" placeholder="••••••••••"
-              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
-            <span style={{ fontSize:10, color:"#94A3B8" }}>Token da instância (aba "Token" no Z-API)</span>
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Security Token (Client-Token)</label>
-            <input value={wppSecurityToken} onChange={e => setWppSecurityToken(e.target.value)}
-              type="password" placeholder="••••••••••"
-              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
-            <span style={{ fontSize:10, color:"#94A3B8" }}>Security Token da conta (aba "Segurança" no Z-API)</span>
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>ID do Grupo</label>
-            <input value={wppGroupId} onChange={e => setWppGroupId(e.target.value)}
-              placeholder="XXXXXXXXXXX-XXXXXXXXXX@g.us"
-              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"monospace", background:"#FAFBFC", outline:"none" }} />
-            <span style={{ fontSize:10, color:"#94A3B8" }}>ID do grupo obtido via Z-API</span>
-          </div>
-        </div>
-
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <button onClick={saveWpp}
-            style={{ background:"#128C7E", border:"none", borderRadius:8, padding:"9px 22px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
-            Salvar configuração WhatsApp
-          </button>
-          {wppSaved && <span style={{ fontSize:12, color:"#0E9F6E", fontWeight:600 }}>✓ Salvo com sucesso</span>}
-        </div>
-      </div>
-      )}
     </div>
   );
 };
