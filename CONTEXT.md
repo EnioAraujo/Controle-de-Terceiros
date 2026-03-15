@@ -1,3 +1,4 @@
+| 2026-03-15 | Ajuste visual: controles acima da tabela alinhados conforme layout do usuário (contador à esquerda, botão excluir à direita). |
 | 2026-03-15 | Seleção em massa agora por checkbox em cada linha e no cabeçalho da tabela; botão 'Excluir selecionados' só aparece se houver seleção. |
 | 2026-03-15 | Corrigido fluxo dos botões: 'Selecionar tudo' apenas seleciona, 'Excluir selecionados' abre modal de confirmação. Seleção em massa agora segue padrão esperado. |
 | 2026-03-15 | Padronização do tipo Opcoes: uso de ccList (centros de custo) e nomes em todo o projeto; removidos centrosCusto/setores inconsistentes. |

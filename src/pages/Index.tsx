@@ -896,15 +896,20 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }:
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
       {/* Botões de seleção/exclusão em massa — visíveis só para admins */}
-      {/* Botão excluir selecionados acima da tabela */}
-      {selectedIds.length > 0 && (
-        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
-          <Btn variant="danger" onClick={() => setConfirm(selectedIds)}>
-            Excluir selecionados
-          </Btn>
-          <span style={{ fontSize: 12, color: "#64748B" }}>{selectedIds.length} selecionados</span>
-        </div>
-      )}
+      {/* Controles acima da tabela: contador à esquerda, botão excluir à direita */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, marginTop: 8 }}>
+        <span style={{ fontSize: 15, color: "#64748B", fontWeight: 500 }}>
+          Exibindo {filtered.length} de {registros.length} registros
+        </span>
+        {selectedIds.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Btn variant="danger" onClick={() => setConfirm(selectedIds)} style={{ fontWeight: 700, fontSize: 15, padding: "10px 22px" }}>
+              Excluir selecionados
+            </Btn>
+            <span style={{ fontSize: 13, color: "#64748B" }}>{selectedIds.length} selecionados</span>
+          </div>
+        )}
+      </div>
         {/* Removido: declaração duplicada de excluir dentro do JSX */}
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
