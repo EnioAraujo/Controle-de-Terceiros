@@ -37,6 +37,7 @@ src/
 ├── globals.css              # Estilos globais
 ├── components/
 │   ├── ErrorBoundary.tsx    # Error Boundary global (previne tela branca em crash)
+│   ├── ImportExcelRegistros.tsx  # Importação de histórico Excel para registros
 │   └── ui/                  # Todos os componentes shadcn/ui
 ├── hooks/
 │   ├── use-mobile.tsx
@@ -372,3 +373,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-15 | Refatoração da projeção de demanda: substituída projeção manual (entradas fictícias) por projeção futura automática — usuário seleciona range de datas futuro e o sistema calcula automaticamente a demanda projetada com base na média geral histórica por turno (independente do dia da semana); dias projetados exibidos nas tabelas com badge "projeção" e fundo amarelo; mostra médias históricas utilizadas por turno |
 | 2026-03-15 | Projeção de demanda: adicionado campo "Pessoas/dia" na projeção futura — quando preenchido, distribui o total informado proporcionalmente entre os 3 turnos com base na proporção histórica (ex: se 1ª=40%, 2ª=35%, 3ª=25% e total=20, fica 8/7/5); quando vazio, usa médias históricas brutas; auto-swap de datas invertidas; médias calculadas sobre todo o histórico (não só mês filtrado) |
 | 2026-03-15 | Extraída Análise de Demanda (DemandAnalysis) do Dashboard para página dedicada ProjecaoPage.tsx com aba própria "Projeção" na navegação; Dashboard agora não exibe mais a seção de demanda; componente totalmente autônomo com filtros, tabelas, projeção e distribuição proporcional |
+| 2026-03-15 | Importação de histórico via Excel: componente ImportExcelRegistros na aba Configurações; upload drag-and-drop de .xlsx; mapeamento automático de colunas (DATA_PRESENCA, TURNO, NOME_COMPLETO_TERCEIRO, etc.); detecção de duplicatas (nome+data+turno); pré-visualização; sanitização via DOMPurify; suporte a datas DD/MM/YYYY e serial Excel; 17 chaves i18n (imp_*) em pt-BR/en-US |

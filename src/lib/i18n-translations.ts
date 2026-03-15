@@ -358,6 +358,25 @@ export const translations = {
     nav_tab_cfg:        "Configurações",
     nav_loading_data:   "Carregando dados do servidor…",
 
+    // Importação de Excel
+    imp_title:          "Importar Histórico (Excel)",
+    imp_desc:           "Importe registros de presença a partir de um arquivo Excel (.xlsx). Duplicatas (mesmo nome + data + turno) serão ignoradas automaticamente.",
+    imp_drop:           "Clique ou arraste o arquivo aqui",
+    imp_loading:        "Processando arquivo…",
+    imp_err_empty:      "O arquivo está vazio ou não possui dados válidos.",
+    imp_err_cols:       "Colunas obrigatórias não encontradas: {cols}",
+    imp_err_parse:      "Erro ao processar o arquivo. Verifique o formato.",
+    imp_total:          "{n} linhas no arquivo",
+    imp_new:            "{n} novos registros",
+    imp_dup:            "{n} duplicatas ignoradas",
+    imp_err_rows:       "{n} linhas com erro",
+    imp_preview:        "Pré-visualização (primeiros 5)",
+    imp_more:           "e mais {n} registros",
+    imp_confirm:        "Importar {n} registros",
+    imp_cancel:         "Cancelar",
+    imp_success:        "{n} registros importados com sucesso!",
+    imp_another:        "Importar outro arquivo",
+
     // Fechamento
     fech_section:       "Financeiro",
     fech_title:         "Fechamento",
@@ -791,6 +810,25 @@ export const translations = {
     nav_tab_fech:       "Billing",
     nav_tab_cfg:        "Settings",
     nav_loading_data:   "Loading server data…",
+
+    // Excel Import
+    imp_title:          "Import History (Excel)",
+    imp_desc:           "Import attendance records from an Excel file (.xlsx). Duplicates (same name + date + shift) are automatically skipped.",
+    imp_drop:           "Click or drag file here",
+    imp_loading:        "Processing file…",
+    imp_err_empty:      "The file is empty or has no valid data.",
+    imp_err_cols:       "Required columns not found: {cols}",
+    imp_err_parse:      "Error processing the file. Check the format.",
+    imp_total:          "{n} rows in file",
+    imp_new:            "{n} new records",
+    imp_dup:            "{n} duplicates skipped",
+    imp_err_rows:       "{n} rows with errors",
+    imp_preview:        "Preview (first 5)",
+    imp_more:           "and {n} more records",
+    imp_confirm:        "Import {n} records",
+    imp_cancel:         "Cancel",
+    imp_success:        "{n} records imported successfully!",
+    imp_another:        "Import another file",
 
     // Fechamento
     fech_section:       "Financial",

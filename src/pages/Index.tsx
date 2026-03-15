@@ -12,6 +12,7 @@ import {
   KEY_TO_FIELD,
 } from "@/lib/format-utils";
 import ProjecaoPage from "@/pages/ProjecaoPage";
+import ImportExcelRegistros from "@/components/ImportExcelRegistros";
 import {
   type TurnoConfig, type DiariaConfig, type FechamentoItem, type Fechamento,
   type FechamentoStatus, type ResumoPessoa,
@@ -1805,6 +1806,9 @@ const Configuracoes = ({
           </button>
         </div>
       </div>
+
+      {/* ── Importação de Histórico Excel ── */}
+      <ImportExcelRegistros registros={registros} setRegistros={setRegistros} />
 
       {/* ── LGPD: DPO (Art. 41) — somente admin ── */}
       {isAdmin && (
