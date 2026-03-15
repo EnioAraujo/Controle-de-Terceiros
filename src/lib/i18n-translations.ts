@@ -377,7 +377,7 @@ export const translations = {
     fech_col_diaria:    "Diária",
     fech_col_vlr_hora:  "Vlr/Hora",
     fech_col_vlr_dia:   "Vlr/Dia",
-    fech_col_diff:      "Dif.",
+    fech_col_diff:      "Diferença",
     fech_col_obs:       "Obs",
     fech_col_acoes:     "Ações",
     fech_ajuste:        "Ajuste manual",
