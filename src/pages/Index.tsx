@@ -895,7 +895,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }:
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
       {/* Botões de seleção/exclusão em massa — visíveis só para admins */}
-      {isAdmin && filtered.length > 0 && (
+      {filtered.length > 0 && (
         <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
           <Btn variant="ghost" onClick={() => setConfirm(filtered.map(r => r.id))}>
             Selecionar tudo
@@ -903,7 +903,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }:
           <Btn variant="danger" onClick={() => setConfirm(filtered.map(r => r.id))}>
             Excluir selecionados
           </Btn>
-          <Btn variant="danger" style={{ fontWeight:800, background:'#E02424', color:'#fff' }} onClick={() => setConfirm('ALL')}>Excluir TODOS</Btn>
+          <Btn variant="danger" style={{ fontWeight:800, background:'#E02424', color:'#fff' }} onClick={() => setConfirm('ALL')}>Excluir TODOS (debug)</Btn>
           <span style={{ fontSize: 12, color: "#64748B" }}>
             {filtered.length} selecionados
           </span>
