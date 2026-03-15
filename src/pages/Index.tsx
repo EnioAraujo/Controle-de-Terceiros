@@ -896,18 +896,13 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }:
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
       {/* Botões de seleção/exclusão em massa — visíveis só para admins */}
-      {filtered.length > 0 && (
+      {/* Botão excluir selecionados acima da tabela */}
+      {selectedIds.length > 0 && (
         <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
-          <Btn variant="ghost" onClick={() => setSelectedIds(filtered.map(r => r.id))}>
-            Selecionar tudo
-          </Btn>
-          <Btn variant="danger" disabled={selectedIds.length === 0} onClick={() => setConfirm(selectedIds)}>
+          <Btn variant="danger" onClick={() => setConfirm(selectedIds)}>
             Excluir selecionados
           </Btn>
-          <Btn variant="danger" style={{ fontWeight:800, background:'#E02424', color:'#fff' }} onClick={() => setConfirm('ALL')}>Excluir TODOS (debug)</Btn>
-          <span style={{ fontSize: 12, color: "#64748B" }}>
-            {selectedIds.length} selecionados
-          </span>
+          <span style={{ fontSize: 12, color: "#64748B" }}>{selectedIds.length} selecionados</span>
         </div>
       )}
         {/* Removido: declaração duplicada de excluir dentro do JSX */}
@@ -952,6 +947,13 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }:
           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
             <thead>
               <tr style={{ background:"#F8FAFC" }}>
+                <th style={{ padding:"10px 12px", textAlign:"center", width:32 }}>
+                  <input type="checkbox"
+                    checked={filtered.length > 0 && selectedIds.length === filtered.length}
+                    indeterminate={selectedIds.length > 0 && selectedIds.length < filtered.length}
+                    onChange={e => setSelectedIds(e.target.checked ? filtered.map(r => r.id) : [])}
+                  />
+                </th>
                 {[t("lanc_col_data"),t("lanc_col_turno"),t("lanc_col_nome"),t("lanc_col_cargo"),t("lanc_col_forn"),t("lanc_col_unidade"),t("lanc_col_entrada"),t("lanc_col_saida"),t("lanc_col_horas"),t("lanc_col_motivo"),t("lanc_col_acoes")].map(h => (
                   <th key={h} style={{ padding:"10px 12px", textAlign:"left", color:"#64748B", fontWeight:700, fontSize:10, textTransform:"uppercase", letterSpacing:.7, whiteSpace:"nowrap", borderBottom:"2px solid #E2E6EC" }}>{h}</th>
                 ))}
@@ -969,6 +971,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }:
                 const r = isLote ? item[0] : item;
                 const count = isLote ? item.length : 1;
                 const bgBase = i % 2 === 0 ? "#fff" : "#FAFBFC";
+                const isChecked = selectedIds.includes(r.id);
                 return (
                   <tr key={isLote ? r.loteId : r.id}
                     style={{ borderBottom:"1px solid #F1F5F9", background: bgBase, cursor:"pointer",
@@ -976,6 +979,12 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }:
                     onClick={() => setDetalhe(item)}
                     onMouseEnter={e => (e.currentTarget.style.background = "#F0F6FF")}
                     onMouseLeave={e => (e.currentTarget.style.background = bgBase)}>
+                    <td style={{ padding:"10px 12px", textAlign:"center" }} onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" checked={isChecked} onChange={e => {
+                        e.stopPropagation();
+                        setSelectedIds(val => e.target.checked ? [...val, r.id] : val.filter(id => id !== r.id));
+                      }} />
+                    </td>
                     <td style={{ padding:"10px 12px", fontFamily:"monospace", fontSize:11, color:"#64748B" }}>{fmt(r.data, lang)}</td>
                     <td style={{ padding:"10px 12px" }}><Chip label={r.turno} color="#1A56DB" /></td>
                     <td style={{ padding:"10px 12px" }}>
