@@ -52,6 +52,7 @@ src/
 │   └── utils.ts               # cn() helper
 ├── pages/
 │   ├── Index.tsx              # Página principal (lançamento + listagem)
+│   ├── ProjecaoPage.tsx       # Página dedicada de projeção/análise de demanda
 │   ├── LoginPage.tsx          # Autenticação email/senha
 │   ├── AdminPage.tsx          # Gerenciamento de usuários + conta
 │   ├── ResetPasswordPage.tsx  # Redefinição de senha
@@ -370,3 +371,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-15 | Análise de Demanda (DemandAnalysis) acoplada ao Dashboard: tabela de valor por dia + tabela de presenças por turno (1ª/2ª/3ª); filtros por fornecedor, mês e range de datas; resumo estatístico (média/dia e média por turno); projeção manual com entradas fictícias para simular demanda futura; usa resolverDiaria para valores variáveis por fornecedor/turno; 27 chaves i18n (demand_*) em pt-BR e en-US |
 | 2026-03-15 | Refatoração da projeção de demanda: substituída projeção manual (entradas fictícias) por projeção futura automática — usuário seleciona range de datas futuro e o sistema calcula automaticamente a demanda projetada com base na média geral histórica por turno (independente do dia da semana); dias projetados exibidos nas tabelas com badge "projeção" e fundo amarelo; mostra médias históricas utilizadas por turno |
 | 2026-03-15 | Projeção de demanda: adicionado campo "Pessoas/dia" na projeção futura — quando preenchido, distribui o total informado proporcionalmente entre os 3 turnos com base na proporção histórica (ex: se 1ª=40%, 2ª=35%, 3ª=25% e total=20, fica 8/7/5); quando vazio, usa médias históricas brutas; auto-swap de datas invertidas; médias calculadas sobre todo o histórico (não só mês filtrado) |
+| 2026-03-15 | Extraída Análise de Demanda (DemandAnalysis) do Dashboard para página dedicada ProjecaoPage.tsx com aba própria "Projeção" na navegação; Dashboard agora não exibe mais a seção de demanda; componente totalmente autônomo com filtros, tabelas, projeção e distribuição proporcional |
