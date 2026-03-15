@@ -793,7 +793,7 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
 // ─── TELA: LANÇAMENTOS ──────────────────────────────────────────
 interface Filtros { data: string; turno: string; fornecedor: string; unidade: string; busca: string; }
 
-const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig }: { registros: Registro[]; setRegistros: (val: Registro[]) => void; opcoes: Opcoes; turnosConfig: TurnoConfig[] }) => {
+const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }: { registros: Registro[]; setRegistros: (val: Registro[]) => void; opcoes: Opcoes; turnosConfig: TurnoConfig[]; isAdmin: boolean }) => {
   const { t, lang } = useI18n();
   const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", busca: "" });
   const [modal, setModal]     = useState<null | "new" | Registro | Registro[]>(null);
@@ -2284,7 +2284,7 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
               <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 20px", flex: 1, minWidth: 120, textAlign: "center" }}>
                 <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: .6, marginBottom: 4 }}>{t("fech_status")}</div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: STATUS_COLORS[fechamento.status] }}>
-                  {t(STATUS_LABEL_KEY[fechamento.status])}
+                  {t(STATUS_LABEL_KEY[fechamento.status] as any)}
                 </div>
               </div>
             )}
@@ -2410,7 +2410,7 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
                   <span style={{ fontWeight: 700, color: "#0F1C2E" }}>{h.fornecedor}</span>
                   <span style={{ color: "#64748B", fontFamily: "monospace" }}>{fmt(h.dataInicio, lang)} → {fmt(h.dataFim, lang)}</span>
                   <span style={{ fontWeight: 700, color: STATUS_COLORS[h.status], fontSize: 11, background: `${STATUS_COLORS[h.status]}18`, borderRadius: 99, padding: "2px 8px" }}>
-                    {t(STATUS_LABEL_KEY[h.status])}
+                    {t(STATUS_LABEL_KEY[h.status] as any)}
                   </span>
                   <span style={{ fontWeight: 700, color: "#0E9F6E" }}>{fmtCurrency(h.valorTotal)}</span>
                 </div>
@@ -2573,7 +2573,7 @@ const Index = () => {
         ) : (
           <>
             {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} />}
-            {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} turnosConfig={turnosConfig} />}
+            {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} turnosConfig={turnosConfig} isAdmin={isAdmin} />}
             {tab === "projecao"      && <ProjecaoPage  registros={registros} opcoes={opcoes} />}
             {tab === "fechamento"    && <FechamentoTab registros={registros} opcoes={opcoes} />}
             {tab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} registros={registros} setRegistros={setRegistros} isAdmin={isAdmin} />}

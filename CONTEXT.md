@@ -1,3 +1,4 @@
+| 2026-03-15 | Padronização do tipo Opcoes: uso de ccList (centros de custo) e nomes em todo o projeto; removidos centrosCusto/setores inconsistentes. |
 | 2026-03-15 | Parser de data do Excel reforçado: aceita Date, string, serial e loga valores inesperados para debug. |
 | 2026-03-15 | Importação de Excel: horaEntrada/horaSaida agora sempre no formato hh:mm:ss (sem data/timezone) na pré-visualização e persistência |
 | 2026-03-15 | Tela principal: agrupamento por loteId removido, cada registro é exibido individualmente (inclusive importados do Excel) |
@@ -169,18 +170,20 @@ created_at TIMESTAMPTZ
 
 ## 6. Lógica de Negócio Principal (Index.tsx)
 
+
 ### Campos de Lançamento
 
-| Campo | Tipo | Chave `opcoes` |
-|---|---|---|
-| Turno | select | `turnos` |
-| Unidade | select | `unidades` |
-| Fornecedor | select | `fornecedores` |
-| Motivo | select | `motivos` |
-| Cargo | select | `cargos` |
-| Centro de Custo | select | `ccList` |
-| Setor | select | `setores` |
-| Nome | autocomplete | `terceiros` (tabela própria) |
+| Campo            | Tipo         | Chave `opcoes` |
+|------------------|-------------|----------------|
+| Turno            | select      | `turnos`       |
+| Unidade          | select      | `unidades`     |
+| Fornecedor       | select      | `fornecedores` |
+| Motivo           | select      | `motivos`      |
+| Cargo            | select      | `cargos`       |
+| Centro de Custo  | select      | `ccList`       |
+| Nome             | autocomplete| `nomes`        |
+
+> **Nota:** O projeto padroniza o uso de `ccList` para centros de custo e `nomes` para autocomplete de colaboradores. Não existe mais `centrosCusto` ou `setores` em Opcoes.
 
 ### Valores Default
 

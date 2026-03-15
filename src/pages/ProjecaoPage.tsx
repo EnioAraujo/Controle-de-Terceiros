@@ -12,8 +12,8 @@ interface Opcoes {
   fornecedores: string[];
   motivos:      string[];
   cargos:       string[];
-  centrosCusto: string[];
-  setores:      string[];
+  ccList:       string[];
+  nomes:        string[];
 }
 
 // ─── CONSTANTES ──────────────────────────────────────────────────
