@@ -48,6 +48,7 @@ const OPCOES_DEFAULT: Opcoes = {
 
 // ─── UTILITÁRIOS (importados de @/lib/format-utils) ─────────────
 const uuid = () => crypto.randomUUID();
+const sanitize = (v: string) => DOMPurify.sanitize(v, { ALLOWED_TAGS: [] });
 
 // ─── LGPD (importado de @/lib/format-utils) ──────────────────────
 
@@ -524,17 +525,18 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
   );
 
   const setC = (k: string, v: string) => {
-    if (k === "horaEntrada") setPessoas(ps => ps.map(p => p.horaEntrada === comum.horaEntrada ? { ...p, horaEntrada: v } : p));
-    if (k === "horaSaida")   setPessoas(ps => ps.map(p => p.horaSaida   === comum.horaSaida   ? { ...p, horaSaida: v }   : p));
+    const val = k === "obs" ? sanitize(v) : v;
+    if (k === "horaEntrada") setPessoas(ps => ps.map(p => p.horaEntrada === comum.horaEntrada ? { ...p, horaEntrada: val } : p));
+    if (k === "horaSaida")   setPessoas(ps => ps.map(p => p.horaSaida   === comum.horaSaida   ? { ...p, horaSaida: val }   : p));
     if (k === "turno") {
-      const tc = turnosConfig.find(c => c.turno === v);
+      const tc = turnosConfig.find(c => c.turno === val);
       if (tc) {
         setPessoas(ps => ps.map(p => ({ ...p, horaEntrada: tc.horaInicio, horaSaida: tc.horaFim })));
-        setComum(prev => ({ ...prev, turno: v, horaEntrada: tc.horaInicio, horaSaida: tc.horaFim }));
+        setComum(prev => ({ ...prev, turno: val, horaEntrada: tc.horaInicio, horaSaida: tc.horaFim }));
         return;
       }
     }
-    setComum(prev => ({ ...prev, [k]: v }));
+    setComum(prev => ({ ...prev, [k]: val }));
   };
 
   const handleQtd = (n: number) => {
@@ -888,11 +890,20 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig }: { regist
 
   const excluir = (ids: string[]) => { setRegistros(registros.filter(r => !ids.includes(r.id))); setConfirm(null); };
 
+  // Proteção contra CSV injection: escapa campos que começam com caracteres perigosos
+  const csvSafe = (val: string) => {
+    if (!val) return val;
+    if (/^[=+\-@|\t]/.test(val)) return `'${val}`;
+    if (val.includes(";") || val.includes('"') || val.includes("\n")) return `"${val.replace(/"/g, '""')}"` ;
+    return val;
+  };
+
   const exportCSV = () => {
     const h = ["Data","Turno","Hora Entrada","Hora Saída","Total Horas","Nome","Cargo","Unidade","CC","Motivo","Fornecedor","Obs"];
-    const rows = filtered.map(r => [r.data,r.turno,r.horaEntrada,r.horaSaida,r.totalHoras,r.nome,r.cargo,r.unidade,r.cc,r.motivo,r.fornecedor,r.obs].join(";"));
+    const rows = filtered.map(r => [r.data,r.turno,r.horaEntrada,r.horaSaida,r.totalHoras,r.nome,r.cargo,r.unidade,r.cc,r.motivo,r.fornecedor,r.obs].map(csvSafe).join(";"));
     const blob = new Blob(["\uFEFF" + [h.join(";"), ...rows].join("\n")], { type:"text/csv;charset=utf-8;" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `terceiros_${filtros.data || "todos"}.csv`; a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   return (
@@ -1117,7 +1128,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig }: { regist
             </div>
             <textarea
               value={conflito.justificativa}
-              onChange={e => setConflito(c => c ? { ...c, justificativa: e.target.value } : c)}
+              onChange={e => setConflito(c => c ? { ...c, justificativa: sanitize(e.target.value) } : c)}
               placeholder="Ex: horas extras autorizadas, cobertura de falta emergencial, dobra de turno..."
               rows={3}
               style={{
@@ -1434,6 +1445,11 @@ const Configuracoes = ({
   const [dpoTelefone,   setDpoTelefone]   = useState("");
   const [dpoSaved,      setDpoSaved]      = useState(false);
 
+  // Wrappers com sanitização de texto livre
+  const setDpoNomeSafe     = (v: string) => setDpoNome(sanitize(v));
+  const setDpoEmailSafe    = (v: string) => setDpoEmail(sanitize(v));
+  const setDpoTelefoneSafe = (v: string) => setDpoTelefone(sanitize(v));
+
   useEffect(() => {
     authReady.then(async () => {
       const { data } = await supabase
@@ -1471,7 +1487,7 @@ const Configuracoes = ({
   const [exclusaoFeedback, setExclusaoFeedback] = useState("");
 
   const buscarTitular = () => {
-    const q = titularNome.trim().toUpperCase();
+    const q = sanitize(titularNome.trim().toUpperCase());
     if (!q) return;
     setTitularResult(registros.filter(r => r.nome === q));
     setExclusaoConfirm(false);
@@ -1479,7 +1495,7 @@ const Configuracoes = ({
   };
 
   const excluirTitular = () => {
-    const q = titularNome.trim().toUpperCase();
+    const q = sanitize(titularNome.trim().toUpperCase());
     const ids = (titularResult ?? []).map(r => r.id);
     if (!ids.length) return;
     setRegistros(registros.filter(r => r.nome !== q));
@@ -1497,7 +1513,7 @@ const Configuracoes = ({
   };
 
   const addItem = (key: OpcKey, value: string) => {
-    const v = value.trim().toUpperCase();
+    const v = sanitize(value.trim().toUpperCase());
     if (!v || opcoes[key].includes(v)) return;
     setOpcoes({ ...opcoes, [key]: [...opcoes[key], v] });
     setInputs(prev => ({ ...prev, [key]: "" }));
@@ -1510,7 +1526,7 @@ const Configuracoes = ({
   };
 
   const renameItem = (key: OpcKey, idx: number, newValue: string) => {
-    const v = newValue.trim().toUpperCase();
+    const v = sanitize(newValue.trim().toUpperCase());
     const oldValue = opcoes[key][idx];
     setEditing(null);
     if (!v || v === oldValue) return;
@@ -1530,7 +1546,7 @@ const Configuracoes = ({
 
   const importItems = async (key: OpcKey) => {
     const novos = [...new Set(
-      nomesBulk.split("\n").map(n => n.trim().toUpperCase()).filter(n => n.length > 0)
+      nomesBulk.split("\n").map(n => sanitize(n.trim().toUpperCase())).filter(n => n.length > 0)
     )].filter(n => !opcoes[key].includes(n));
 
     if (novos.length === 0) {
@@ -1867,17 +1883,17 @@ const Configuracoes = ({
         <div className="rsp-grid-3" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:14 }}>
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("dpo_label_nome")}</label>
-            <input value={dpoNome} onChange={e => setDpoNome(e.target.value)} placeholder={t("dpo_ph_nome")}
+            <input value={dpoNome} onChange={e => setDpoNomeSafe(e.target.value)} placeholder={t("dpo_ph_nome")}
               style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("dpo_label_email")}</label>
-            <input type="email" value={dpoEmail} onChange={e => setDpoEmail(e.target.value)} placeholder={t("dpo_ph_email")}
+            <input type="email" value={dpoEmail} onChange={e => setDpoEmailSafe(e.target.value)} placeholder={t("dpo_ph_email")}
               style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("dpo_label_tel")}</label>
-            <input value={dpoTelefone} onChange={e => setDpoTelefone(e.target.value)} placeholder={t("dpo_ph_tel")}
+            <input value={dpoTelefone} onChange={e => setDpoTelefoneSafe(e.target.value)} placeholder={t("dpo_ph_tel")}
               style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
           </div>
         </div>

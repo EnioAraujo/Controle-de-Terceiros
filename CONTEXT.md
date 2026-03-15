@@ -32,24 +32,20 @@ Sistema web para **controle de presença e gestão de trabalhadores terceirizado
 
 ```
 src/
-├── App.tsx                  # Roteamento principal + controle de sessão
+├── App.tsx                  # Roteamento principal + controle de sessão + ErrorBoundary
 ├── main.tsx                 # Entry point React
-├── globals.css / App.css    # Estilos globais
+├── globals.css              # Estilos globais
 ├── components/
-│   ├── AttendanceForm.tsx   # Formulário legado (compatibilidade)
-│   ├── ImportOptionsDialog.tsx
-│   ├── MultiSelect.tsx
-│   ├── OptionManager.tsx
-│   ├── OptionsSheet.tsx
+│   ├── ErrorBoundary.tsx    # Error Boundary global (previne tela branca em crash)
 │   └── ui/                  # Todos os componentes shadcn/ui
 ├── hooks/
 │   ├── use-mobile.tsx
 │   ├── use-toast.ts
 │   └── use-i18n.ts            # Hook useI18n() para acesso ao contexto de idioma
 ├── lib/
-│   ├── attendance-storage.ts  # CRUD de registros via Supabase
-│   ├── options-storage.ts     # CRUD de opções via Supabase
 │   ├── supabase.ts            # Client Supabase + authReady promise
+│   ├── format-utils.ts        # Funções puras: calcHoras, fmt, fmtMes, dbToRegistro, etc.
+│   ├── fechamento-utils.ts    # Lógica de fechamento financeiro
 │   ├── i18n-translations.ts   # Traduções pt-BR/en-US + mapSupabaseError()
 │   ├── i18n-context.ts        # React.createContext do sistema i18n
 │   ├── i18n.tsx               # I18nProvider (componente de contexto)
@@ -59,14 +55,9 @@ src/
 │   ├── LoginPage.tsx          # Autenticação email/senha
 │   ├── AdminPage.tsx          # Gerenciamento de usuários + conta
 │   ├── ResetPasswordPage.tsx  # Redefinição de senha
-│   ├── AttendancePage.tsx     # (legado)
-│   ├── ManualOptionsInputPage.tsx
-│   ├── OptionsManagementPage.tsx
 │   └── NotFound.tsx
 ├── types/
-│   └── attendance.ts          # Interfaces: Registro, AttendanceRecord, SelectOption
-└── utils/
-    └── toast.ts
+│   └── attendance.ts          # Interfaces: Registro, SelectOption
 supabase/
 ├── schema.sql                 # Schema base completo
 └── migrations/
@@ -338,7 +329,8 @@ const { lang, setLang, t } = useI18n();
 - Usar shadcn/ui para componentes de UI — **não editar** arquivos em `src/components/ui/`
 - Estilo: Tailwind CSS preferencialmente; inline styles usados nas páginas principais (Index, Login, Admin)
 - Tipagem estrita: evitar `any`, usar `unknown` quando necessário
-- Sanitizar entrada do usuário com `DOMPurify` antes de persistir (ver `options-storage.ts`)
+- Sanitizar entrada do usuário com `DOMPurify` antes de persistir (via `sanitize()` em Index.tsx)
+- Error Boundary global (`ErrorBoundary.tsx`) envolve todo o app para prevenir tela branca
 
 ---
 
@@ -374,3 +366,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-14 | Proteção anti-duplicata em 4 camadas: (1) handleSave verifica single-edit contra banco (antes não havia checagem); (2) salvar() agora deduplica também no branch de lote-edit; (3) useStorage.save() filtra duplicatas intra-lote antes de enviar ao Supabase; (4) migration fix_duplicate_lote_registros.sql remove duplicatas existentes no DB e adiciona UNIQUE INDEX em (lote_id, lower(nome)) |
 | 2026-03-15 | Validação de duplo turno: mesmo nome no mesmo dia em turno diferente exige justificativa obrigatória; aviso amarelo com textarea; botão "Confirmar com justificativa" só habilitado após digitar motivo; justificativa salva no campo obs com prefixo [DUPLO TURNO] para uso no fechamento |
 | 2026-03-15 | Refatoração: validação de turno diferente movida do FormLancamento para salvar() em Lancamentos (ponto de passagem único); conflito de turno agora é detectado pelo componente-pai que tem acesso direto ao state `registros` (sem prop stale); modal de conflito é renderizado por Lancamentos com textarea e botão bloqueado até justificativa; regra de proatividade em bugs recorrentes adicionada ao copilot-instructions.md |
+| 2026-03-15 | Auditoria de segurança e clean code: CORS dinâmico na Edge Function admin-users (removido wildcard *); headers de segurança no vercel.json (CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy); sanitização de todas as entradas de texto com DOMPurify (obs, DPO, importação em massa, busca LGPD, justificativa); proteção contra CSV injection na exportação; Error Boundary global; remoção de 13 arquivos de código morto (AttendanceForm, MultiSelect, ImportOptionsDialog, OptionManager, OptionsSheet, AttendancePage, ManualOptionsInputPage, OptionsManagementPage, attendance-storage, options-storage, made-with-dyad, toast.ts, App.css); remoção do tipo legado AttendanceRecord |
