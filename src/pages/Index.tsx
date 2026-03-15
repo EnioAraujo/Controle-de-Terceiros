@@ -23,13 +23,6 @@ import {
   STATUS_COLORS, NEXT_STATUS,
 } from "@/lib/fechamento-utils";
 
-// ─── CONSTANTES DEFAULT ──────────────────────────────────────────
-const D_TURNOS       = ["1ª TURNO", "2ª TURNO", "3ª TURNO", "INTERMEDIÁRIO"];
-const D_UNIDADES     = ["HUB", "COD DIURNO", "COD NOTURNO", "Administrativo"];
-const D_FORNECEDORES = ["LIDER MASTER", "TRANSLOG", "SERVILOG", "LOGFLEX", "OUTRO"];
-const D_MOTIVOS      = ["OPERAÇÃO BAT HUB BRASIL", "REFORÇO TURNO", "COBERTURA FALTA", "PROJETO ESPECIAL", "OUTRO"];
-const D_CARGOS       = ["AUXILIAR DE DEPÓSITO", "CONFERENTE JR", "CONFERENTE SR", "OPERADOR DE EMPILHADEIRA", "LÍDER OPERACIONAL", "SUPERVISOR", "ANALISTA", "COORDENADOR"];
-const D_CC_LIST      = ["100001 - SOUZA CRUZ-COD", "100002 - SOUZA CRUZ-HUB", "100003 - ADMINISTRATIVO"];
 // ─── TIPOS ───────────────────────────────────────────────────────
 interface Opcoes {
   turnos:       string[];
@@ -41,13 +34,15 @@ interface Opcoes {
   nomes:        string[];
 }
 
+// Sem defaults hardcoded — fonte de verdade é a tabela opcoes no Supabase.
+// Para popular um novo ambiente, execute supabase/migrations/seed_opcoes_default.sql
 const OPCOES_DEFAULT: Opcoes = {
-  turnos:       D_TURNOS,
-  unidades:     D_UNIDADES,
-  fornecedores: D_FORNECEDORES,
-  motivos:      D_MOTIVOS,
-  cargos:       D_CARGOS,
-  ccList:       D_CC_LIST,
+  turnos:       [],
+  unidades:     [],
+  fornecedores: [],
+  motivos:      [],
+  cargos:       [],
+  ccList:       [],
   nomes:        [],
 };
 
@@ -203,7 +198,7 @@ const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
         byKey.get(row.chave)!.push(row.valor);
       });
 
-      const built: Opcoes = { ...OPCOES_DEFAULT };
+      const built: Opcoes = { turnos: [], unidades: [], fornecedores: [], motivos: [], cargos: [], ccList: [], nomes: [] };
       byKey.forEach((vals, k) => {
         if (k !== "nomes" && k in built) {
           Object.assign(built, { [k]: vals });
