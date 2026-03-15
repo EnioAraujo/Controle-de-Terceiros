@@ -90,7 +90,7 @@ const useStorage = (): [Registro[], (val: Registro[]) => void, boolean] => {
           if (error) {
             console.error("Erro ao carregar registros:", error.message);
           } else if (rows && rows.length > 0) {
-            const parsed = (rows as DbRegistro[]).map(dbToRegistro);
+            const parsed = (rows as Registro[]).map(dbToRegistro);
             setData(parsed);
             prevRef.current = parsed;
           }
@@ -816,23 +816,8 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig }: { regist
 
   // Agrupa registros do mesmo lote em uma única entrada para exibição
   const grupos = useMemo(() => {
-    const loteMap = new Map<string, Registro[]>();
-    filtered.forEach(r => {
-      if (r.loteId) {
-        if (!loteMap.has(r.loteId)) loteMap.set(r.loteId, []);
-        loteMap.get(r.loteId)!.push(r);
-      }
-    });
-    const seen = new Set<string>();
-    const result: (Registro | Registro[])[] = [];
-    filtered.forEach(r => {
-      if (r.loteId) {
-        if (!seen.has(r.loteId)) { seen.add(r.loteId); result.push(loteMap.get(r.loteId)!); }
-      } else {
-        result.push(r);
-      }
-    });
-    return result;
+    // Exibe cada registro individualmente, sem agrupar por loteId
+    return filtered;
   }, [filtered]);
 
   const salvar = (novos: Registro[], forceComJustificativa = "") => {
