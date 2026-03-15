@@ -558,41 +558,32 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
   const valid = isEdit ? pessoas[0]?.nome.trim().length > 2 : validCount > 0;
 
   const [dupAviso, setDupAviso] = useState<string[]>([]);
-  const [dupTipo, setDupTipo] = useState<"interna" | "banco" | "turno_diferente">("banco");
-  const [dupJustificativa, setDupJustificativa] = useState("");
+  const [dupTipo, setDupTipo] = useState<"interna" | "banco">("banco");
 
-  const handleSave = (force = false, justificativaExtra = "") => {
+  const handleSave = (force = false) => {
     if (!valid) return;
-
-    // Monta obs com justificativa de duplo turno prefixada (se houver)
-    const buildObs = (extra: string) =>
-      extra ? `[DUPLO TURNO] ${extra}${comum.obs ? ` | ${comum.obs}` : ""}` : comum.obs;
 
     if (isEdit) {
       const p = pessoas[0];
       const nomeTrimmed = p.nome.trim();
-      // Verifica conflito de nome+data ao editar registro individual
+      // Verifica conflito de nome+data+turno ao editar registro individual
       if (!force) {
         const conflito = todosRegistros.find(r =>
           r.id !== inicial!.id &&
           r.nome.toLowerCase() === nomeTrimmed.toLowerCase() &&
-          r.data === comum.data
+          r.data === comum.data &&
+          r.turno.toLowerCase() === comum.turno.toLowerCase()
         );
         if (conflito) {
-          if (conflito.turno.toLowerCase() === comum.turno.toLowerCase()) {
-            setDupTipo("banco");
-            setDupAviso([nomeTrimmed]);
-          } else {
-            setDupTipo("turno_diferente");
-            setDupAviso([`${nomeTrimmed} (já no ${conflito.turno})`]);
-          }
+          setDupTipo("banco");
+          setDupAviso([nomeTrimmed]);
           return;
         }
       }
-      onSave([{ ...inicial!, ...comum, obs: buildObs(justificativaExtra), nome: nomeTrimmed, horaEntrada: p.horaEntrada, horaSaida: p.horaSaida, totalHoras: calcHoras(p.horaEntrada, p.horaSaida) }]);
+      // Conflito turno diferente é tratado em salvar() de Lancamentos
+      onSave([{ ...inicial!, ...comum, nome: nomeTrimmed, horaEntrada: p.horaEntrada, horaSaida: p.horaSaida, totalHoras: calcHoras(p.horaEntrada, p.horaSaida) }]);
     } else {
       const validPessoas = pessoas.filter(p => p.nome.trim().length > 2);
-      // Verifica duplicatas (mesmo nome + mesma data já existente nos registros)
       if (!force) {
         // 1) Duplicatas dentro do próprio lote (case-insensitive)
         const nomesNoLote = validPessoas.map(p => p.nome.trim());
@@ -605,8 +596,8 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
           setDupAviso([...new Set(duplicatasInternas)]);
           return;
         }
+        // 2) Mesmo nome + mesmo turno + mesma data → bloqueia
         const editIds = new Set(isLoteEdit ? loteInicial!.map(r => r.id) : []);
-        // 2a) Mesmo nome + mesmo turno + mesma data → bloqueia
         const mesmoTurno = nomesNoLote.filter(nome =>
           todosRegistros.some(r =>
             !editIds.has(r.id) &&
@@ -620,30 +611,13 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
           setDupAviso(mesmoTurno);
           return;
         }
-        // 2b) Mesmo nome + turno DIFERENTE + mesma data → exige justificativa
-        const diferenteTurno = nomesNoLote
-          .map(nome => {
-            const r = todosRegistros.find(r2 =>
-              !editIds.has(r2.id) &&
-              r2.nome.toLowerCase() === nome.toLowerCase() &&
-              r2.data === comum.data &&
-              r2.turno.toLowerCase() !== comum.turno.toLowerCase()
-            );
-            return r ? `${nome} (já no ${r.turno})` : null;
-          })
-          .filter(Boolean) as string[];
-        if (diferenteTurno.length > 0) {
-          setDupTipo("turno_diferente");
-          setDupAviso(diferenteTurno);
-          return;
-        }
+        // Conflito turno diferente é tratado em salvar() de Lancamentos
       }
       const lId = isLoteEdit ? loteInicial![0].loteId : (validPessoas.length > 1 ? uuid() : undefined);
       onSave(validPessoas.map((p, i) => ({
         id: isLoteEdit ? (loteInicial![i]?.id ?? uuid()) : uuid(),
         ...(lId ? { loteId: lId } : {}),
         ...comum,
-        obs: buildObs(justificativaExtra),
         nome: p.nome.trim(),
         horaEntrada: p.horaEntrada,
         horaSaida: p.horaSaida,
@@ -781,56 +755,33 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
         <Btn onClick={handleSave} disabled={!valid} icon={<Icon d="M5 13l4 4L19 7" />}>{btnLabel}</Btn>
       </div>
 
-      {/* Aviso de duplicidade */}
+      {/* Aviso de duplicidade (apenas interna e mesmo turno — turno diferente é tratado em Lancamentos.salvar) */}
       {dupAviso.length > 0 && (
-        <div style={{ background: dupTipo === "turno_diferente" ? "#FFFBEB" : "#FEF2F2", border: `1.5px solid ${dupTipo === "turno_diferente" ? "#FCD34D" : "#FCA5A5"}`, borderRadius:10, padding:"14px 18px", display:"flex", flexDirection:"column", gap:10 }}>
-          <div style={{ fontWeight:700, color: dupTipo === "turno_diferente" ? "#D97706" : "#E02424", fontSize:13 }}>
-            {dupTipo === "turno_diferente" ? "⚠️ Colaborador já lançado em outro turno hoje!" : "⚠️ Lançamento duplicado detectado!"}
+        <div style={{ background:"#FEF2F2", border:"1.5px solid #FCA5A5", borderRadius:10, padding:"14px 18px", display:"flex", flexDirection:"column", gap:10 }}>
+          <div style={{ fontWeight:700, color:"#E02424", fontSize:13 }}>
+            ⚠️ Lançamento duplicado detectado!
           </div>
-          <div style={{ fontSize:12, color: dupTipo === "turno_diferente" ? "#92400E" : "#7F1D1D" }}>
+          <div style={{ fontSize:12, color:"#7F1D1D" }}>
             {dupTipo === "interna"
               ? (dupAviso.length === 1
                   ? `O nome "${dupAviso[0]}" aparece mais de uma vez neste lote.`
                   : `${dupAviso.length} nomes estão repetidos neste lote: ${dupAviso.join(", ")}.`)
-              : dupTipo === "turno_diferente"
-                ? (dupAviso.length === 1
-                    ? `${dupAviso[0]} também consta em ${fmt(comum.data, "pt-BR")}.`
-                    : `${dupAviso.length} colaboradores já têm registro em ${fmt(comum.data, "pt-BR")}: ${dupAviso.join(", ")}.`)
-                : (dupAviso.length === 1
-                    ? `"${dupAviso[0]}" já possui um registro no mesmo turno em ${fmt(comum.data, "pt-BR")}.`
-                    : `${dupAviso.length} colaboradores já possuem registro no mesmo turno em ${fmt(comum.data, "pt-BR")}: ${dupAviso.join(", ")}.`)
+              : (dupAviso.length === 1
+                  ? `"${dupAviso[0]}" já possui um registro no mesmo turno em ${fmt(comum.data, "pt-BR")}.`
+                  : `${dupAviso.length} colaboradores já possuem registro no mesmo turno em ${fmt(comum.data, "pt-BR")}: ${dupAviso.join(", ")}.`)
             }
           </div>
           <div style={{ fontSize:12, color:"#374151" }}>
             {dupTipo === "interna"
               ? "Corrija ou remova os nomes duplicados antes de salvar."
-              : dupTipo === "turno_diferente"
-                ? "Para registrar em dois turnos no mesmo dia, informe o motivo abaixo:"
-                : "Para continuar, corrija os nomes/data ou clique em \"Confirmar mesmo assim\"."}
+              : "Para continuar, corrija os nomes/data ou clique em \"Confirmar mesmo assim\"."}
           </div>
-          {dupTipo === "turno_diferente" && (
-            <textarea
-              value={dupJustificativa}
-              onChange={e => setDupJustificativa(e.target.value)}
-              placeholder="Ex: horas extras autorizadas, cobertura de falta emergencial..."
-              rows={3}
-              style={{ border:`1.5px solid ${dupJustificativa.trim().length > 0 ? "#FCD34D" : "#E2E6EC"}`, borderRadius:8, padding:"10px 12px", fontSize:12, fontFamily:"inherit", resize:"vertical", outline:"none", width:"100%", boxSizing:"border-box", background:"#FAFBFC" }}
-            />
-          )}
           <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-            <Btn variant="ghost" onClick={() => { setDupAviso([]); setDupJustificativa(""); }}>{t("form_btn_cancel")}</Btn>
+            <Btn variant="ghost" onClick={() => setDupAviso([])}>{t("form_btn_cancel")}</Btn>
             {dupTipo === "banco" && (
               <Btn onClick={() => { setDupAviso([]); handleSave(true); }}
                 style={{ background:"#E02424" }}>
                 Confirmar mesmo assim
-              </Btn>
-            )}
-            {dupTipo === "turno_diferente" && (
-              <Btn
-                onClick={() => { const j = dupJustificativa.trim(); setDupAviso([]); setDupJustificativa(""); handleSave(true, j); }}
-                disabled={dupJustificativa.trim().length === 0}
-                style={{ background: dupJustificativa.trim().length > 0 ? "#D97706" : undefined, opacity: dupJustificativa.trim().length === 0 ? 0.45 : 1 }}>
-                Confirmar com justificativa
               </Btn>
             )}
           </div>
@@ -849,6 +800,9 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig }: { regist
   const [modal, setModal]     = useState<null | "new" | Registro | Registro[]>(null);
   const [confirm, setConfirm] = useState<string[] | null>(null);
   const [detalhe, setDetalhe] = useState<Registro | Registro[] | null>(null);
+
+  // Estado de conflito de turno — vive em Lancamentos, fora do FormLancamento
+  const [conflito, setConflito] = useState<{ novos: Registro[]; nomes: string[]; justificativa: string } | null>(null);
 
   const set = (k: keyof Filtros, v: string) => setFiltros(f => ({ ...f, [k]: v }));
 
@@ -882,22 +836,59 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig }: { regist
     return result;
   }, [filtered]);
 
-  const salvar = (novos: Registro[]) => {
+  const salvar = (novos: Registro[], forceComJustificativa = "") => {
+    // Dedup intra-lote
+    const nomesLote = novos.map(r => r.nome.toLowerCase());
+    const semDup = novos.filter((r, idx) => nomesLote.indexOf(r.nome.toLowerCase()) === idx);
+
+    // Verifica conflito de turno: mesmo nome + mesma data + turno DIFERENTE nos registros existentes
+    const editIds = new Set(Array.isArray(modal) ? (modal as Registro[]).map(r => r.id) : modal && modal !== "new" ? [(modal as Registro).id] : []);
+    const conflitosNome: string[] = [];
+    for (const r of semDup) {
+      const existente = registros.find(e =>
+        !editIds.has(e.id) &&
+        e.nome.toLowerCase() === r.nome.toLowerCase() &&
+        e.data === r.data &&
+        e.turno.toLowerCase() !== r.turno.toLowerCase()
+      );
+      if (existente) {
+        conflitosNome.push(`${r.nome} (já no ${existente.turno})`);
+      }
+    }
+
+    // Se há conflito e não foi forçado com justificativa → bloqueia e mostra modal de conflito
+    if (conflitosNome.length > 0 && !forceComJustificativa) {
+      setConflito({ novos: semDup, nomes: conflitosNome, justificativa: "" });
+      return; // NÃO salva, NÃO fecha o modal do form
+    }
+
+    // Se forçado com justificativa → prefixar obs nos registros com conflito
+    const registrosFinais = forceComJustificativa
+      ? semDup.map(r => {
+          const temConflito = registros.some(e =>
+            !editIds.has(e.id) &&
+            e.nome.toLowerCase() === r.nome.toLowerCase() &&
+            e.data === r.data &&
+            e.turno.toLowerCase() !== r.turno.toLowerCase()
+          );
+          if (temConflito) {
+            const obsAtual = r.obs || "";
+            return { ...r, obs: `[DUPLO TURNO] ${forceComJustificativa}${obsAtual ? ` | ${obsAtual}` : ""}` };
+          }
+          return r;
+        })
+      : semDup;
+
     if (modal === "new") {
-      // Salvaguarda: remove duplicatas intra-lote antes de inserir
-      const nomesNovos = novos.map(r => r.nome.toLowerCase());
-      const semDup = novos.filter((r, idx) => nomesNovos.indexOf(r.nome.toLowerCase()) === idx);
-      setRegistros([...registros, ...semDup]);
+      setRegistros([...registros, ...registrosFinais]);
     } else if (Array.isArray(modal)) {
-      const ids = new Set(modal.map(r => r.id));
-      // Salvaguarda: remove duplicatas intra-lote também na edição de lote
-      const nomesLote = novos.map(r => r.nome.toLowerCase());
-      const semDup = novos.filter((r, idx) => nomesLote.indexOf(r.nome.toLowerCase()) === idx);
-      setRegistros([...registros.filter(r => !ids.has(r.id)), ...semDup]);
+      const ids = new Set((modal as Registro[]).map(r => r.id));
+      setRegistros([...registros.filter(r => !ids.has(r.id)), ...registrosFinais]);
     } else {
-      setRegistros(registros.map(r => r.id === novos[0].id ? novos[0] : r));
+      setRegistros(registros.map(r => r.id === registrosFinais[0].id ? registrosFinais[0] : r));
     }
     setModal(null);
+    setConflito(null);
   };
 
   const excluir = (ids: string[]) => { setRegistros(registros.filter(r => !ids.includes(r.id))); setConfirm(null); };
@@ -1106,6 +1097,58 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig }: { regist
           <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20 }}>
             <Btn variant="ghost" onClick={() => setConfirm(null)}>{t("lanc_confirm_cancel")}</Btn>
             <Btn variant="danger" onClick={() => excluir(confirm)}>{t("lanc_confirm_delete")}</Btn>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal de conflito de turno — vive em Lancamentos, impossível de contornar */}
+      {conflito && (
+        <Modal title="⚠️ Colaborador já lançado em outro turno" onClose={() => setConflito(null)} wide>
+          <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+            <div style={{ background:"#FFFBEB", border:"1.5px solid #FCD34D", borderRadius:10, padding:"14px 18px" }}>
+              <div style={{ fontWeight:700, color:"#D97706", fontSize:13, marginBottom:8 }}>
+                {conflito.nomes.length === 1
+                  ? `${conflito.nomes[0]} já tem registro em outro turno nesta data.`
+                  : `${conflito.nomes.length} colaboradores já têm registro em outro turno nesta data:`}
+              </div>
+              {conflito.nomes.length > 1 && (
+                <ul style={{ margin:0, paddingLeft:18, fontSize:12, color:"#92400E" }}>
+                  {conflito.nomes.map(n => <li key={n}>{n}</li>)}
+                </ul>
+              )}
+            </div>
+            <div style={{ fontSize:12, color:"#374151" }}>
+              Para registrar em dois turnos no mesmo dia, informe o motivo abaixo. A justificativa será salva no campo Obs do registro.
+            </div>
+            <textarea
+              value={conflito.justificativa}
+              onChange={e => setConflito(c => c ? { ...c, justificativa: e.target.value } : c)}
+              placeholder="Ex: horas extras autorizadas, cobertura de falta emergencial, dobra de turno..."
+              rows={3}
+              style={{
+                border: `1.5px solid ${conflito.justificativa.trim().length > 0 ? "#FCD34D" : "#E2E6EC"}`,
+                borderRadius: 8, padding: "10px 12px", fontSize: 12, fontFamily: "inherit",
+                resize: "vertical", outline: "none", width: "100%", boxSizing: "border-box", background: "#FAFBFC"
+              }}
+            />
+            <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
+              <Btn variant="ghost" onClick={() => setConflito(null)}>Cancelar</Btn>
+              <Btn
+                onClick={() => {
+                  const j = conflito.justificativa.trim();
+                  if (!j) return;
+                  const novos = conflito.novos;
+                  setConflito(null);
+                  salvar(novos, j);
+                }}
+                disabled={conflito.justificativa.trim().length === 0}
+                style={{
+                  background: conflito.justificativa.trim().length > 0 ? "#D97706" : undefined,
+                  opacity: conflito.justificativa.trim().length === 0 ? 0.45 : 1
+                }}>
+                Confirmar com justificativa
+              </Btn>
+            </div>
           </div>
         </Modal>
       )}

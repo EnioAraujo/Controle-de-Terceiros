@@ -14,6 +14,18 @@ Não assuma o contexto — **pergunte primeiro, implemente depois**.
 
 ---
 
+## Regra de Proatividade em Bugs Recorrentes (OBRIGATÓRIA)
+
+Quando o usuário relatar que um bug **se repetiu após um fix**, **não tente corrigir pelo mesmo caminho**. Siga este protocolo:
+
+1. **Assuma que a abordagem anterior falhou estruturalmente** — não adicione mais código no mesmo ponto.
+2. **Mude o ponto de validação**: se a validação estava no componente-filho (ex: `FormLancamento`), mova para o componente-pai que controla o `save` (ex: `salvar()` em `Lancamentos`).
+3. **Adicione defesa em profundidade**: valide na camada mais próxima da persistência (a função que chama `setRegistros`), não na UI que pode ter estado stale.
+4. **Se falhar pela 2ª vez no mesmo bug**, tente abordagem completamente diferente (ex: DB trigger, middleware, interceptor na camada de storage).
+5. **Nunca espere o erro se repetir** — após implementar, faça build/compile check para garantir que o código funciona.
+
+---
+
 ## Regra Principal: Atualizar CONTEXT.md
 
 **Sempre que fizer qualquer alteração no projeto** (nova funcionalidade, nova rota, novo componente, mudança de banco de dados, nova dependência, alteração de lógica, etc.), você **deve atualizar o arquivo `CONTEXT.md`** na raiz do repositório.
