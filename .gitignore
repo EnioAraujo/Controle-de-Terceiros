@@ -27,3 +27,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase CLI — arquivos temporários e de sessão
+supabase/.temp/
+supabase/.branches/
