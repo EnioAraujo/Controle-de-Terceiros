@@ -901,13 +901,22 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }:
         Exibindo {filtered.length} de {registros.length} registros
       </div>
 
-      {/* Botão excluir selecionados abaixo dos filtros, alinhado à direita */}
+      {/* Barra de exclusão em massa igual à imagem 2 */}
       {selectedIds.length > 0 && (
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, marginBottom: 8 }}>
-          <Btn variant="danger" onClick={() => setConfirm(selectedIds)} style={{ fontWeight: 700, fontSize: 15, padding: "10px 22px" }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          background: "#FDE8E8",
+          borderRadius: 10,
+          padding: "12px 18px",
+          margin: "16px 0 12px 0",
+          boxShadow: "0 1px 4px #FDE8E880"
+        }}>
+          <Btn variant="danger" onClick={() => setConfirm(selectedIds)} style={{ fontWeight: 700, fontSize: 15, padding: "10px 22px", background: "#F87171", color: "#fff" }}>
             Excluir selecionados
           </Btn>
-          <span style={{ fontSize: 13, color: "#64748B" }}>{selectedIds.length} selecionados</span>
+          <span style={{ fontSize: 14, color: "#B91C1C", fontWeight: 600 }}>{selectedIds.length} selecionado{selectedIds.length > 1 ? 's' : ''}</span>
         </div>
       )}
         {/* Removido: declaração duplicada de excluir dentro do JSX */}
