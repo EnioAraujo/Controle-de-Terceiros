@@ -1,13 +1,13 @@
 // Edge Function: send-whatsapp
-// Envia uma mensagem de texto para um grupo do WhatsApp via Evolution API
+// Envia uma mensagem de texto para um grupo do WhatsApp via Z-API
 // ao ser chamada após um novo lançamento ser salvo.
 //
 // Config lida da tabela `opcoes`:
-//   wpp_enabled    — "true" para ativar
-//   wpp_url        — URL base da Evolution API (ex: https://evo.meuservidor.com)
-//   wpp_instance   — nome da instância cadastrada na Evolution API
-//   wpp_key        — apikey da instância
-//   wpp_group_id   — JID do grupo (ex: 120363xxxxxxxx@g.us)
+//   wpp_enabled        — "true" para ativar
+//   wpp_instance       — Instance ID da Z-API
+//   wpp_key            — Token da instância Z-API
+//   wpp_security_token — Security Token (Client-Token) da conta Z-API
+//   wpp_group_id       — ID do grupo (ex: 120363xxxxxxxx-1234567890@g.us)
 //
 // Body esperado: { registros: Registro[] }
 // Qualquer usuário autenticado pode chamar esta função.
@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
     const { data: cfg } = await supabaseAdmin
       .from("opcoes")
       .select("chave,valor")
-      .in("chave", ["wpp_enabled", "wpp_url", "wpp_instance", "wpp_key", "wpp_group_id"]);
+      .in("chave", ["wpp_enabled", "wpp_instance", "wpp_key", "wpp_security_token", "wpp_group_id"]);
 
     const c: Record<string, string> = {};
     (cfg ?? []).forEach((row: { chave: string; valor: string }) => { c[row.chave] = row.valor; });
@@ -100,13 +100,13 @@ Deno.serve(async (req) => {
       return json({ skipped: true, reason: "WhatsApp integration disabled" });
     }
 
-    const wppUrl      = (c["wpp_url"]      ?? "").replace(/\/$/, "");
-    const wppInstance = c["wpp_instance"]  ?? "";
-    const wppKey      = c["wpp_key"]       ?? "";
-    const wppGroupId  = c["wpp_group_id"]  ?? "";
+    const wppInstance       = c["wpp_instance"]       ?? "";
+    const wppKey            = c["wpp_key"]            ?? "";
+    const wppSecurityToken  = c["wpp_security_token"] ?? "";
+    const wppGroupId        = c["wpp_group_id"]       ?? "";
 
-    if (!wppUrl || !wppInstance || !wppKey || !wppGroupId) {
-      return json({ error: "WhatsApp config incompleta (wpp_url, wpp_instance, wpp_key, wpp_group_id)" }, 400);
+    if (!wppInstance || !wppKey || !wppGroupId) {
+      return json({ error: "WhatsApp config incompleta (wpp_instance, wpp_key, wpp_group_id)" }, 400);
     }
 
     // ── Montar mensagem ─────────────────────────────────────────────
@@ -119,25 +119,21 @@ Deno.serve(async (req) => {
 
     const text = buildMessage(registros);
 
-    // ── Chamar Evolution API ────────────────────────────────────────
-    const evoUrl = `${wppUrl}/message/sendText/${wppInstance}`;
+    // ── Chamar Z-API ────────────────────────────────────────────────
+    const zapiUrl = `https://api.z-api.io/instances/${wppInstance}/token/${wppKey}/send-text`;
 
-    const evoRes = await fetch(evoUrl, {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (wppSecurityToken) headers["Client-Token"] = wppSecurityToken;
+
+    const zapiRes = await fetch(zapiUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": wppKey,
-      },
-      body: JSON.stringify({
-        number: wppGroupId,
-        text,
-        mentionsEveryOne: true,
-      }),
+      headers,
+      body: JSON.stringify({ phone: wppGroupId, message: text }),
     });
 
-    if (!evoRes.ok) {
-      const errText = await evoRes.text().catch(() => evoRes.statusText);
-      return json({ error: `Evolution API retornou ${evoRes.status}: ${errText}` }, 502);
+    if (!zapiRes.ok) {
+      const errText = await zapiRes.text().catch(() => zapiRes.statusText);
+      return json({ error: `Z-API retornou ${zapiRes.status}: ${errText}` }, 502);
     }
 
     return json({ success: true });

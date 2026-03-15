@@ -1447,27 +1447,27 @@ const Configuracoes = ({
     setDiariasConfig(prev => prev.filter(x => x.id !== d.id));
   };
 
-  // ── WhatsApp (Evolution API)
-  const [wppEnabled,   setWppEnabled]   = useState(false);
-  const [wppUrl,       setWppUrl]       = useState("");
-  const [wppInstance,  setWppInstance]  = useState("");
-  const [wppKey,       setWppKey]       = useState("");
-  const [wppGroupId,   setWppGroupId]   = useState("");
-  const [wppSaved,     setWppSaved]     = useState(false);
+  // ── WhatsApp (Z-API)
+  const [wppEnabled,        setWppEnabled]        = useState(false);
+  const [wppInstance,       setWppInstance]        = useState("");
+  const [wppKey,            setWppKey]             = useState("");
+  const [wppSecurityToken,  setWppSecurityToken]   = useState("");
+  const [wppGroupId,        setWppGroupId]         = useState("");
+  const [wppSaved,          setWppSaved]           = useState(false);
 
   useEffect(() => {
     authReady.then(async () => {
       const { data: wData } = await supabase
         .from("opcoes")
         .select("chave, valor")
-        .in("chave", ["wpp_enabled", "wpp_url", "wpp_instance", "wpp_key", "wpp_group_id"]);
+        .in("chave", ["wpp_enabled", "wpp_instance", "wpp_key", "wpp_security_token", "wpp_group_id"]);
       if (wData) {
         wData.forEach((row: { chave: string; valor: string }) => {
-          if (row.chave === "wpp_enabled")  setWppEnabled(row.valor === "true");
-          if (row.chave === "wpp_url")      setWppUrl(row.valor);
-          if (row.chave === "wpp_instance") setWppInstance(row.valor);
-          if (row.chave === "wpp_key")      setWppKey(row.valor);
-          if (row.chave === "wpp_group_id") setWppGroupId(row.valor);
+          if (row.chave === "wpp_enabled")        setWppEnabled(row.valor === "true");
+          if (row.chave === "wpp_instance")       setWppInstance(row.valor);
+          if (row.chave === "wpp_key")            setWppKey(row.valor);
+          if (row.chave === "wpp_security_token") setWppSecurityToken(row.valor);
+          if (row.chave === "wpp_group_id")       setWppGroupId(row.valor);
         });
       }
     });
@@ -1475,11 +1475,11 @@ const Configuracoes = ({
 
   const saveWpp = async () => {
     const fields = [
-      { chave: "wpp_enabled",  valor: wppEnabled ? "true" : "false" },
-      { chave: "wpp_url",      valor: wppUrl.trim() },
-      { chave: "wpp_instance", valor: wppInstance.trim() },
-      { chave: "wpp_key",      valor: wppKey.trim() },
-      { chave: "wpp_group_id", valor: wppGroupId.trim() },
+      { chave: "wpp_enabled",        valor: wppEnabled ? "true" : "false" },
+      { chave: "wpp_instance",       valor: wppInstance.trim() },
+      { chave: "wpp_key",            valor: wppKey.trim() },
+      { chave: "wpp_security_token", valor: wppSecurityToken.trim() },
+      { chave: "wpp_group_id",       valor: wppGroupId.trim() },
     ];
     for (const f of fields) {
       await supabase.from("opcoes").delete().eq("chave", f.chave);
@@ -2070,32 +2070,32 @@ const Configuracoes = ({
 
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>URL da Evolution API</label>
-            <input value={wppUrl} onChange={e => setWppUrl(e.target.value)}
-              placeholder="https://evo.meuservidor.com"
-              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
-            <span style={{ fontSize:10, color:"#94A3B8" }}>URL base da instância Evolution API (sem barra final)</span>
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Nome da Instância</label>
+            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Instance ID (Z-API)</label>
             <input value={wppInstance} onChange={e => setWppInstance(e.target.value)}
-              placeholder="minha-instancia"
-              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
-            <span style={{ fontSize:10, color:"#94A3B8" }}>Nome exato cadastrado na Evolution API</span>
+              placeholder="3EB0XXXXXXXXXXXX"
+              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"monospace", background:"#FAFBFC", outline:"none" }} />
+            <span style={{ fontSize:10, color:"#94A3B8" }}>ID da instância no painel Z-API</span>
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Chave de API (apikey)</label>
+            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Token da Instância</label>
             <input value={wppKey} onChange={e => setWppKey(e.target.value)}
               type="password" placeholder="••••••••••"
               style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
-            <span style={{ fontSize:10, color:"#94A3B8" }}>Token/apikey definito na instância</span>
+            <span style={{ fontSize:10, color:"#94A3B8" }}>Token da instância (aba "Token" no Z-API)</span>
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Group JID (ID do Grupo)</label>
+            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Security Token (Client-Token)</label>
+            <input value={wppSecurityToken} onChange={e => setWppSecurityToken(e.target.value)}
+              type="password" placeholder="••••••••••"
+              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
+            <span style={{ fontSize:10, color:"#94A3B8" }}>Security Token da conta (aba "Segurança" no Z-API)</span>
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>ID do Grupo</label>
             <input value={wppGroupId} onChange={e => setWppGroupId(e.target.value)}
-              placeholder="120363xxxxxxxxxx@g.us"
+              placeholder="XXXXXXXXXXX-XXXXXXXXXX@g.us"
               style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"monospace", background:"#FAFBFC", outline:"none" }} />
-            <span style={{ fontSize:10, color:"#94A3B8" }}>JID do grupo — ex: 120363xxxxxxxx@g.us</span>
+            <span style={{ fontSize:10, color:"#94A3B8" }}>ID do grupo obtido via Z-API</span>
           </div>
         </div>
 
