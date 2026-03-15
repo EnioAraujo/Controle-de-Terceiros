@@ -35,7 +35,7 @@ const HEADER_MAP: Record<string, keyof Registro> = {
 function parseDate(raw: unknown): string | null {
   if (!raw) return null;
 
-  // Date object (xlsx may parse dates this way)
+  // Date object (xlsx pode parsear datas assim)
   if (raw instanceof Date) {
     const y = raw.getFullYear();
     const m = String(raw.getMonth() + 1).padStart(2, "0");
@@ -45,7 +45,7 @@ function parseDate(raw: unknown): string | null {
 
   const s = String(raw).trim();
 
-  // Already YYYY-MM-DD
+  // YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
 
   // DD/MM/YYYY
@@ -55,7 +55,7 @@ function parseDate(raw: unknown): string | null {
     return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
   }
 
-  // Excel serial number
+  // Excel serial number (pode vir como string ou number)
   const num = Number(s);
   if (!isNaN(num) && num > 30000 && num < 60000) {
     const d = new Date((num - 25569) * 86400000);
@@ -65,6 +65,8 @@ function parseDate(raw: unknown): string | null {
     return `${y}-${m}-${dd}`;
   }
 
+  // Fallback: log para debug
+  console.warn("[ImportExcel] Data não reconhecida:", raw);
   return null;
 }
 
