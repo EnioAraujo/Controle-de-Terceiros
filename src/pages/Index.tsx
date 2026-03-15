@@ -90,7 +90,7 @@ const useStorage = (): [Registro[], (val: Registro[]) => void, boolean] => {
           if (error) {
             console.error("Erro ao carregar registros:", error.message);
           } else if (rows && rows.length > 0) {
-            const parsed = (rows as Registro[]).map(dbToRegistro);
+            const parsed = (rows as any[]).map(dbToRegistro);
             setData(parsed);
             prevRef.current = parsed;
           }
@@ -899,10 +899,10 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig }: { regist
       {isAdmin && filtered.length > 0 && (
         <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
           <Btn variant="ghost" onClick={() => setConfirm(filtered.map(r => r.id))}>
-            {t("Selecionar tudo")}
+            Selecionar tudo
           </Btn>
           <Btn variant="danger" onClick={() => setConfirm(filtered.map(r => r.id))}>
-            {t("Excluir tudo")}
+            Excluir tudo
           </Btn>
           <span style={{ fontSize: 12, color: "#64748B" }}>
             {filtered.length} selecionados
