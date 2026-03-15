@@ -1176,9 +1176,10 @@ const DemandAnalysis = ({ registros, opcoes }: { registros: Registro[]; opcoes: 
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
 
-  // ── Projeção futura (range de datas) ──
+  // ── Projeção futura (range de datas + qtd total) ──
   const [projInicio, setProjInicio] = useState("");
   const [projFim, setProjFim] = useState("");
+  const [projQtdTotal, setProjQtdTotal] = useState("");
 
   // ── Config de diárias ──
   const [diariasConfig, setDiariasConfig] = useState<DiariaConfig[]>([]);
@@ -1276,19 +1277,39 @@ const DemandAnalysis = ({ registros, opcoes }: { registros: Registro[]; opcoes: 
         mapa[r.data][r.turno]++;
       }
     }
-    // Preencher dias de projeção com médias históricas (arredondadas)
+    // Calcular distribuição proporcional por turno
+    const totalMediaHist = TURNOS_DEMANDA.reduce((s, t) => s + mediasHistoricas[t], 0);
+    const qtdCustom = projQtdTotal ? parseInt(projQtdTotal, 10) : 0;
+    const usarCustom = qtdCustom > 0 && totalMediaHist > 0;
+
+    // Preencher dias de projeção
     for (const dia of diasProjecao) {
       if (mapa[dia]) {
         const jaTemDadoReal = TURNOS_DEMANDA.some(t => mapa[dia][t] > 0);
         if (!jaTemDadoReal) {
-          for (const turno of TURNOS_DEMANDA) {
-            mapa[dia][turno] = Math.round(mediasHistoricas[turno]);
+          if (usarCustom) {
+            // Distribuir qtdCustom proporcionalmente com base nas médias históricas
+            let distribuido = 0;
+            const proporcoes = TURNOS_DEMANDA.map(t => mediasHistoricas[t] / totalMediaHist);
+            for (let i = 0; i < TURNOS_DEMANDA.length; i++) {
+              if (i === TURNOS_DEMANDA.length - 1) {
+                mapa[dia][TURNOS_DEMANDA[i]] = qtdCustom - distribuido;
+              } else {
+                const v = Math.round(qtdCustom * proporcoes[i]);
+                mapa[dia][TURNOS_DEMANDA[i]] = v;
+                distribuido += v;
+              }
+            }
+          } else {
+            for (const turno of TURNOS_DEMANDA) {
+              mapa[dia][turno] = Math.round(mediasHistoricas[turno]);
+            }
           }
         }
       }
     }
     return mapa;
-  }, [todosDias, regsFiltrados, diasProjecao, mediasHistoricas]);
+  }, [todosDias, regsFiltrados, diasProjecao, mediasHistoricas, projQtdTotal]);
 
   // Estatísticas
   const stats = useMemo(() => {
@@ -1475,8 +1496,14 @@ const DemandAnalysis = ({ registros, opcoes }: { registros: Registro[]; opcoes: 
             <input type="date" value={projFim} onChange={e => setProjFim(e.target.value)}
               style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #FDE68A", fontSize: 12, fontFamily: "inherit" }} />
           </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <label style={{ fontSize: 10, color: "#92400E", fontWeight: 600 }}>{t("demand_proj_qty")}</label>
+            <input type="number" min="1" max="500" value={projQtdTotal} onChange={e => setProjQtdTotal(e.target.value)}
+              placeholder={t("demand_proj_qty_hint")}
+              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #FDE68A", fontSize: 12, fontFamily: "inherit", width: 100 }} />
+          </div>
           {(projInicio || projFim) && (
-            <button onClick={() => { setProjInicio(""); setProjFim(""); }}
+            <button onClick={() => { setProjInicio(""); setProjFim(""); setProjQtdTotal(""); }}
               style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid #FDE68A", background: "transparent", color: "#92400E", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
               {t("demand_proj_clear")}
             </button>
@@ -1484,14 +1511,21 @@ const DemandAnalysis = ({ registros, opcoes }: { registros: Registro[]; opcoes: 
         </div>
         {diasProjecao.length > 0 && (
           <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ fontSize: 11, color: "#92400E", fontWeight: 600 }}>{t("demand_proj_avg")}:</div>
-            {TURNOS_DEMANDA.map(turno => (
-              <div key={turno} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 6, padding: "3px 8px", fontSize: 11 }}>
-                <span style={{ color: TURNO_CORES[turno] || "#92400E", fontWeight: 700 }}>{turno.replace(" TURNO", "")}</span>
-                <span style={{ fontWeight: 600 }}>{mediasHistoricas[turno]?.toFixed(1) ?? "0"}</span>
-                <span style={{ color: "#B45309" }}>→ {Math.round(mediasHistoricas[turno] ?? 0)}/dia</span>
-              </div>
-            ))}
+            <div style={{ fontSize: 11, color: "#92400E", fontWeight: 600 }}>{projQtdTotal ? t("demand_proj_dist") : t("demand_proj_avg")}:</div>
+            {TURNOS_DEMANDA.map(turno => {
+              const totalMediaHist = TURNOS_DEMANDA.reduce((s, t2) => s + (mediasHistoricas[t2] ?? 0), 0);
+              const qtdC = projQtdTotal ? parseInt(projQtdTotal, 10) : 0;
+              const proporcao = totalMediaHist > 0 ? (mediasHistoricas[turno] ?? 0) / totalMediaHist : 1 / 3;
+              const perDay = qtdC > 0 ? Math.round(qtdC * proporcao) : Math.round(mediasHistoricas[turno] ?? 0);
+              const pct = (proporcao * 100).toFixed(0);
+              return (
+                <div key={turno} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 6, padding: "3px 8px", fontSize: 11 }}>
+                  <span style={{ color: TURNO_CORES[turno] || "#92400E", fontWeight: 700 }}>{turno.replace(" TURNO", "")}</span>
+                  <span style={{ color: "#B45309", fontSize: 10 }}>({pct}%)</span>
+                  <span style={{ fontWeight: 600 }}>→ {perDay}/dia</span>
+                </div>
+              );
+            })}
             <div style={{ fontSize: 11, color: "#92400E" }}>
               ({diasProjecao.length} {diasProjecao.length === 1 ? "dia" : "dias"})
             </div>

@@ -272,6 +272,9 @@ export const translations = {
     demand_proj_avg:      "Média histórica utilizada",
     demand_proj_clear:    "Limpar projeção",
     demand_proj_badge:    "projeção",
+    demand_proj_qty:      "Pessoas/dia",
+    demand_proj_qty_hint: "Deixe em branco para usar a média histórica",
+    demand_proj_dist:     "Distribuição por turno",
     demand_sum:           "Soma",
 
     // Configurações
@@ -702,6 +705,9 @@ export const translations = {
     demand_proj_avg:      "Historical average used",
     demand_proj_clear:    "Clear projection",
     demand_proj_badge:    "projection",
+    demand_proj_qty:      "People/day",
+    demand_proj_qty_hint: "Leave blank to use historical average",
+    demand_proj_dist:     "Shift distribution",
     demand_sum:           "Sum",
 
     // Configurações
