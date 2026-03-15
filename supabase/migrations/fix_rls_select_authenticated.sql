@@ -6,11 +6,13 @@
 -- ============================================================
 
 -- registros
+DROP POLICY IF EXISTS authed_select_registros ON public.registros;
 CREATE POLICY "authed_select_registros"
   ON public.registros FOR SELECT TO authenticated
   USING (auth.uid() IS NOT NULL);
 
 -- opcoes
+DROP POLICY IF EXISTS authed_select_opcoes ON public.opcoes;
 CREATE POLICY "authed_select_opcoes"
   ON public.opcoes FOR SELECT TO authenticated
   USING (auth.uid() IS NOT NULL);
