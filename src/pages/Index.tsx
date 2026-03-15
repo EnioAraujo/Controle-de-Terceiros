@@ -901,8 +901,9 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }:
             Selecionar tudo
           </Btn>
           <Btn variant="danger" onClick={() => setConfirm(filtered.map(r => r.id))}>
-            Excluir tudo
+            Excluir selecionados
           </Btn>
+          <Btn variant="danger" style={{ fontWeight:800, background:'#E02424', color:'#fff' }} onClick={() => setConfirm('ALL')}>Excluir TODOS</Btn>
           <span style={{ fontSize: 12, color: "#64748B" }}>
             {filtered.length} selecionados
           </span>
@@ -1095,15 +1096,34 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }:
 
       {confirm && (
         <Modal title={t("lanc_confirm_title")} onClose={() => setConfirm(null)}>
-          <p style={{ color:"#475569", fontSize:13, lineHeight:1.6 }}>
-            {confirm.length > 1
-              ? t("lanc_confirm_lote").replace("{n}", String(confirm.length))
-              : t("lanc_confirm_single")}
-          </p>
-          <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20 }}>
-            <Btn variant="ghost" onClick={() => setConfirm(null)}>{t("lanc_confirm_cancel")}</Btn>
-            <Btn variant="danger" onClick={() => excluir(confirm)}>{t("lanc_confirm_delete")}</Btn>
-          </div>
+          {confirm === 'ALL' ? (
+            <>
+              <p style={{ color: "#E02424", fontWeight:700, fontSize:15, lineHeight:1.6 }}>
+                Tem certeza que deseja <b>EXCLUIR TODOS os registros</b>?<br/>Esta ação não poderá ser desfeita e será registrada no log de auditoria.
+              </p>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+                <Btn variant="ghost" onClick={() => setConfirm(null)}>{t("lanc_confirm_cancel")}</Btn>
+                <Btn variant="danger" style={{ fontWeight:800, background:'#E02424', color:'#fff' }} onClick={() => {
+                  // Excluir todos os registros
+                  setRegistros([]);
+                  setConfirm(null);
+                  logAudit("PURGE", "registros", undefined, { motivo: "Exclusão em massa (admin)", registros_removidos: registros.length });
+                }}>Excluir TODOS</Btn>
+              </div>
+            </>
+          ) : (
+            <>
+              <p style={{ color: "#475569", fontSize: 13, lineHeight: 1.6 }}>
+                {confirm.length > 1
+                  ? t("lanc_confirm_lote").replace("{n}", String(confirm.length))
+                  : t("lanc_confirm_single")}
+              </p>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+                <Btn variant="ghost" onClick={() => setConfirm(null)}>{t("lanc_confirm_cancel")}</Btn>
+                <Btn variant="danger" onClick={() => excluir(confirm)}>{t("lanc_confirm_delete")}</Btn>
+              </div>
+            </>
+          )}
         </Modal>
       )}
 
