@@ -1,3 +1,4 @@
+| 2026-03-15 | Corrigido fluxo dos botões: 'Selecionar tudo' apenas seleciona, 'Excluir selecionados' abre modal de confirmação. Seleção em massa agora segue padrão esperado. |
 | 2026-03-15 | Padronização do tipo Opcoes: uso de ccList (centros de custo) e nomes em todo o projeto; removidos centrosCusto/setores inconsistentes. |
 | 2026-03-15 | Parser de data do Excel reforçado: aceita Date, string, serial e loga valores inesperados para debug. |
 | 2026-03-15 | Importação de Excel: horaEntrada/horaSaida agora sempre no formato hh:mm:ss (sem data/timezone) na pré-visualização e persistência |

@@ -796,6 +796,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }:
   const { t, lang } = useI18n();
   const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", busca: "" });
   const [modal, setModal]     = useState<null | "new" | Registro | Registro[]>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [confirm, setConfirm] = useState<string[] | null>(null);
   const [detalhe, setDetalhe] = useState<Registro | Registro[] | null>(null);
 
@@ -897,18 +898,19 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }:
       {/* Botões de seleção/exclusão em massa — visíveis só para admins */}
       {filtered.length > 0 && (
         <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
-          <Btn variant="ghost" onClick={() => setConfirm(filtered.map(r => r.id))}>
+          <Btn variant="ghost" onClick={() => setSelectedIds(filtered.map(r => r.id))}>
             Selecionar tudo
           </Btn>
-          <Btn variant="danger" onClick={() => setConfirm(filtered.map(r => r.id))}>
+          <Btn variant="danger" disabled={selectedIds.length === 0} onClick={() => setConfirm(selectedIds)}>
             Excluir selecionados
           </Btn>
           <Btn variant="danger" style={{ fontWeight:800, background:'#E02424', color:'#fff' }} onClick={() => setConfirm('ALL')}>Excluir TODOS (debug)</Btn>
           <span style={{ fontSize: 12, color: "#64748B" }}>
-            {filtered.length} selecionados
+            {selectedIds.length} selecionados
           </span>
         </div>
       )}
+        const excluir = (ids: string[]) => { setRegistros(registros.filter(r => !ids.includes(r.id))); setConfirm(null); setSelectedIds([]); };
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
         <div>
