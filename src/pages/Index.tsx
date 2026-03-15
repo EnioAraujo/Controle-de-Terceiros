@@ -120,7 +120,18 @@ const useStorage = (): [Registro[], (val: Registro[]) => void, boolean] => {
     );
   }, []);
 
-  const save = useCallback((newVal: Registro[]) => {
+  const save = useCallback((newValRaw: Registro[]) => {
+    // Última defesa: remove duplicatas intra-lote antes de persistir no Supabase
+    const loteVisto = new Map<string, Set<string>>();
+    const newVal = newValRaw.filter(r => {
+      if (!r.loteId) return true;
+      if (!loteVisto.has(r.loteId)) loteVisto.set(r.loteId, new Set());
+      const k = r.nome.trim().toLowerCase();
+      if (loteVisto.get(r.loteId)!.has(k)) return false;
+      loteVisto.get(r.loteId)!.add(k);
+      return true;
+    });
+
     const prev = prevRef.current;
     setData(newVal);
     prevRef.current = newVal;
@@ -553,7 +564,21 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
     if (!valid) return;
     if (isEdit) {
       const p = pessoas[0];
-      onSave([{ ...inicial!, ...comum, nome: p.nome.trim(), horaEntrada: p.horaEntrada, horaSaida: p.horaSaida, totalHoras: calcHoras(p.horaEntrada, p.horaSaida) }]);
+      const nomeTrimmed = p.nome.trim();
+      // Verifica conflito de nome+data ao editar registro individual
+      if (!force) {
+        const conflito = todosRegistros.find(r =>
+          r.id !== inicial!.id &&
+          r.nome.toLowerCase() === nomeTrimmed.toLowerCase() &&
+          r.data === comum.data
+        );
+        if (conflito) {
+          setDupTipo("banco");
+          setDupAviso([nomeTrimmed]);
+          return;
+        }
+      }
+      onSave([{ ...inicial!, ...comum, nome: nomeTrimmed, horaEntrada: p.horaEntrada, horaSaida: p.horaSaida, totalHoras: calcHoras(p.horaEntrada, p.horaSaida) }]);
     } else {
       const validPessoas = pessoas.filter(p => p.nome.trim().length > 2);
       // Verifica duplicatas (mesmo nome + mesma data já existente nos registros)
@@ -809,7 +834,10 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig }: { regist
       setRegistros([...registros, ...semDup]);
     } else if (Array.isArray(modal)) {
       const ids = new Set(modal.map(r => r.id));
-      setRegistros([...registros.filter(r => !ids.has(r.id)), ...novos]);
+      // Salvaguarda: remove duplicatas intra-lote também na edição de lote
+      const nomesLote = novos.map(r => r.nome.toLowerCase());
+      const semDup = novos.filter((r, idx) => nomesLote.indexOf(r.nome.toLowerCase()) === idx);
+      setRegistros([...registros.filter(r => !ids.has(r.id)), ...semDup]);
     } else {
       setRegistros(registros.map(r => r.id === novos[0].id ? novos[0] : r));
     }
