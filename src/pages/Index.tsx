@@ -910,7 +910,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }:
           </span>
         </div>
       )}
-        const excluir = (ids: string[]) => { setRegistros(registros.filter(r => !ids.includes(r.id))); setConfirm(null); setSelectedIds([]); };
+        {/* Removido: declaração duplicada de excluir dentro do JSX */}
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
         <div>
