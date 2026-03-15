@@ -12,6 +12,9 @@ Sistema web para **controle de presença e gestão de trabalhadores terceirizado
 ---
 
 ## 2. Stack Tecnológica
+> **Para criação de layouts e componentes, consulte sempre:**
+> - https://ui.shadcn.com/
+> - https://tailwindcss.com/
 
 | Camada | Tecnologia |
 |---|---|
