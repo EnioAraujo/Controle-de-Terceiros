@@ -7,7 +7,7 @@
 
 ## 1. Visão Geral
 
-Sistema web para **controle de presença e gestão de trabalhadores terceirizados** em operações logísticas (cliente principal: Souza Cruz). Permite registrar entrada/saída, turno, cargo, setor, motivo de acionamento e fornecedor de mão de obra. Possui painel administrativo, conformidade com LGPD e trilha de auditoria completa.
+Sistema web para **controle de presença e gestão de trabalhadores terceirizados** em operações logísticas (cliente principal: Souza Cruz). Permite registrar entrada/saída, turno, cargo, motivo de acionamento e fornecedor de mão de obra. Possui painel administrativo, conformidade com LGPD e trilha de auditoria completa.
 
 ---
 
@@ -108,7 +108,6 @@ hora_saida   TEXT
 total_horas  TEXT
 nome         TEXT
 cargo        TEXT
-setor        TEXT
 unidade      TEXT
 cc           TEXT  (centro de custo)
 motivo       TEXT
@@ -179,7 +178,6 @@ created_at TIMESTAMPTZ
 | Motivo | select | `motivos` |
 | Cargo | select | `cargos` |
 | Centro de Custo | select | `ccList` |
-| Setor | select | `setores` |
 | Nome | autocomplete | `terceiros` (tabela própria) |
 
 ### Valores Default
@@ -192,7 +190,6 @@ Motivos:      OPERAÇÃO BAT HUB BRASIL, REFORÇO TURNO, COBERTURA FALTA, PROJET
 Cargos:       AUXILIAR DE DEPÓSITO, CONFERENTE JR, CONFERENTE SR, OPERADOR DE EMPILHADEIRA,
               LÍDER OPERACIONAL, SUPERVISOR, ANALISTA, COORDENADOR
 CC:           100001 - SOUZA CRUZ-COD, 100002 - SOUZA CRUZ-HUB, 100003 - ADMINISTRATIVO
-Setores:      RECEBIMENTO, EXPEDIÇÃO, SEPARAÇÃO, CONFERÊNCIA, ENDEREÇAMENTO, ADMINISTRATIVO, PÁTIO
 ```
 
 ### Lançamento em Lote
@@ -370,3 +367,5 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-14 | Reforçada validação de duplicatas: comparação agora é case-insensitive em ambas as checagens (intra-lote e banco); corrigido bug defensivo em isEdit quando loteInicial e inicial coexistem; adicionada salvaguarda dupla no salvar() de Lancamentos que filtra duplicatas mesmo se handleSave falhar; regra de clarificação adicionada às instruções do Copilot |
 | 2026-03-14 | Proteção anti-duplicata em 4 camadas: (1) handleSave verifica single-edit contra banco (antes não havia checagem); (2) salvar() agora deduplica também no branch de lote-edit; (3) useStorage.save() filtra duplicatas intra-lote antes de enviar ao Supabase; (4) migration fix_duplicate_lote_registros.sql remove duplicatas existentes no DB e adiciona UNIQUE INDEX em (lote_id, lower(nome)) |
 | 2026-03-15 | Validação de duplo turno: mesmo nome no mesmo dia em turno diferente exige justificativa obrigatória; aviso amarelo com textarea; botão "Confirmar com justificativa" só habilitado após digitar motivo; justificativa salva no campo obs com prefixo [DUPLO TURNO] para uso no fechamento |
+| 2026-03-15 | Remoção completa de "setor" do modelo de dados: removido de Registro (types/attendance.ts), de dbToRegistro/registroToDb (format-utils.ts e attendance-storage.ts), do estado do FormLancamento (Index.tsx) e das traduções i18n (form_label_setor, lanc_col_setor, detail_setor, dash_kpi_setores, dash_chart_setor, forn_setores, cfg_opt_setores removidos; privacy_col_4 atualizado); testes atualizados |
+| 2026-03-15 | Corrigido locale hardcoded "pt-BR" nas mensagens de duplicata do FormLancamento: agora usa lang do useI18n() para formatar datas corretamente em pt-BR e en-US |

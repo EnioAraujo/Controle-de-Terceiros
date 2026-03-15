@@ -8,7 +8,6 @@ export interface Registro {
   totalHoras: string;
   nome: string;
   cargo: string;
-  setor: string;
   unidade: string;
   cc: string;
   motivo: string;

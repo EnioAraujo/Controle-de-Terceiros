@@ -503,7 +503,7 @@ interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; }
 interface FormLancamentoProps { inicial?: Registro | null; loteInicial?: Registro[]; onSave: (registros: Registro[]) => void; onCancel: () => void; opcoes: Opcoes; registros?: Registro[]; turnosConfig?: TurnoConfig[]; }
 
 const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, registros: todosRegistros = [], turnosConfig = [] }: FormLancamentoProps) => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const isEdit = !!inicial && !loteInicial?.length;
   const isLoteEdit = !!loteInicial?.length;
   const base = loteInicial?.[0] ?? inicial;
@@ -514,7 +514,6 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
     horaEntrada: base?.horaEntrada || "05:00",
     horaSaida:   base?.horaSaida   || "13:20",
     cargo:       base?.cargo       || opcoes.cargos[0]       || "",
-    setor:       base?.setor       || "",
     unidade:     base?.unidade     || opcoes.unidades[0]     || "",
     cc:          base?.cc          || opcoes.ccList[0]       || "",
     motivo:      base?.motivo      || opcoes.motivos[0]      || "",
@@ -794,11 +793,11 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
                   : `${dupAviso.length} nomes estão repetidos neste lote: ${dupAviso.join(", ")}.`)
               : dupTipo === "turno_diferente"
                 ? (dupAviso.length === 1
-                    ? `${dupAviso[0]} também consta em ${fmt(comum.data, "pt-BR")}.`
-                    : `${dupAviso.length} colaboradores já têm registro em ${fmt(comum.data, "pt-BR")}: ${dupAviso.join(", ")}.`)
+                    ? `${dupAviso[0]} também consta em ${fmt(comum.data, lang)}.`
+                    : `${dupAviso.length} colaboradores já têm registro em ${fmt(comum.data, lang)}: ${dupAviso.join(", ")}.`)
                 : (dupAviso.length === 1
-                    ? `"${dupAviso[0]}" já possui um registro no mesmo turno em ${fmt(comum.data, "pt-BR")}.`
-                    : `${dupAviso.length} colaboradores já possuem registro no mesmo turno em ${fmt(comum.data, "pt-BR")}: ${dupAviso.join(", ")}.`)
+                    ? `"${dupAviso[0]}" já possui um registro no mesmo turno em ${fmt(comum.data, lang)}.`
+                    : `${dupAviso.length} colaboradores já possuem registro no mesmo turno em ${fmt(comum.data, lang)}: ${dupAviso.join(", ")}.`)
             }
           </div>
           <div style={{ fontSize:12, color:"#374151" }}>
