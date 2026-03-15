@@ -18,7 +18,7 @@ import {
   dbToFechamento, fechamentoToDb,
   dbToFechamentoItem, fechamentoItemToDb,
   horasToDecimal, decimalToHoras,
-  periodosPadrao,
+  periodosPadrao, resolverDiaria,
   gerarItensFechamento, calcularTotal, agruparPorPessoa,
   STATUS_COLORS, NEXT_STATUS,
 } from "@/lib/fechamento-utils";
@@ -1162,6 +1162,307 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig }: { regist
   );
 };
 
+// ─── ANÁLISE DE DEMANDA (seção do Dashboard) ────────────────────
+const TURNOS_DEMANDA = ["1ª TURNO", "2ª TURNO", "3ª TURNO"];
+const TURNO_CORES: Record<string, string> = { "1ª TURNO": "#1A56DB", "2ª TURNO": "#D97706", "3ª TURNO": "#0E9F6E" };
+
+interface ProjecaoEntry { id: string; data: string; turno: string; qty: number; }
+
+const DemandAnalysis = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoes }) => {
+  const { t, lang } = useI18n();
+  const fmtCurrency = (v: number) => v.toLocaleString(lang, { style: "currency", currency: "BRL" });
+
+  // ── Filtros ──
+  const [fornFiltro, setFornFiltro] = useState("");
+  const [mesFiltro, setMesFiltro] = useState(mesAtual());
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
+
+  // ── Projeção manual ──
+  const [projecoes, setProjecoes] = useState<ProjecaoEntry[]>([]);
+  const [newProj, setNewProj] = useState({ data: "", turno: TURNOS_DEMANDA[0], qty: "1" });
+
+  // ── Config de diárias ──
+  const [diariasConfig, setDiariasConfig] = useState<DiariaConfig[]>([]);
+  useEffect(() => {
+    authReady.then(async () => {
+      const { data } = await supabase.from("diarias_config").select("*").order("fornecedor");
+      if (data) setDiariasConfig(data.map(dbToDiariaConfig));
+    });
+  }, []);
+
+  // Calcular range (do mês selecionado ou range custom)
+  const range = useMemo(() => {
+    if (dataInicio && dataFim) return { inicio: dataInicio, fim: dataFim };
+    const [y, m] = mesFiltro.split("-").map(Number);
+    const ultimoDia = new Date(y, m, 0).getDate();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return { inicio: `${mesFiltro}-01`, fim: `${mesFiltro}-${pad(ultimoDia)}` };
+  }, [mesFiltro, dataInicio, dataFim]);
+
+  // Registros reais filtrados
+  const regsFiltrados = useMemo(() => {
+    return registros.filter(r => {
+      if (r.data < range.inicio || r.data > range.fim) return false;
+      if (fornFiltro && r.fornecedor !== fornFiltro) return false;
+      if (!TURNOS_DEMANDA.includes(r.turno)) return false;
+      return true;
+    });
+  }, [registros, range, fornFiltro]);
+
+  // Gerar todos os dias do range
+  const diasDoRange = useMemo(() => {
+    const dias: string[] = [];
+    const d = new Date(range.inicio + "T00:00:00");
+    const fim = new Date(range.fim + "T00:00:00");
+    while (d <= fim) {
+      dias.push(d.toISOString().slice(0, 10));
+      d.setDate(d.getDate() + 1);
+    }
+    return dias;
+  }, [range]);
+
+  // Combinar registros reais + projeções para total por dia/turno
+  const dadosPorDia = useMemo(() => {
+    const mapa: Record<string, Record<string, number>> = {};
+    for (const dia of diasDoRange) {
+      mapa[dia] = { "1ª TURNO": 0, "2ª TURNO": 0, "3ª TURNO": 0 };
+    }
+    for (const r of regsFiltrados) {
+      if (mapa[r.data] && TURNOS_DEMANDA.includes(r.turno)) {
+        mapa[r.data][r.turno]++;
+      }
+    }
+    for (const p of projecoes) {
+      if (mapa[p.data] && TURNOS_DEMANDA.includes(p.turno)) {
+        mapa[p.data][p.turno] += p.qty;
+      }
+    }
+    return mapa;
+  }, [diasDoRange, regsFiltrados, projecoes]);
+
+  // Estatísticas
+  const stats = useMemo(() => {
+    const diasComDados = diasDoRange.filter(d => {
+      const row = dadosPorDia[d];
+      return row && (row["1ª TURNO"] + row["2ª TURNO"] + row["3ª TURNO"]) > 0;
+    });
+    const totalPessoas = diasDoRange.reduce((acc, d) => {
+      const row = dadosPorDia[d];
+      return acc + (row ? row["1ª TURNO"] + row["2ª TURNO"] + row["3ª TURNO"] : 0);
+    }, 0);
+    const mediaDia = diasComDados.length > 0 ? totalPessoas / diasComDados.length : 0;
+
+    const porTurno: Record<string, number> = { "1ª TURNO": 0, "2ª TURNO": 0, "3ª TURNO": 0 };
+    for (const d of diasDoRange) {
+      const row = dadosPorDia[d];
+      if (row) { for (const t of TURNOS_DEMANDA) porTurno[t] += row[t]; }
+    }
+    const mediaPorTurno: Record<string, number> = {};
+    for (const t of TURNOS_DEMANDA) {
+      const diasTurno = diasDoRange.filter(d => dadosPorDia[d]?.[t] > 0).length;
+      mediaPorTurno[t] = diasTurno > 0 ? porTurno[t] / diasTurno : 0;
+    }
+
+    return { mediaDia, totalPessoas, porTurno, mediaPorTurno, diasComDados: diasComDados.length };
+  }, [diasDoRange, dadosPorDia]);
+
+  const addProjecao = () => {
+    const qty = parseInt(newProj.qty, 10);
+    if (!newProj.data || isNaN(qty) || qty < 1) return;
+    setProjecoes(prev => [...prev, { id: Date.now().toString(36), data: newProj.data, turno: newProj.turno, qty }]);
+    setNewProj(p => ({ ...p, data: "", qty: "1" }));
+  };
+
+  const thStyle: CSSProperties = { padding: "8px 10px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, borderBottom: "2px solid #E2E6EC", textAlign: "center", whiteSpace: "nowrap" };
+  const tdStyle: CSSProperties = { padding: "6px 10px", fontSize: 12, borderBottom: "1px solid #F1F5F9", textAlign: "center", fontFamily: "'DM Mono',monospace" };
+
+  return (
+    <div style={{ background: "#fff", border: "1px solid #E2E6EC", borderRadius: 12, padding: 20 }}>
+      {/* Título */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>{t("demand_section")}</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#0F1C2E" }}>{t("demand_title")}</div>
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16, alignItems: "flex-end" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <label style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase" }}>{t("demand_filter_forn")}</label>
+          <select value={fornFiltro} onChange={e => setFornFiltro(e.target.value)}
+            style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #E2E6EC", fontSize: 12, fontFamily: "inherit", minWidth: 160 }}>
+            <option value="">{t("demand_filter_all")}</option>
+            {opcoes.fornecedores.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <label style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase" }}>{t("demand_filter_mes")}</label>
+          <input type="month" value={mesFiltro} onChange={e => { setMesFiltro(e.target.value); setDataInicio(""); setDataFim(""); }}
+            style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #E2E6EC", fontSize: 12, fontFamily: "inherit" }} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <label style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase" }}>{t("demand_filter_de")}</label>
+          <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
+            style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #E2E6EC", fontSize: 12, fontFamily: "inherit" }} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <label style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase" }}>{t("demand_filter_ate")}</label>
+          <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)}
+            style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #E2E6EC", fontSize: 12, fontFamily: "inherit" }} />
+        </div>
+      </div>
+
+      {/* Resumo estatístico */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
+        {/* Média por dia */}
+        <div style={{ flex: "1 1 180px", background: "#F8FAFC", border: "1px solid #E2E6EC", borderRadius: 10, padding: "12px 16px", textAlign: "center" }}>
+          <div style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>{t("demand_value_table")}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#1A56DB", lineHeight: 1 }}>{stats.mediaDia.toFixed(1)}</div>
+        </div>
+        {/* Média por turno */}
+        {TURNOS_DEMANDA.map(turno => (
+          <div key={turno} style={{ flex: "1 1 120px", background: (TURNO_CORES[turno] || "#64748B") + "0A", border: `1.5px solid ${(TURNO_CORES[turno] || "#64748B")}33`, borderRadius: 10, padding: "12px 16px", textAlign: "center" }}>
+            <div style={{ fontSize: 10, color: TURNO_CORES[turno] || "#64748B", fontWeight: 700, letterSpacing: 0.4, marginBottom: 4 }}>{turno.replace(" TURNO", "")}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: TURNO_CORES[turno] || "#64748B", lineHeight: 1 }}>{stats.mediaPorTurno[turno]?.toFixed(0) ?? 0}</div>
+          </div>
+        ))}
+        <div style={{ flex: "1 1 100px", background: "#0F1C2E", borderRadius: 10, padding: "12px 16px", textAlign: "center" }}>
+          <div style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>{t("demand_sum")}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#F8FAFC", lineHeight: 1 }}>{stats.totalPessoas}</div>
+        </div>
+      </div>
+
+      {/* Tabelas lado a lado */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        {/* Tabela esquerda: Valor por dia */}
+        <div style={{ overflowX: "auto" }}>
+          <div style={{ fontWeight: 700, fontSize: 12, color: "#0F1C2E", marginBottom: 8 }}>{t("demand_value_table")}</div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#0B1628" }}>
+                <th style={{ ...thStyle, color: "#F8FAFC", textAlign: "left" }}>{t("demand_col_date")}</th>
+                <th style={{ ...thStyle, color: "#F8FAFC" }}>{t("demand_col_qty")}</th>
+                <th style={{ ...thStyle, color: "#F8FAFC" }}>{t("demand_col_value")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {diasDoRange.map(dia => {
+                const row = dadosPorDia[dia];
+                const qtdDia = row ? row["1ª TURNO"] + row["2ª TURNO"] + row["3ª TURNO"] : 0;
+                // Calcular valor aproximado somando diárias por turno
+                let valorDia = 0;
+                if (row && fornFiltro) {
+                  for (const turno of TURNOS_DEMANDA) {
+                    if (row[turno] > 0) {
+                      valorDia += row[turno] * resolverDiaria(fornFiltro, turno, diariasConfig);
+                    }
+                  }
+                } else if (row) {
+                  // Sem fornecedor: usar valor padrão
+                  valorDia = qtdDia * 250;
+                }
+                const isProj = projecoes.some(p => p.data === dia);
+                return (
+                  <tr key={dia} style={{ background: isProj ? "#FEF3C7" : dia === hoje() ? "#EFF6FF" : "transparent" }}>
+                    <td style={{ ...tdStyle, textAlign: "left", fontWeight: dia === hoje() ? 700 : 400 }}>{fmt(dia, lang)}</td>
+                    <td style={{ ...tdStyle, fontWeight: 700, color: qtdDia > 0 ? "#0F1C2E" : "#CBD5E1" }}>{qtdDia}</td>
+                    <td style={{ ...tdStyle, color: "#0E9F6E", fontWeight: 600 }}>{fmtCurrency(valorDia)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Tabela direita: Por turno */}
+        <div style={{ overflowX: "auto" }}>
+          <div style={{ fontWeight: 700, fontSize: 12, color: "#0F1C2E", marginBottom: 8 }}>{t("demand_shift_table")}</div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#0B1628" }}>
+                <th style={{ ...thStyle, color: "#F8FAFC", textAlign: "left" }}>{t("demand_col_date")}</th>
+                {TURNOS_DEMANDA.map(turno => (
+                  <th key={turno} style={{ ...thStyle, color: TURNO_CORES[turno] || "#F8FAFC" }}>{turno.replace(" TURNO", "")}</th>
+                ))}
+                <th style={{ ...thStyle, color: "#F8FAFC" }}>{t("demand_col_total")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {diasDoRange.map(dia => {
+                const row = dadosPorDia[dia];
+                const t1 = row?.["1ª TURNO"] ?? 0;
+                const t2 = row?.["2ª TURNO"] ?? 0;
+                const t3 = row?.["3ª TURNO"] ?? 0;
+                const total = t1 + t2 + t3;
+                const isProj = projecoes.some(p => p.data === dia);
+                return (
+                  <tr key={dia} style={{ background: isProj ? "#FEF3C7" : dia === hoje() ? "#EFF6FF" : "transparent" }}>
+                    <td style={{ ...tdStyle, textAlign: "left", fontWeight: dia === hoje() ? 700 : 400 }}>{fmt(dia, lang)}</td>
+                    <td style={{ ...tdStyle, color: t1 > 0 ? TURNO_CORES["1ª TURNO"] : "#CBD5E1", fontWeight: 700 }}>{t1}</td>
+                    <td style={{ ...tdStyle, color: t2 > 0 ? TURNO_CORES["2ª TURNO"] : "#CBD5E1", fontWeight: 700 }}>{t2}</td>
+                    <td style={{ ...tdStyle, color: t3 > 0 ? TURNO_CORES["3ª TURNO"] : "#CBD5E1", fontWeight: 700 }}>{t3}</td>
+                    <td style={{ ...tdStyle, fontWeight: 800, color: total > 0 ? "#0F1C2E" : "#CBD5E1" }}>{total}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Projeção manual */}
+      <div style={{ marginTop: 20, background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: "#92400E", marginBottom: 4 }}>{t("demand_manual_title")}</div>
+        <div style={{ fontSize: 11, color: "#B45309", marginBottom: 12 }}>{t("demand_manual_hint")}</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <label style={{ fontSize: 10, color: "#92400E", fontWeight: 600 }}>{t("demand_manual_date")}</label>
+            <input type="date" value={newProj.data} onChange={e => setNewProj(p => ({ ...p, data: e.target.value }))}
+              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #FDE68A", fontSize: 12, fontFamily: "inherit" }} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <label style={{ fontSize: 10, color: "#92400E", fontWeight: 600 }}>{t("demand_manual_shift")}</label>
+            <select value={newProj.turno} onChange={e => setNewProj(p => ({ ...p, turno: e.target.value }))}
+              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #FDE68A", fontSize: 12, fontFamily: "inherit" }}>
+              {TURNOS_DEMANDA.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <label style={{ fontSize: 10, color: "#92400E", fontWeight: 600 }}>{t("demand_manual_qty")}</label>
+            <input type="number" min="1" max="50" value={newProj.qty} onChange={e => setNewProj(p => ({ ...p, qty: e.target.value }))}
+              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #FDE68A", fontSize: 12, fontFamily: "inherit", width: 70 }} />
+          </div>
+          <button onClick={addProjecao}
+            style={{ padding: "6px 14px", borderRadius: 6, border: "none", background: "#D97706", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {t("demand_manual_add")}
+          </button>
+          {projecoes.length > 0 && (
+            <button onClick={() => setProjecoes([])}
+              style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid #FDE68A", background: "transparent", color: "#92400E", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              {t("demand_manual_clear")} ({projecoes.length})
+            </button>
+          )}
+        </div>
+        {projecoes.length > 0 && (
+          <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {projecoes.map(p => (
+              <div key={p.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 6, padding: "3px 8px", fontSize: 11 }}>
+                <span style={{ fontWeight: 600 }}>{fmt(p.data, lang)}</span>
+                <span style={{ color: TURNO_CORES[p.turno] || "#92400E", fontWeight: 700 }}>{p.turno.replace(" TURNO", "")}</span>
+                <span>×{p.qty}</span>
+                <button onClick={() => setProjecoes(prev => prev.filter(x => x.id !== p.id))}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "#B45309", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── TELA: DASHBOARD ────────────────────────────────────────────
 const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoes }) => {
   const { t, lang } = useI18n();
@@ -1272,6 +1573,9 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
           })}
         </div>
       </div>
+
+      {/* Análise de Demanda */}
+      <DemandAnalysis registros={registros} opcoes={opcoes} />
     </div>
   );
 };
