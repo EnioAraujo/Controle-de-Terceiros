@@ -1166,8 +1166,6 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig }: { regist
 const TURNOS_DEMANDA = ["1ª TURNO", "2ª TURNO", "3ª TURNO"];
 const TURNO_CORES: Record<string, string> = { "1ª TURNO": "#1A56DB", "2ª TURNO": "#D97706", "3ª TURNO": "#0E9F6E" };
 
-interface ProjecaoEntry { id: string; data: string; turno: string; qty: number; }
-
 const DemandAnalysis = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoes }) => {
   const { t, lang } = useI18n();
   const fmtCurrency = (v: number) => v.toLocaleString(lang, { style: "currency", currency: "BRL" });
@@ -1178,9 +1176,9 @@ const DemandAnalysis = ({ registros, opcoes }: { registros: Registro[]; opcoes: 
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
 
-  // ── Projeção manual ──
-  const [projecoes, setProjecoes] = useState<ProjecaoEntry[]>([]);
-  const [newProj, setNewProj] = useState({ data: "", turno: TURNOS_DEMANDA[0], qty: "1" });
+  // ── Projeção futura (range de datas) ──
+  const [projInicio, setProjInicio] = useState("");
+  const [projFim, setProjFim] = useState("");
 
   // ── Config de diárias ──
   const [diariasConfig, setDiariasConfig] = useState<DiariaConfig[]>([]);
@@ -1222,10 +1220,48 @@ const DemandAnalysis = ({ registros, opcoes }: { registros: Registro[]; opcoes: 
     return dias;
   }, [range]);
 
-  // Combinar registros reais + projeções para total por dia/turno
+  // Médias históricas por turno (para projeção)
+  const mediasHistoricas = useMemo(() => {
+    const porTurno: Record<string, number> = { "1ª TURNO": 0, "2ª TURNO": 0, "3ª TURNO": 0 };
+    for (const r of regsFiltrados) {
+      if (TURNOS_DEMANDA.includes(r.turno)) porTurno[r.turno]++;
+    }
+    const diasComDados = new Set(regsFiltrados.map(r => r.data)).size;
+    const medias: Record<string, number> = {};
+    for (const turno of TURNOS_DEMANDA) {
+      medias[turno] = diasComDados > 0 ? porTurno[turno] / diasComDados : 0;
+    }
+    return medias;
+  }, [regsFiltrados]);
+
+  // Dias de projeção futura
+  const diasProjecao = useMemo(() => {
+    if (!projInicio || !projFim || projInicio > projFim) return [];
+    const dias: string[] = [];
+    const d = new Date(projInicio + "T00:00:00");
+    const fim = new Date(projFim + "T00:00:00");
+    while (d <= fim) {
+      dias.push(d.toISOString().slice(0, 10));
+      d.setDate(d.getDate() + 1);
+    }
+    return dias;
+  }, [projInicio, projFim]);
+
+  const diasProjecaoSet = useMemo(() => new Set(diasProjecao), [diasProjecao]);
+
+  // Todos os dias = range histórico + projeção (sem duplicatas)
+  const todosDias = useMemo(() => {
+    const todos = [...diasDoRange];
+    for (const d of diasProjecao) {
+      if (!todos.includes(d)) todos.push(d);
+    }
+    return todos.sort();
+  }, [diasDoRange, diasProjecao]);
+
+  // Combinar registros reais + projeção automática
   const dadosPorDia = useMemo(() => {
     const mapa: Record<string, Record<string, number>> = {};
-    for (const dia of diasDoRange) {
+    for (const dia of todosDias) {
       mapa[dia] = { "1ª TURNO": 0, "2ª TURNO": 0, "3ª TURNO": 0 };
     }
     for (const r of regsFiltrados) {
@@ -1233,46 +1269,45 @@ const DemandAnalysis = ({ registros, opcoes }: { registros: Registro[]; opcoes: 
         mapa[r.data][r.turno]++;
       }
     }
-    for (const p of projecoes) {
-      if (mapa[p.data] && TURNOS_DEMANDA.includes(p.turno)) {
-        mapa[p.data][p.turno] += p.qty;
+    // Preencher dias de projeção com médias históricas (arredondadas)
+    for (const dia of diasProjecao) {
+      if (mapa[dia]) {
+        const jaTemDadoReal = TURNOS_DEMANDA.some(t => mapa[dia][t] > 0);
+        if (!jaTemDadoReal) {
+          for (const turno of TURNOS_DEMANDA) {
+            mapa[dia][turno] = Math.round(mediasHistoricas[turno]);
+          }
+        }
       }
     }
     return mapa;
-  }, [diasDoRange, regsFiltrados, projecoes]);
+  }, [todosDias, regsFiltrados, diasProjecao, mediasHistoricas]);
 
   // Estatísticas
   const stats = useMemo(() => {
-    const diasComDados = diasDoRange.filter(d => {
+    const diasComDados = todosDias.filter(d => {
       const row = dadosPorDia[d];
       return row && (row["1ª TURNO"] + row["2ª TURNO"] + row["3ª TURNO"]) > 0;
     });
-    const totalPessoas = diasDoRange.reduce((acc, d) => {
+    const totalPessoas = todosDias.reduce((acc, d) => {
       const row = dadosPorDia[d];
       return acc + (row ? row["1ª TURNO"] + row["2ª TURNO"] + row["3ª TURNO"] : 0);
     }, 0);
     const mediaDia = diasComDados.length > 0 ? totalPessoas / diasComDados.length : 0;
 
     const porTurno: Record<string, number> = { "1ª TURNO": 0, "2ª TURNO": 0, "3ª TURNO": 0 };
-    for (const d of diasDoRange) {
+    for (const d of todosDias) {
       const row = dadosPorDia[d];
       if (row) { for (const t of TURNOS_DEMANDA) porTurno[t] += row[t]; }
     }
     const mediaPorTurno: Record<string, number> = {};
     for (const t of TURNOS_DEMANDA) {
-      const diasTurno = diasDoRange.filter(d => dadosPorDia[d]?.[t] > 0).length;
+      const diasTurno = todosDias.filter(d => dadosPorDia[d]?.[t] > 0).length;
       mediaPorTurno[t] = diasTurno > 0 ? porTurno[t] / diasTurno : 0;
     }
 
     return { mediaDia, totalPessoas, porTurno, mediaPorTurno, diasComDados: diasComDados.length };
-  }, [diasDoRange, dadosPorDia]);
-
-  const addProjecao = () => {
-    const qty = parseInt(newProj.qty, 10);
-    if (!newProj.data || isNaN(qty) || qty < 1) return;
-    setProjecoes(prev => [...prev, { id: Date.now().toString(36), data: newProj.data, turno: newProj.turno, qty }]);
-    setNewProj(p => ({ ...p, data: "", qty: "1" }));
-  };
+  }, [todosDias, dadosPorDia]);
 
   const thStyle: CSSProperties = { padding: "8px 10px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, borderBottom: "2px solid #E2E6EC", textAlign: "center", whiteSpace: "nowrap" };
   const tdStyle: CSSProperties = { padding: "6px 10px", fontSize: 12, borderBottom: "1px solid #F1F5F9", textAlign: "center", fontFamily: "'DM Mono',monospace" };
@@ -1348,7 +1383,7 @@ const DemandAnalysis = ({ registros, opcoes }: { registros: Registro[]; opcoes: 
               </tr>
             </thead>
             <tbody>
-              {diasDoRange.map(dia => {
+              {todosDias.map(dia => {
                 const row = dadosPorDia[dia];
                 const qtdDia = row ? row["1ª TURNO"] + row["2ª TURNO"] + row["3ª TURNO"] : 0;
                 // Calcular valor aproximado somando diárias por turno
@@ -1363,10 +1398,13 @@ const DemandAnalysis = ({ registros, opcoes }: { registros: Registro[]; opcoes: 
                   // Sem fornecedor: usar valor padrão
                   valorDia = qtdDia * 250;
                 }
-                const isProj = projecoes.some(p => p.data === dia);
+                const isProj = diasProjecaoSet.has(dia);
                 return (
                   <tr key={dia} style={{ background: isProj ? "#FEF3C7" : dia === hoje() ? "#EFF6FF" : "transparent" }}>
-                    <td style={{ ...tdStyle, textAlign: "left", fontWeight: dia === hoje() ? 700 : 400 }}>{fmt(dia, lang)}</td>
+                    <td style={{ ...tdStyle, textAlign: "left", fontWeight: dia === hoje() ? 700 : 400 }}>
+                      {fmt(dia, lang)}
+                      {isProj && <span style={{ marginLeft: 6, fontSize: 9, color: "#92400E", background: "#FDE68A", borderRadius: 4, padding: "1px 5px", fontWeight: 600 }}>{t("demand_proj_badge")}</span>}
+                    </td>
                     <td style={{ ...tdStyle, fontWeight: 700, color: qtdDia > 0 ? "#0F1C2E" : "#CBD5E1" }}>{qtdDia}</td>
                     <td style={{ ...tdStyle, color: "#0E9F6E", fontWeight: 600 }}>{fmtCurrency(valorDia)}</td>
                   </tr>
@@ -1390,16 +1428,19 @@ const DemandAnalysis = ({ registros, opcoes }: { registros: Registro[]; opcoes: 
               </tr>
             </thead>
             <tbody>
-              {diasDoRange.map(dia => {
+              {todosDias.map(dia => {
                 const row = dadosPorDia[dia];
                 const t1 = row?.["1ª TURNO"] ?? 0;
                 const t2 = row?.["2ª TURNO"] ?? 0;
                 const t3 = row?.["3ª TURNO"] ?? 0;
                 const total = t1 + t2 + t3;
-                const isProj = projecoes.some(p => p.data === dia);
+                const isProj = diasProjecaoSet.has(dia);
                 return (
                   <tr key={dia} style={{ background: isProj ? "#FEF3C7" : dia === hoje() ? "#EFF6FF" : "transparent" }}>
-                    <td style={{ ...tdStyle, textAlign: "left", fontWeight: dia === hoje() ? 700 : 400 }}>{fmt(dia, lang)}</td>
+                    <td style={{ ...tdStyle, textAlign: "left", fontWeight: dia === hoje() ? 700 : 400 }}>
+                      {fmt(dia, lang)}
+                      {isProj && <span style={{ marginLeft: 6, fontSize: 9, color: "#92400E", background: "#FDE68A", borderRadius: 4, padding: "1px 5px", fontWeight: 600 }}>{t("demand_proj_badge")}</span>}
+                    </td>
                     <td style={{ ...tdStyle, color: t1 > 0 ? TURNO_CORES["1ª TURNO"] : "#CBD5E1", fontWeight: 700 }}>{t1}</td>
                     <td style={{ ...tdStyle, color: t2 > 0 ? TURNO_CORES["2ª TURNO"] : "#CBD5E1", fontWeight: 700 }}>{t2}</td>
                     <td style={{ ...tdStyle, color: t3 > 0 ? TURNO_CORES["3ª TURNO"] : "#CBD5E1", fontWeight: 700 }}>{t3}</td>
@@ -1412,50 +1453,41 @@ const DemandAnalysis = ({ registros, opcoes }: { registros: Registro[]; opcoes: 
         </div>
       </div>
 
-      {/* Projeção manual */}
+      {/* Projeção futura automática */}
       <div style={{ marginTop: 20, background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: 16 }}>
-        <div style={{ fontWeight: 700, fontSize: 13, color: "#92400E", marginBottom: 4 }}>{t("demand_manual_title")}</div>
-        <div style={{ fontSize: 11, color: "#B45309", marginBottom: 12 }}>{t("demand_manual_hint")}</div>
+        <div style={{ fontWeight: 700, fontSize: 13, color: "#92400E", marginBottom: 4 }}>{t("demand_proj_title")}</div>
+        <div style={{ fontSize: 11, color: "#B45309", marginBottom: 12 }}>{t("demand_proj_hint")}</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <label style={{ fontSize: 10, color: "#92400E", fontWeight: 600 }}>{t("demand_manual_date")}</label>
-            <input type="date" value={newProj.data} onChange={e => setNewProj(p => ({ ...p, data: e.target.value }))}
+            <label style={{ fontSize: 10, color: "#92400E", fontWeight: 600 }}>{t("demand_proj_from")}</label>
+            <input type="date" value={projInicio} onChange={e => setProjInicio(e.target.value)}
               style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #FDE68A", fontSize: 12, fontFamily: "inherit" }} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <label style={{ fontSize: 10, color: "#92400E", fontWeight: 600 }}>{t("demand_manual_shift")}</label>
-            <select value={newProj.turno} onChange={e => setNewProj(p => ({ ...p, turno: e.target.value }))}
-              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #FDE68A", fontSize: 12, fontFamily: "inherit" }}>
-              {TURNOS_DEMANDA.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+            <label style={{ fontSize: 10, color: "#92400E", fontWeight: 600 }}>{t("demand_proj_to")}</label>
+            <input type="date" value={projFim} onChange={e => setProjFim(e.target.value)}
+              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #FDE68A", fontSize: 12, fontFamily: "inherit" }} />
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <label style={{ fontSize: 10, color: "#92400E", fontWeight: 600 }}>{t("demand_manual_qty")}</label>
-            <input type="number" min="1" max="50" value={newProj.qty} onChange={e => setNewProj(p => ({ ...p, qty: e.target.value }))}
-              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #FDE68A", fontSize: 12, fontFamily: "inherit", width: 70 }} />
-          </div>
-          <button onClick={addProjecao}
-            style={{ padding: "6px 14px", borderRadius: 6, border: "none", background: "#D97706", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-            {t("demand_manual_add")}
-          </button>
-          {projecoes.length > 0 && (
-            <button onClick={() => setProjecoes([])}
+          {(projInicio || projFim) && (
+            <button onClick={() => { setProjInicio(""); setProjFim(""); }}
               style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid #FDE68A", background: "transparent", color: "#92400E", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              {t("demand_manual_clear")} ({projecoes.length})
+              {t("demand_proj_clear")}
             </button>
           )}
         </div>
-        {projecoes.length > 0 && (
-          <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {projecoes.map(p => (
-              <div key={p.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 6, padding: "3px 8px", fontSize: 11 }}>
-                <span style={{ fontWeight: 600 }}>{fmt(p.data, lang)}</span>
-                <span style={{ color: TURNO_CORES[p.turno] || "#92400E", fontWeight: 700 }}>{p.turno.replace(" TURNO", "")}</span>
-                <span>×{p.qty}</span>
-                <button onClick={() => setProjecoes(prev => prev.filter(x => x.id !== p.id))}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "#B45309", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+        {diasProjecao.length > 0 && (
+          <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 11, color: "#92400E", fontWeight: 600 }}>{t("demand_proj_avg")}:</div>
+            {TURNOS_DEMANDA.map(turno => (
+              <div key={turno} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 6, padding: "3px 8px", fontSize: 11 }}>
+                <span style={{ color: TURNO_CORES[turno] || "#92400E", fontWeight: 700 }}>{turno.replace(" TURNO", "")}</span>
+                <span style={{ fontWeight: 600 }}>{mediasHistoricas[turno]?.toFixed(1) ?? "0"}</span>
+                <span style={{ color: "#B45309" }}>→ {Math.round(mediasHistoricas[turno] ?? 0)}/dia</span>
               </div>
             ))}
+            <div style={{ fontSize: 11, color: "#92400E" }}>
+              ({diasProjecao.length} {diasProjecao.length === 1 ? "dia" : "dias"})
+            </div>
           </div>
         )}
       </div>
