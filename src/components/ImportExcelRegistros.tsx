@@ -74,17 +74,35 @@ function parseTime(raw: unknown): string {
   const s = String(raw).trim();
 
   // HH:MM:SS or HH:MM
-  const tm = s.match(/^(\d{1,2}:\d{2})(:\d{2})?$/);
-  if (tm) return tm[1];
+  const tm = s.match(/^(\d{1,2}):(\d{2})(:(\d{2}))?$/);
+  if (tm) {
+    const hh = tm[1].padStart(2, "0");
+    const mm = tm[2].padStart(2, "0");
+    const ss = tm[4] ? tm[4].padStart(2, "0") : "00";
+    return `${hh}:${mm}:${ss}`;
+  }
 
-  // Fractional day (xlsx may return 0.5694 for 13:40)
+  // Fractional day (xlsx pode retornar 0.5694 para 13:40)
   const n = Number(s);
   if (!isNaN(n) && n >= 0 && n < 1) {
-    const totalMin = Math.round(n * 1440);
-    const hh = String(Math.floor(totalMin / 60)).padStart(2, "0");
-    const mm = String(totalMin % 60).padStart(2, "0");
-    return `${hh}:${mm}`;
+    const totalSec = Math.round(n * 86400);
+    const hh = String(Math.floor(totalSec / 3600)).padStart(2, "0");
+    const mm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, "0");
+    const ss = String(totalSec % 60).padStart(2, "0");
+    return `${hh}:${mm}:${ss}`;
   }
+
+  // Se vier Date, extrai só hora
+  if (raw instanceof Date) {
+    const hh = String(raw.getHours()).padStart(2, "0");
+    const mm = String(raw.getMinutes()).padStart(2, "0");
+    const ss = String(raw.getSeconds()).padStart(2, "0");
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  // Se vier string tipo "1899-12-30T05:20:00.000Z" (bug xlsx), extrai só hora
+  const iso = s.match(/T(\d{2}):(\d{2}):(\d{2})/);
+  if (iso) return `${iso[1]}:${iso[2]}:${iso[3]}`;
 
   return s;
 }

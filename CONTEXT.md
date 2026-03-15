@@ -1,3 +1,4 @@
+| 2026-03-15 | Importação de Excel: horaEntrada/horaSaida agora sempre no formato hh:mm:ss (sem data/timezone) na pré-visualização e persistência |
 # Controle de Terceiros — Contexto do Projeto
 
 > **Última atualização:** 2026-03-14
