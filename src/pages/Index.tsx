@@ -895,6 +895,20 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig }: { regist
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+      {/* Botões de seleção/exclusão em massa — visíveis só para admins */}
+      {isAdmin && filtered.length > 0 && (
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
+          <Btn variant="ghost" onClick={() => setConfirm(filtered.map(r => r.id))}>
+            {t("Selecionar tudo")}
+          </Btn>
+          <Btn variant="danger" onClick={() => setConfirm(filtered.map(r => r.id))}>
+            {t("Excluir tudo")}
+          </Btn>
+          <span style={{ fontSize: 12, color: "#64748B" }}>
+            {filtered.length} selecionados
+          </span>
+        </div>
+      )}
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
         <div>
