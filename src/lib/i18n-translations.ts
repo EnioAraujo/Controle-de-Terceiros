@@ -248,17 +248,6 @@ export const translations = {
     dash_media_dia:     "Média/dia",
     dash_media_mes:     "Média/mês",
 
-    // Fornecedores
-    forn_section:       "Visão",
-    forn_title:         "Painel de Fornecedores",
-    forn_empty:         "Nenhum lançamento registrado ainda",
-    forn_registros:     "registros",
-    forn_card_today:    "Hoje",
-    forn_card_mes:      "Este Mês",
-    forn_card_horas:    "Total Horas",
-    forn_setores:       "Setores atendidos",
-    forn_ultimos:       "Últimos lançamentos",
-
     // Configurações
     cfg_section:        "Personalização",
     cfg_title:          "Configurações",
@@ -335,7 +324,6 @@ export const translations = {
     nav_logout:         "Sair",
     nav_tab_dashboard:  "Dashboard",
     nav_tab_lanc:       "Lançamentos",
-    nav_tab_forn:       "Fornecedores",
     nav_tab_fech:       "Fechamento",
     nav_tab_cfg:        "Configurações",
     nav_loading_data:   "Carregando dados do servidor…",
@@ -664,17 +652,6 @@ export const translations = {
     dash_media_dia:     "Avg/day",
     dash_media_mes:     "Avg/month",
 
-    // Fornecedores
-    forn_section:       "Overview",
-    forn_title:         "Supplier Panel",
-    forn_empty:         "No entries recorded yet",
-    forn_registros:     "records",
-    forn_card_today:    "Today",
-    forn_card_mes:      "This Month",
-    forn_card_horas:    "Total Hours",
-    forn_setores:       "Departments served",
-    forn_ultimos:       "Latest entries",
-
     // Configurações
     cfg_section:        "Settings",
     cfg_title:          "Settings",
@@ -751,7 +728,6 @@ export const translations = {
     nav_logout:         "Sign out",
     nav_tab_dashboard:  "Dashboard",
     nav_tab_lanc:       "Entries",
-    nav_tab_forn:       "Suppliers",
     nav_tab_fech:       "Billing",
     nav_tab_cfg:        "Settings",
     nav_loading_data:   "Loading server data…",

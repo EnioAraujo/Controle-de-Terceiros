@@ -317,7 +317,7 @@ const { lang, setLang, t } = useI18n();
 - `LoginPage` — completa (labels, placeholders, erros, seletor de idioma)
 - `ResetPasswordPage` — completa (labels, erros, mensagens de status)
 - `AdminPage` — mensagens de feedback (e-mail enviado, erros de senha)
-- `Index.tsx` — completa: PrivacyNotice, FormLancamento, Lancamentos, Dashboard, Fornecedores, Configuracoes (incl. DPO e LGPD exclusão), navbar (Hoje/Mês/Admin/Sair/abas de navegação)
+- `Index.tsx` — completa: PrivacyNotice, FormLancamento, Lancamentos, Dashboard, Configuracoes (incl. DPO e LGPD exclusão), FechamentoTab, navbar (Hoje/Mês/Admin/Sair/abas de navegação)
 
 ---
 
@@ -366,4 +366,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-14 | Proteção anti-duplicata em 4 camadas: (1) handleSave verifica single-edit contra banco (antes não havia checagem); (2) salvar() agora deduplica também no branch de lote-edit; (3) useStorage.save() filtra duplicatas intra-lote antes de enviar ao Supabase; (4) migration fix_duplicate_lote_registros.sql remove duplicatas existentes no DB e adiciona UNIQUE INDEX em (lote_id, lower(nome)) |
 | 2026-03-15 | Validação de duplo turno: mesmo nome no mesmo dia em turno diferente exige justificativa obrigatória; aviso amarelo com textarea; botão "Confirmar com justificativa" só habilitado após digitar motivo; justificativa salva no campo obs com prefixo [DUPLO TURNO] para uso no fechamento |
 | 2026-03-15 | Refatoração: validação de turno diferente movida do FormLancamento para salvar() em Lancamentos (ponto de passagem único); conflito de turno agora é detectado pelo componente-pai que tem acesso direto ao state `registros` (sem prop stale); modal de conflito é renderizado por Lancamentos com textarea e botão bloqueado até justificativa; regra de proatividade em bugs recorrentes adicionada ao copilot-instructions.md |
-| 2026-03-15 | Auditoria de segurança e clean code: CORS dinâmico na Edge Function admin-users (removido wildcard *); headers de segurança no vercel.json (CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy); sanitização de todas as entradas de texto com DOMPurify (obs, DPO, importação em massa, busca LGPD, justificativa); proteção contra CSV injection na exportação; Error Boundary global; remoção de 13 arquivos de código morto (AttendanceForm, MultiSelect, ImportOptionsDialog, OptionManager, OptionsSheet, AttendancePage, ManualOptionsInputPage, OptionsManagementPage, attendance-storage, options-storage, made-with-dyad, toast.ts, App.css); remoção do tipo legado AttendanceRecord |
+| 2026-03-15 | Removida aba/tela Fornecedores de Index.tsx (irrelevante); removidas chaves i18n forn_* e nav_tab_forn; removido tipo TabId "fornecedores" |

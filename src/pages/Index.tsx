@@ -1276,73 +1276,6 @@ const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoe
   );
 };
 
-// ─── TELA: FORNECEDORES ─────────────────────────────────────────
-const Fornecedores = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoes }) => {
-  const { t, lang } = useI18n();
-  const resumo = useMemo(() => {
-    return opcoes.fornecedores.map(forn => {
-      const regs    = registros.filter(r => r.fornecedor === forn);
-      const hoje_   = regs.filter(r => r.data === hoje()).length;
-      const mes_    = regs.filter(r => r.data.startsWith(mesAtual())).length;
-      const mins    = regs.reduce((acc, r) => { if (!r.totalHoras) return acc; const [h, m] = r.totalHoras.split(":").map(Number); return acc + h * 60 + m; }, 0);
-      const horas   = `${Math.floor(mins / 60)}h ${mins % 60}min`;
-      const ultimos = [...regs].sort((a, b) => a.data > b.data ? -1 : 1).slice(0, 5);
-      return { forn, total: regs.length, hoje: hoje_, mes: mes_, horas, ultimos };
-    }).filter(f => f.total > 0);
-  }, [registros, opcoes.fornecedores]);
-
-  return (
-    <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-      <div>
-        <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{t("forn_section")}</div>
-        <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>{t("forn_title")}</div>
-      </div>
-      {resumo.length === 0 && (
-        <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:48, textAlign:"center", color:"#94A3B8" }}>
-          <div style={{ fontSize:32, marginBottom:8 }}>🏢</div>
-          {t("forn_empty")}
-        </div>
-      )}
-      <div className="rsp-grid-autofill" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))", gap:14 }}>
-        {resumo.map(({ forn, total, hoje: hj, mes, horas, ultimos }) => {
-          const cor = fornCor(forn, opcoes.fornecedores);
-          return (
-            <div key={forn} style={{ background:"#fff", border:`1px solid ${cor}33`, borderRadius:12, overflow:"hidden", boxShadow:"0 1px 4px rgba(15,28,46,.06)" }}>
-              <div style={{ background:cor, padding:"14px 18px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                <div style={{ fontWeight:800, fontSize:14, color:"#fff" }}>{forn}</div>
-                <div style={{ background:"rgba(255,255,255,.2)", borderRadius:8, padding:"4px 10px", fontSize:12, fontWeight:700, color:"#fff" }}>{total} {t("forn_registros")}</div>
-              </div>
-              <div style={{ padding:"14px 18px" }}>
-                <div className="rsp-grid-3" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:14 }}>
-                  {([[t("forn_card_today"), hj, cor], [t("forn_card_mes"), mes, "#334155"], [t("forn_card_horas"), horas, "#0E9F6E"]] as [string, string | number, string][]).map(([l, v, c]) => (
-                    <div key={l} style={{ background:"#F8FAFC", borderRadius:8, padding:"8px 10px", textAlign:"center" }}>
-                      <div style={{ fontSize:10, color:"#94A3B8", textTransform:"uppercase", letterSpacing:.6, marginBottom:3 }}>{l}</div>
-                      <div style={{ fontSize:14, fontWeight:800, color:c }}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-                {ultimos.length > 0 && (
-                  <div>
-                    <div style={{ fontSize:10, color:"#94A3B8", textTransform:"uppercase", letterSpacing:.6, marginBottom:6 }}>{t("forn_ultimos")}</div>
-                    <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                      {ultimos.map(r => (
-                        <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:11, padding:"4px 0", borderBottom:"1px solid #F1F5F9" }}>
-                          <span style={{ fontWeight:600, color:"#334155", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:160 }}>{r.nome}</span>
-                          <span style={{ color:"#94A3B8", fontFamily:"monospace", flexShrink:0, marginLeft:8 }}>{fmt(r.data, lang)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
 // ─── TELA: CONFIGURAÇÕES ────────────────────────────────────────
 const OPCOES_CONFIG: { key: keyof Omit<Opcoes, "nomes">; label: string; cor: string }[] = [
   { key: "turnos",       label: "Turnos",          cor: "#1A56DB" },
@@ -2499,7 +2432,7 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
 // ═══════════════════════════════════════════════════════════════
 // INDEX
 // ═══════════════════════════════════════════════════════════════
-type TabId = "dashboard" | "lancamentos" | "fornecedores" | "fechamento" | "configuracoes";
+type TabId = "dashboard" | "lancamentos" | "fechamento" | "configuracoes";
 interface NavItem { id: TabId; label: string; icon: string; }
 
 const Index = () => {
@@ -2547,7 +2480,6 @@ const Index = () => {
   const NAV: NavItem[] = [
     { id: "dashboard",      label: t("nav_tab_dashboard"), icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" },
     { id: "lancamentos",    label: t("nav_tab_lanc"),      icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" },
-    { id: "fornecedores",   label: t("nav_tab_forn"),      icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
     { id: "fechamento",     label: t("nav_tab_fech"),      icon: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" },
     { id: "configuracoes",  label: t("nav_tab_cfg"),       icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.94 11a8 8 0 0 0-15.88 0H2v2h2.06a8 8 0 0 0 15.88 0H22v-2h-2.06z" },
   ];
@@ -2637,7 +2569,6 @@ const Index = () => {
           <>
             {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} />}
             {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} turnosConfig={turnosConfig} />}
-            {tab === "fornecedores"  && <Fornecedores registros={registros} opcoes={opcoes} />}
             {tab === "fechamento"    && <FechamentoTab registros={registros} opcoes={opcoes} />}
             {tab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} registros={registros} setRegistros={setRegistros} isAdmin={isAdmin} />}
           </>
