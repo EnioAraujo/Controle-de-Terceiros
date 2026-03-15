@@ -131,6 +131,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         number: wppGroupId,
         text,
+        mentionsEveryOne: true,
       }),
     });
 
