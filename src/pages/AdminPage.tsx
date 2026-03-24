@@ -833,7 +833,6 @@ export default function AdminPage() {
                       </div>
                     ) : null}
                   </div>
-                  </form>
                 </CardContent>
               </Card>
             </div>
