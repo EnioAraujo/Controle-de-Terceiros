@@ -262,27 +262,30 @@ export default function AdminPage() {
 
   // ── Edge Function helper ──────────────────────────────────────────
   const callAdminFn = async (action: string, params: Record<string, unknown>) => {
-    // refreshSession() faz request ao servidor e garante token 100% fresco.
-    // functions.invoke usa session() sincronamente (sem await) então pode
-    // enviar access_token stale/expirado do cache — usar refresh evita 401.
-    const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
-    const session = refreshData?.session;
-    if (refreshErr || !session?.access_token) {
-      throw new Error("Sessão expirada. Faça login novamente.");
-    }
-    const { data, error } = await supabase.functions.invoke("admin-users", {
-      body: { action, ...params },
-      headers: { Authorization: `Bearer ${session.access_token}` },
+    // Usa fetch direto em vez de supabase.functions.invoke para ter
+    // controle total dos headers. O gateway Supabase exige tanto
+    // apikey (anon key) quanto Authorization (JWT do usuário).
+    const supabaseUrl  = import.meta.env.VITE_SUPABASE_URL as string;
+    const supabaseAnon = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+    // getSession() retorna a sessão do cache (já gerenciada com auto-refresh pelo SDK)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error("Sessão expirada. Faça login novamente.");
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/admin-users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": supabaseAnon,
+        "Authorization": `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ action, ...params }),
     });
-    if (error) {
-      // Tenta extrair a mensagem real do corpo da resposta da Edge Function
-      // (error.message seria apenas "Edge Function returned a non-2xx status code")
-      const errBody = await (error as { context?: Response }).context
-        ?.json?.().catch(() => null) as { error?: string } | null;
-      throw new Error(errBody?.error ?? error.message);
-    }
-    if (data?.error) throw new Error(data.error);
-    return data;
+
+    const json = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    if (!res.ok) throw new Error((json as { error?: string }).error ?? `HTTP ${res.status}`);
+    if ((json as { error?: string }).error) throw new Error((json as { error?: string }).error);
+    return json;
   };
 
   // ── Query: listar usuários ────────────────────────────────────────
