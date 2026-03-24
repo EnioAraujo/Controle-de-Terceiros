@@ -50,7 +50,6 @@ src/
 ├── globals.css              # Estilos globais
 ├── components/
 │   ├── ErrorBoundary.tsx    # Error Boundary global (previne tela branca em crash)
-│   ├── ImportExcelRegistros.tsx  # Importação de histórico Excel para registros
 │   └── ui/                  # Todos os componentes shadcn/ui
 ├── hooks/
 │   ├── use-mobile.tsx
@@ -392,3 +391,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-15 | Importação de histórico via Excel: componente ImportExcelRegistros na aba Configurações; upload drag-and-drop de .xlsx; mapeamento automático de colunas (DATA_PRESENCA, TURNO, NOME_COMPLETO_TERCEIRO, etc.); detecção de duplicatas (nome+data+turno); pré-visualização; sanitização via DOMPurify; suporte a datas DD/MM/YYYY e serial Excel; 17 chaves i18n (imp_*) em pt-BR/en-US |
 | 2026-03-15 | Corrigidas políticas SELECT: agora apenas usuários autenticados podem consultar diarias_config, fechamento_itens, fechamentos, opcoes, profiles, registros, terceiros e turnos_config (migration fix_rls_select_authenticated.sql) |
 | 2026-03-24 | ProjecaoPage: tabelas "Média por Dia" e "Média por Turno" unificadas em uma única tabela full-width com colunas DATA / 1º / 2º / 3º / TOTAL / VALOR APROXIMADO; cálculo de valor incorporado (resolverDiaria por turno quando fornecedor filtrado, ou total×R$250 como fallback) |
+| 2026-03-24 | Segurança: campo `nome` agora sanitizado com DOMPurify (ALLOWED_TAGS:[]) antes de persistir no Supabase, tanto no fluxo de edição individual quanto no fluxo de lote; CONTEXT.md corrigido removendo referência incorreta ao ImportExcelRegistros.tsx (componente nunca implementado) |

@@ -563,7 +563,7 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
 
     if (isEdit) {
       const p = pessoas[0];
-      const nomeTrimmed = p.nome.trim();
+      const nomeTrimmed = sanitize(p.nome.trim());
       // Verifica conflito de nome+data+turno ao editar registro individual
       if (!force) {
         const conflito = todosRegistros.find(r =>
@@ -616,7 +616,7 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
         id: isLoteEdit ? (loteInicial![i]?.id ?? uuid()) : uuid(),
         ...(lId ? { loteId: lId } : {}),
         ...comum,
-        nome: p.nome.trim(),
+        nome: sanitize(p.nome.trim()),
         horaEntrada: p.horaEntrada,
         horaSaida: p.horaSaida,
         totalHoras: calcHoras(p.horaEntrada, p.horaSaida),
