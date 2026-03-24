@@ -260,23 +260,18 @@ export default function AdminPage() {
     }
   };
 
-  // ── Edge Function helper ──────────────────────────────────────────
+  // ── Vercel API Route helper ───────────────────────────────────────
   const callAdminFn = async (action: string, params: Record<string, unknown>) => {
-    // Usa fetch direto em vez de supabase.functions.invoke para ter
-    // controle total dos headers. O gateway Supabase exige tanto
-    // apikey (anon key) quanto Authorization (JWT do usuário).
-    const supabaseUrl  = import.meta.env.VITE_SUPABASE_URL as string;
-    const supabaseAnon = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-
-    // getSession() retorna a sessão do cache (já gerenciada com auto-refresh pelo SDK)
+    // Chama a Vercel Serverless Function em /api/admin-users (mesmo domínio,
+    // sem CORS), que usa SUPABASE_SERVICE_ROLE_KEY no servidor para validar
+    // o token e executar operações admin.
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) throw new Error("Sessão expirada. Faça login novamente.");
 
-    const res = await fetch(`${supabaseUrl}/functions/v1/admin-users`, {
+    const res = await fetch("/api/admin-users", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "apikey": supabaseAnon,
         "Authorization": `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({ action, ...params }),
