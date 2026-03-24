@@ -37,10 +37,32 @@ ALTER TABLE public.profiles
 
 -- 4. Popular user_roles a partir de profiles existentes
 --    (admins → 'admin', demais → 'user')
-INSERT INTO public.user_roles (user_id, role)
-SELECT id, CASE WHEN is_admin THEN 'admin'::public.app_role ELSE 'user'::public.app_role END
-FROM   public.profiles
-ON CONFLICT (user_id) DO NOTHING;
+--    Usa EXECUTE para evitar erro de compilação se is_admin não existir ainda.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE  table_schema = 'public'
+      AND  table_name   = 'profiles'
+      AND  column_name  = 'is_admin'
+  ) THEN
+    EXECUTE '
+      INSERT INTO public.user_roles (user_id, role)
+      SELECT id,
+             CASE WHEN is_admin
+               THEN ''admin''::public.app_role
+               ELSE ''user''::public.app_role
+             END
+      FROM   public.profiles
+      ON CONFLICT (user_id) DO NOTHING
+    ';
+  ELSE
+    INSERT INTO public.user_roles (user_id, role)
+    SELECT id, 'user'::public.app_role
+    FROM   public.profiles
+    ON CONFLICT (user_id) DO NOTHING;
+  END IF;
+END $$;
 
 -- 5. Função: sincronizar profiles.is_admin quando user_roles.role muda
 CREATE OR REPLACE FUNCTION public.sync_is_admin_from_role()
