@@ -2539,7 +2539,6 @@ const Index = () => {
     authReady.then(async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      const userId = session.user.id;
       // DPO config
       supabase.from("opcoes").select("chave,valor")
         .in("chave", ["dpo_nome", "dpo_email"])
@@ -2550,13 +2549,11 @@ const Index = () => {
           setDpoCfg({ nome: m["dpo_nome"] ?? "", email: m["dpo_email"] ?? "" });
         })
         .catch((err: unknown) => console.error("Erro ao carregar DPO config:", err));
-      // Admin check — usa .eq("id", userId) como defesa em profundidade (não depende só de RLS)
-      supabase.from("profiles").select("is_admin").eq("id", userId).maybeSingle()
-        .then(({ data, error }) => {
-          if (error) { console.error("Erro ao verificar admin:", error.message); return; }
-          if (data?.is_admin) setIsAdmin(true);
-        })
-        .catch((err: unknown) => console.error("Erro ao verificar admin:", err));
+      // Admin check — usa RPC is_admin() (SECURITY DEFINER) que bypassa RLS e retorna boolean diretamente
+      // Não usa supabase.from("profiles") pois a política profiles_select pode ter recursão que causa erro
+      const { data: isAdminResult, error: adminErr } = await supabase.rpc('is_admin');
+      if (adminErr) console.error("Erro ao verificar admin:", adminErr.message);
+      else if (isAdminResult) setIsAdmin(true);
     }).catch((err: unknown) => console.error("authReady falhou:", err));
   }, []);
 

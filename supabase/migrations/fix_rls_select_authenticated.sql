@@ -42,12 +42,14 @@ CREATE POLICY authed_select_fechamentos
   USING (true);
 
 -- profiles
+-- IMPORTANTE: não usar EXISTS(SELECT ... FROM profiles) aqui — causa recursão infinita!
+-- Usar is_admin() que é SECURITY DEFINER e contorna RLS internamente.
 DROP POLICY IF EXISTS profiles_select ON public.profiles;
 CREATE POLICY profiles_select
   ON public.profiles
   FOR SELECT
   TO authenticated
-  USING (auth.uid() = id OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin));
+  USING (auth.uid() = id OR public.is_admin());
 
 -- terceiros
 DROP POLICY IF EXISTS authed_select_terceiros ON public.terceiros;
