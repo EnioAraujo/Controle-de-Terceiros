@@ -299,86 +299,54 @@ const ProjecaoPage = ({ registros, opcoes }: { registros: Registro[]; opcoes: Op
         )}
       </div>
 
-      {/* Tabelas lado a lado */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        {/* Tabela esquerda: Valor por dia */}
-        <div style={{ background: "#fff", border: "1px solid #E2E6EC", borderRadius: 12, padding: 20, overflowX: "auto" }}>
-          <div style={{ fontWeight: 700, fontSize: 12, color: "#0F1C2E", marginBottom: 8 }}>{t("demand_value_table")}</div>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "#0B1628" }}>
-                <th style={{ ...thStyle, color: "#F8FAFC", textAlign: "left" }}>{t("demand_col_date")}</th>
-                <th style={{ ...thStyle, color: "#F8FAFC" }}>{t("demand_col_qty")}</th>
-                <th style={{ ...thStyle, color: "#F8FAFC" }}>{t("demand_col_value")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {todosDias.map(dia => {
-                const row = dadosPorDia[dia];
-                const qtdDia = row ? row["1ª TURNO"] + row["2ª TURNO"] + row["3ª TURNO"] : 0;
-                let valorDia = 0;
-                if (row && fornFiltro) {
-                  for (const turno of TURNOS_DEMANDA) {
-                    if (row[turno] > 0) {
-                      valorDia += row[turno] * resolverDiaria(fornFiltro, turno, diariasConfig);
-                    }
+      {/* Tabela unificada: Por turno + Valor */}
+      <div style={{ background: "#fff", border: "1px solid #E2E6EC", borderRadius: 12, padding: 20, overflowX: "auto" }}>
+        <div style={{ fontWeight: 700, fontSize: 12, color: "#0F1C2E", marginBottom: 8 }}>{t("demand_shift_table")}</div>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ background: "#0B1628" }}>
+              <th style={{ ...thStyle, color: "#F8FAFC", textAlign: "left" }}>{t("demand_col_date")}</th>
+              {TURNOS_DEMANDA.map(turno => (
+                <th key={turno} style={{ ...thStyle, color: TURNO_CORES[turno] || "#F8FAFC" }}>{turno.replace(" TURNO", "")}</th>
+              ))}
+              <th style={{ ...thStyle, color: "#F8FAFC" }}>{t("demand_col_total")}</th>
+              <th style={{ ...thStyle, color: "#0E9F6E" }}>{t("demand_col_value")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {todosDias.map(dia => {
+              const row = dadosPorDia[dia];
+              const t1 = row?.["1ª TURNO"] ?? 0;
+              const t2 = row?.["2ª TURNO"] ?? 0;
+              const t3 = row?.["3ª TURNO"] ?? 0;
+              const total = t1 + t2 + t3;
+              let valorDia = 0;
+              if (row && fornFiltro) {
+                for (const turno of TURNOS_DEMANDA) {
+                  if (row[turno] > 0) {
+                    valorDia += row[turno] * resolverDiaria(fornFiltro, turno, diariasConfig);
                   }
-                } else if (row) {
-                  valorDia = qtdDia * 250;
                 }
-                const isProj = diasProjecaoSet.has(dia);
-                return (
-                  <tr key={dia} style={{ background: isProj ? "#FEF3C7" : dia === hoje() ? "#EFF6FF" : "transparent" }}>
-                    <td style={{ ...tdStyle, textAlign: "left", fontWeight: dia === hoje() ? 700 : 400 }}>
-                      {fmt(dia, lang)}
-                      {isProj && <span style={{ marginLeft: 6, fontSize: 9, color: "#92400E", background: "#FDE68A", borderRadius: 4, padding: "1px 5px", fontWeight: 600 }}>{t("demand_proj_badge")}</span>}
-                    </td>
-                    <td style={{ ...tdStyle, fontWeight: 700, color: qtdDia > 0 ? "#0F1C2E" : "#CBD5E1" }}>{qtdDia}</td>
-                    <td style={{ ...tdStyle, color: "#0E9F6E", fontWeight: 600 }}>{fmtCurrency(valorDia)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Tabela direita: Por turno */}
-        <div style={{ background: "#fff", border: "1px solid #E2E6EC", borderRadius: 12, padding: 20, overflowX: "auto" }}>
-          <div style={{ fontWeight: 700, fontSize: 12, color: "#0F1C2E", marginBottom: 8 }}>{t("demand_shift_table")}</div>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "#0B1628" }}>
-                <th style={{ ...thStyle, color: "#F8FAFC", textAlign: "left" }}>{t("demand_col_date")}</th>
-                {TURNOS_DEMANDA.map(turno => (
-                  <th key={turno} style={{ ...thStyle, color: TURNO_CORES[turno] || "#F8FAFC" }}>{turno.replace(" TURNO", "")}</th>
-                ))}
-                <th style={{ ...thStyle, color: "#F8FAFC" }}>{t("demand_col_total")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {todosDias.map(dia => {
-                const row = dadosPorDia[dia];
-                const t1 = row?.["1ª TURNO"] ?? 0;
-                const t2 = row?.["2ª TURNO"] ?? 0;
-                const t3 = row?.["3ª TURNO"] ?? 0;
-                const total = t1 + t2 + t3;
-                const isProj = diasProjecaoSet.has(dia);
-                return (
-                  <tr key={dia} style={{ background: isProj ? "#FEF3C7" : dia === hoje() ? "#EFF6FF" : "transparent" }}>
-                    <td style={{ ...tdStyle, textAlign: "left", fontWeight: dia === hoje() ? 700 : 400 }}>
-                      {fmt(dia, lang)}
-                      {isProj && <span style={{ marginLeft: 6, fontSize: 9, color: "#92400E", background: "#FDE68A", borderRadius: 4, padding: "1px 5px", fontWeight: 600 }}>{t("demand_proj_badge")}</span>}
-                    </td>
-                    <td style={{ ...tdStyle, color: t1 > 0 ? TURNO_CORES["1ª TURNO"] : "#CBD5E1", fontWeight: 700 }}>{t1}</td>
-                    <td style={{ ...tdStyle, color: t2 > 0 ? TURNO_CORES["2ª TURNO"] : "#CBD5E1", fontWeight: 700 }}>{t2}</td>
-                    <td style={{ ...tdStyle, color: t3 > 0 ? TURNO_CORES["3ª TURNO"] : "#CBD5E1", fontWeight: 700 }}>{t3}</td>
-                    <td style={{ ...tdStyle, fontWeight: 800, color: total > 0 ? "#0F1C2E" : "#CBD5E1" }}>{total}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+              } else if (row) {
+                valorDia = total * 250;
+              }
+              const isProj = diasProjecaoSet.has(dia);
+              return (
+                <tr key={dia} style={{ background: isProj ? "#FEF3C7" : dia === hoje() ? "#EFF6FF" : "transparent" }}>
+                  <td style={{ ...tdStyle, textAlign: "left", fontWeight: dia === hoje() ? 700 : 400 }}>
+                    {fmt(dia, lang)}
+                    {isProj && <span style={{ marginLeft: 6, fontSize: 9, color: "#92400E", background: "#FDE68A", borderRadius: 4, padding: "1px 5px", fontWeight: 600 }}>{t("demand_proj_badge")}</span>}
+                  </td>
+                  <td style={{ ...tdStyle, color: t1 > 0 ? TURNO_CORES["1ª TURNO"] : "#CBD5E1", fontWeight: 700 }}>{t1}</td>
+                  <td style={{ ...tdStyle, color: t2 > 0 ? TURNO_CORES["2ª TURNO"] : "#CBD5E1", fontWeight: 700 }}>{t2}</td>
+                  <td style={{ ...tdStyle, color: t3 > 0 ? TURNO_CORES["3ª TURNO"] : "#CBD5E1", fontWeight: 700 }}>{t3}</td>
+                  <td style={{ ...tdStyle, fontWeight: 800, color: total > 0 ? "#0F1C2E" : "#CBD5E1" }}>{total}</td>
+                  <td style={{ ...tdStyle, color: "#0E9F6E", fontWeight: 600 }}>{fmtCurrency(valorDia)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
