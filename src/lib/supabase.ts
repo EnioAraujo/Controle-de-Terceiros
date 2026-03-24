@@ -25,4 +25,5 @@ export const supabase = createClient(
  */
 export const authReady: Promise<void> = supabase.auth
   .getSession()
-  .then(() => undefined);
+  .then(() => undefined)
+  .catch(() => undefined);

@@ -168,31 +168,40 @@ export default function AdminPage() {
         .select("is_admin")
         .eq("id", session.user.id)
         .maybeSingle()
-        .then(({ data }) => {
+        .then(({ data, error }) => {
+          if (error) console.error("Erro ao verificar admin:", error.message);
           setIsAdmin(!!data?.is_admin);
           setAuthReady(true);
+        })
+        .catch((err: unknown) => {
+          console.error("Erro ao verificar admin:", err);
+          setAuthReady(true);
         });
+    }).catch((err: unknown) => {
+      console.error("Erro ao obter sessão:", err);
+      setAuthReady(true);
     });
   }, []);
 
   // ── MFA: carregar fatores inscritos ───────────────────────────────
   const loadMfaFactors = useCallback(async () => {
-    const { data } = await supabase.auth.mfa.listFactors();
+    const { data, error } = await supabase.auth.mfa.listFactors();
+    if (error) { console.error("Erro ao listar fatores MFA:", error.message); return; }
     setMfaFactors(data?.totp ?? []);
   }, []);
 
   useEffect(() => {
-    loadMfaFactors();
+    loadMfaFactors().catch((err: unknown) => console.error("Erro ao carregar MFA:", err));
   }, [loadMfaFactors]);
 
   const handleMfaEnroll = async () => {
     setMfaLoading(true);
     setMfaMsg(null);
+    try {
     const { data, error } = await supabase.auth.mfa.enroll({
       factorType: "totp",
       issuer: "Controle de Terceiros",
     });
-    setMfaLoading(false);
     if (error || !data) {
       setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Erro ao iniciar inscrição MFA." : "Error starting MFA enrollment." });
       return;
@@ -201,15 +210,21 @@ export default function AdminPage() {
     setMfaQrCode(data.totp.qr_code);
     setMfaSecret(data.totp.secret);
     setMfaEnrollStep("qr");
+    } catch (err) {
+      console.error("Erro ao inscrever MFA:", err);
+      setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Erro ao iniciar inscrição MFA." : "Error starting MFA enrollment." });
+    } finally {
+      setMfaLoading(false);
+    }
   };
 
   const handleMfaVerifyEnroll = async () => {
     setMfaLoading(true);
     setMfaMsg(null);
+    try {
     const { data: challenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId: mfaEnrollId });
     if (chalErr || !challenge) {
       setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Erro ao criar desafio MFA." : "Error creating MFA challenge." });
-      setMfaLoading(false);
       return;
     }
     const { error: verErr } = await supabase.auth.mfa.verify({
@@ -217,7 +232,6 @@ export default function AdminPage() {
       challengeId: challenge.id,
       code: mfaCode.replace(/\s/g, ""),
     });
-    setMfaLoading(false);
     if (verErr) {
       setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Código inválido. Tente novamente." : "Invalid code. Try again." });
       setMfaCode("");
@@ -227,13 +241,19 @@ export default function AdminPage() {
     setMfaMsg({ ok: true, text: lang === "pt-BR" ? "MFA ativado com sucesso!" : "MFA activated successfully!" });
     setMfaCode("");
     await loadMfaFactors();
+    } catch (err) {
+      console.error("Erro ao verificar MFA:", err);
+      setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Erro ao verificar código MFA." : "Error verifying MFA code." });
+    } finally {
+      setMfaLoading(false);
+    }
   };
 
   const handleMfaUnenroll = async (factorId: string) => {
     setMfaLoading(true);
     setMfaMsg(null);
+    try {
     const { error } = await supabase.auth.mfa.unenroll({ factorId });
-    setMfaLoading(false);
     if (error) {
       setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Erro ao remover MFA." : "Error removing MFA." });
       return;
@@ -241,14 +261,21 @@ export default function AdminPage() {
     setMfaMsg({ ok: true, text: lang === "pt-BR" ? "MFA removido." : "MFA removed." });
     setMfaEnrollStep("idle");
     await loadMfaFactors();
+    } catch (err) {
+      console.error("Erro ao remover MFA:", err);
+      setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Erro ao remover MFA." : "Error removing MFA." });
+    } finally {
+      setMfaLoading(false);
+    }
   };
 
   // ── Edge Function helper ──────────────────────────────────────────
   const callAdminFn = async (action: string, params: Record<string, unknown>) => {
     const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error("Sessão expirada. Faça login novamente.");
     const { data, error } = await supabase.functions.invoke("admin-users", {
       body: { action, ...params },
-      headers: { Authorization: `Bearer ${session?.access_token ?? ""}` },
+      headers: { Authorization: `Bearer ${session.access_token}` },
     });
     if (error) throw new Error(error.message);
     if (data?.error) throw new Error(data.error);
@@ -266,9 +293,10 @@ export default function AdminPage() {
         .order("created_at", { ascending: false });
       if (pe) throw pe;
 
-      const { data: roles } = await supabase
+      const { data: roles, error: rolesErr } = await supabase
         .from("user_roles")
         .select("user_id, role");
+      if (rolesErr) console.error("Erro ao carregar roles:", rolesErr.message);
 
       const rolesMap = new Map<string, AppRole>();
       (roles ?? []).forEach(r => rolesMap.set(r.user_id, r.role as AppRole));
@@ -363,12 +391,18 @@ export default function AdminPage() {
 
   // ── Reset password (e-mail) ───────────────────────────────────────
   const handleResetPassword = async (email: string, userId: string) => {
+    try {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     const msg = error ? `${t("admin_err_reset")} ${error.message}` : t("admin_email_sent");
     setResetFeedback(p => ({ ...p, [userId]: { text: msg, ok: !error } }));
     setTimeout(() => setResetFeedback(p => { const n = { ...p }; delete n[userId]; return n; }), 5000);
+    } catch (err) {
+      console.error("Erro ao resetar senha:", err);
+      setResetFeedback(p => ({ ...p, [userId]: { text: "Erro ao enviar e-mail de reset.", ok: false } }));
+      setTimeout(() => setResetFeedback(p => { const n = { ...p }; delete n[userId]; return n; }), 5000);
+    }
   };
 
   // ── Change own password ───────────────────────────────────────────

@@ -37,10 +37,12 @@ export default function LoginPage() {
     }
 
     // Verificar se MFA é necessário
-    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    const { data: aal, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aalErr) { console.error("Erro ao verificar nível MFA:", aalErr.message); setLoading(false); return; }
     if (aal?.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
       // Usuário tem TOTP inscrito — iniciar challenge
-      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const { data: factors, error: factErr } = await supabase.auth.mfa.listFactors();
+      if (factErr) { console.error("Erro ao listar fatores MFA:", factErr.message); setLoading(false); return; }
       const totpFactor = factors?.totp?.[0];
       if (totpFactor) {
         const { data: challenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId: totpFactor.id });

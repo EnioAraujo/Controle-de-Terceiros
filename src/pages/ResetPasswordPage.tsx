@@ -19,6 +19,9 @@ export default function ResetPasswordPage() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setHasSession(!!session);
       if (!session) timerRef.current = setTimeout(() => navigate("/login", { replace: true }), 3000);
+    }).catch(() => {
+      setHasSession(false);
+      timerRef.current = setTimeout(() => navigate("/login", { replace: true }), 3000);
     });
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [navigate]);
@@ -36,7 +39,7 @@ export default function ResetPasswordPage() {
       setMsg({ ok: false, text: mapSupabaseError(error.message, lang) });
     } else {
       setMsg({ ok: true, text: t("reset_success") });
-      await supabase.auth.signOut();
+      await supabase.auth.signOut().catch((err: unknown) => console.error("Erro ao encerrar sessão:", err));
       setTimeout(() => navigate("/login", { replace: true }), 2000);
     }
   };

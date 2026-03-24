@@ -40,9 +40,10 @@ const ProjecaoPage = ({ registros, opcoes }: { registros: Registro[]; opcoes: Op
   const [diariasConfig, setDiariasConfig] = useState<DiariaConfig[]>([]);
   useEffect(() => {
     authReady.then(async () => {
-      const { data } = await supabase.from("diarias_config").select("*").order("fornecedor");
+      const { data, error } = await supabase.from("diarias_config").select("*").order("fornecedor");
+      if (error) console.error("Erro ao carregar diarias_config:", error.message);
       if (data) setDiariasConfig(data.map(dbToDiariaConfig));
-    });
+    }).catch((err: unknown) => console.error("Erro ao carregar diarias_config:", err));
   }, []);
 
   // Calcular range (do mês selecionado ou range custom)

@@ -2,6 +2,11 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./globals.css";
 
+// Rede de segurança: captura promises rejeitadas não tratadas
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("Unhandled promise rejection:", event.reason);
+});
+
 const missingEnv =
   !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY;
 

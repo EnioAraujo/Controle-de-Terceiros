@@ -68,7 +68,7 @@ const logAudit = (
     }).then(({ error }) => {
       if (error) console.warn("audit_log:", error.message);
     })
-  );
+  ).catch((err: unknown) => console.warn("audit_log (authReady):", err));
 };
 
 // ─── MAPEAMENTO DB ↔ MODELO (importado de @/lib/format-utils) ──
@@ -112,9 +112,13 @@ const useStorage = (): [Registro[], (val: Registro[]) => void, boolean] => {
                 setData(prev => prev.filter(r => r.data >= limite));
                 prevRef.current = prevRef.current.filter(r => r.data >= limite);
               }
-            });
+            })
+            .catch((err: unknown) => console.error("Erro na purga LGPD:", err));
         })
-    );
+    ).catch((err: unknown) => {
+      console.error("Erro no carregamento de registros:", err);
+      setLoading(false);
+    });
   }, []);
 
   const save = useCallback((newValRaw: Registro[]) => {
@@ -186,7 +190,8 @@ const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
 
       // Limpeza: remove nomes residuais da tabela opcoes (devem estar apenas em terceiros)
       supabase.from("opcoes").delete().eq("chave", "nomes")
-        .then(({ error }) => { if (error) console.error("Erro ao limpar nomes residuais:", error.message); });
+        .then(({ error }) => { if (error) console.error("Erro ao limpar nomes residuais:", error.message); })
+        .catch((err: unknown) => console.error("Erro ao limpar nomes residuais:", err));
 
       if (opcoesRes.error) console.error("Erro ao carregar opções:", opcoesRes.error.message);
       if (nomesRes.error)  console.error("Erro ao carregar nomes:", nomesRes.error.message);
@@ -210,6 +215,9 @@ const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
 
       setData(built);
       prevRef.current = built;
+      setLoading(false);
+    }).catch((err: unknown) => {
+      console.error("Erro ao carregar opções:", err);
       setLoading(false);
     });
   }, []);
@@ -237,13 +245,14 @@ const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
             const { error } = await supabase
               .from("opcoes")
               .upsert(batch.map(valor => ({ chave: key, valor })), { onConflict: "chave,valor", ignoreDuplicates: true });
-            if (error) console.error(`Erro ao inserir opções [${key}]:`, error.message);
+            if (error) { console.error(`Erro ao inserir opções [${key}]:`, error.message); break; }
           }
-        })();
+        })().catch((err: unknown) => console.error(`Erro ao inserir opções [${key}]:`, err));
       }
       if (toRemove.length > 0) {
         supabase.from("opcoes").delete().eq("chave", key).in("valor", toRemove)
-          .then(({ error }) => { if (error) console.error(`Erro ao remover opções [${key}]:`, error.message); });
+          .then(({ error }) => { if (error) console.error(`Erro ao remover opções [${key}]:`, error.message); })
+          .catch((err: unknown) => console.error(`Erro ao remover opções [${key}]:`, err));
       }
     }
 
@@ -262,13 +271,14 @@ const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
             const { error } = await supabase
               .from("terceiros")
               .upsert(batch.map(nome => ({ nome })), { onConflict: "nome", ignoreDuplicates: true });
-            if (error) console.error("Erro ao inserir nomes:", error.message);
+            if (error) { console.error("Erro ao inserir nomes:", error.message); break; }
           }
-        })();
+        })().catch((err: unknown) => console.error("Erro ao inserir nomes:", err));
       }
       if (toRemove.length > 0) {
         supabase.from("terceiros").delete().in("nome", toRemove)
-          .then(({ error }) => { if (error) console.error("Erro ao remover nomes:", error.message); });
+          .then(({ error }) => { if (error) console.error("Erro ao remover nomes:", error.message); })
+          .catch((err: unknown) => console.error("Erro ao remover nomes:", err));
       }
     }
   }, []);
@@ -1370,25 +1380,31 @@ const Configuracoes = ({
   useEffect(() => {
     authReady.then(async () => {
       // Carregar turnos_config
-      const { data: tData } = await supabase.from("turnos_config").select("*").order("turno");
+      const { data: tData, error: tErr } = await supabase.from("turnos_config").select("*").order("turno");
+      if (tErr) console.error("Erro ao carregar turnos_config:", tErr.message);
       if (tData) setTurnosConfig(tData.map(dbToTurnoConfig));
       // Carregar diarias_config
-      const { data: dData } = await supabase.from("diarias_config").select("*").order("fornecedor");
+      const { data: dData, error: dErr } = await supabase.from("diarias_config").select("*").order("fornecedor");
+      if (dErr) console.error("Erro ao carregar diarias_config:", dErr.message);
       if (dData) setDiariasConfig(dData.map(dbToDiariaConfig));
-    });
+    }).catch((err: unknown) => console.error("Erro ao carregar configs:", err));
   }, []);
 
   const saveTurnosConfig = async () => {
+    let hasError = false;
     for (const tc of turnosConfig) {
-      await supabase.from("turnos_config").upsert({
+      const { error } = await supabase.from("turnos_config").upsert({
         turno: tc.turno,
         hora_inicio: tc.horaInicio,
         hora_fim: tc.horaFim,
         hora_padrao: tc.horaPadrao,
       }, { onConflict: "turno" });
+      if (error) { console.error("Erro ao salvar turno:", error.message); hasError = true; }
     }
-    setTurnosConfigSaved(true);
-    setTimeout(() => setTurnosConfigSaved(false), 2000);
+    if (!hasError) {
+      setTurnosConfigSaved(true);
+      setTimeout(() => setTurnosConfigSaved(false), 2000);
+    }
   };
 
   const addDiaria = async () => {
@@ -1406,12 +1422,15 @@ const Configuracoes = ({
         return [...filtered, ...updated].sort((a, b) => a.fornecedor.localeCompare(b.fornecedor));
       });
       setNewDiaria({ fornecedor: "", turno: "", valor: "250" });
+    } else if (error) {
+      console.error("Erro ao salvar diária:", error.message);
     }
   };
 
   const removeDiaria = async (d: DiariaConfig) => {
     if (!d.id) return;
-    await supabase.from("diarias_config").delete().eq("id", d.id);
+    const { error } = await supabase.from("diarias_config").delete().eq("id", d.id);
+    if (error) { console.error("Erro ao remover diária:", error.message); return; }
     setDiariasConfig(prev => prev.filter(x => x.id !== d.id));
   };
 
@@ -1430,10 +1449,11 @@ const Configuracoes = ({
 
   useEffect(() => {
     authReady.then(async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("opcoes")
         .select("chave, valor")
         .in("chave", ["dpo_nome", "dpo_email", "dpo_telefone"]);
+      if (error) { console.error("Erro ao carregar DPO:", error.message); return; }
       if (data) {
         data.forEach((row: { chave: string; valor: string }) => {
           if (row.chave === "dpo_nome")      setDpoNome(row.valor);
@@ -1441,7 +1461,7 @@ const Configuracoes = ({
           if (row.chave === "dpo_telefone")  setDpoTelefone(row.valor);
         });
       }
-    });
+    }).catch((err: unknown) => console.error("Erro ao carregar DPO:", err));
   }, []);
 
   const saveDpo = async () => {
@@ -2016,13 +2036,16 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
   // Carregar configs + histórico
   useEffect(() => {
     authReady.then(async () => {
-      const { data: tData } = await supabase.from("turnos_config").select("*").order("turno");
+      const { data: tData, error: tErr } = await supabase.from("turnos_config").select("*").order("turno");
+      if (tErr) console.error("Erro ao carregar turnos_config:", tErr.message);
       if (tData) setTurnosConfig(tData.map(dbToTurnoConfig));
-      const { data: dData } = await supabase.from("diarias_config").select("*").order("fornecedor");
+      const { data: dData, error: dErr } = await supabase.from("diarias_config").select("*").order("fornecedor");
+      if (dErr) console.error("Erro ao carregar diarias_config:", dErr.message);
       if (dData) setDiariasConfig(dData.map(dbToDiariaConfig));
-      const { data: hData } = await supabase.from("fechamentos").select("*").order("created_at", { ascending: false }).limit(50);
+      const { data: hData, error: hErr } = await supabase.from("fechamentos").select("*").order("created_at", { ascending: false }).limit(50);
+      if (hErr) console.error("Erro ao carregar histórico:", hErr.message);
       if (hData) setHistorico(hData.map(dbToFechamento));
-    });
+    }).catch((err: unknown) => console.error("Erro ao carregar configs do fechamento:", err));
   }, []);
 
   // Períodos do mês selecionado
@@ -2095,9 +2118,11 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
     }
     const fechId = savedFech.id as string;
     // Deletar itens antigos e inserir novos
-    await supabase.from("fechamento_itens").delete().eq("fechamento_id", fechId);
+    const { error: delErr } = await supabase.from("fechamento_itens").delete().eq("fechamento_id", fechId);
+    if (delErr) { console.error("Erro ao limpar itens do fechamento:", delErr.message); setFeedback(t("fech_erro_salvar")); return; }
     const dbItens = itens.map(i => fechamentoItemToDb(i, fechId));
-    await supabase.from("fechamento_itens").insert(dbItens);
+    const { error: insErr } = await supabase.from("fechamento_itens").insert(dbItens);
+    if (insErr) { console.error("Erro ao inserir itens do fechamento:", insErr.message); setFeedback(t("fech_erro_salvar")); return; }
     const savedObj = dbToFechamento(savedFech);
     setFechamento(savedObj);
     logAudit(fech.id ? "UPDATE" : "INSERT", "fechamentos", fechId, { fornecedor, total });
@@ -2145,7 +2170,8 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
     setCustomInicio(f.dataInicio);
     setCustomFim(f.dataFim);
     // Carregar itens
-    const { data } = await supabase.from("fechamento_itens").select("*").eq("fechamento_id", f.id).order("nome").order("data");
+    const { data, error } = await supabase.from("fechamento_itens").select("*").eq("fechamento_id", f.id).order("nome").order("data");
+    if (error) { console.error("Erro ao carregar itens do fechamento:", error.message); return; }
     if (data) {
       const items = data.map(dbToFechamentoItem);
       setItens(items);
@@ -2161,8 +2187,10 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
   // ── Excluir fechamento ──
   const excluirFechamento = async (f: Fechamento) => {
     if (!f.id || !confirm(t("fech_confirmar_excluir"))) return;
-    await supabase.from("fechamento_itens").delete().eq("fechamento_id", f.id);
-    await supabase.from("fechamentos").delete().eq("id", f.id);
+    const { error: eiErr } = await supabase.from("fechamento_itens").delete().eq("fechamento_id", f.id);
+    if (eiErr) { console.error("Erro ao excluir itens do fechamento:", eiErr.message); return; }
+    const { error: efErr } = await supabase.from("fechamentos").delete().eq("id", f.id);
+    if (efErr) { console.error("Erro ao excluir fechamento:", efErr.message); return; }
     logAudit("DELETE", "fechamentos", f.id);
     setHistorico(prev => prev.filter(h => h.id !== f.id));
     if (fechamento?.id === f.id) {
@@ -2174,6 +2202,7 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
 
   // ── Exportar PDF ──
   const exportarPdf = async () => {
+    try {
     const { default: jsPDF } = await import("jspdf");
     const { default: autoTable } = await import("jspdf-autotable");
     const doc = new jsPDF({ orientation: "landscape" });
@@ -2212,10 +2241,12 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
       columnStyles: { 6: { textColor: [14, 159, 110] } },
     });
     doc.save(`fechamento_${fornecedor}_${intervalo.inicio}_${intervalo.fim}.pdf`);
+    } catch (err) { console.error("Erro ao exportar PDF:", err); }
   };
 
   // ── Exportar XLSX ──
   const exportarXlsx = async () => {
+    try {
     const XLSX = await import("xlsx");
     const rows = itens.map(i => ({
       [t("fech_col_nome")]: i.nome,
@@ -2232,6 +2263,7 @@ const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: O
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Fechamento");
     XLSX.writeFile(wb, `fechamento_${fornecedor}_${intervalo.inicio}_${intervalo.fim}.xlsx`);
+    } catch (err) { console.error("Erro ao exportar XLSX:", err); }
   };
 
   const fmtCurrency = (v: number) => v.toLocaleString(lang, { style: "currency", currency: "BRL" });
@@ -2497,13 +2529,18 @@ const Index = () => {
 
   useEffect(() => {
     authReady.then(async () => {
-      const { data: tcData } = await supabase.from("turnos_config").select("*").order("turno");
+      const { data: tcData, error } = await supabase.from("turnos_config").select("*").order("turno");
+      if (error) console.error("Erro ao carregar turnos_config:", error.message);
       if (tcData) setTurnosConfig(tcData.map(dbToTurnoConfig));
-    });
+    }).catch((err: unknown) => console.error("Erro ao carregar turnos_config:", err));
   }, []);
 
   useEffect(() => {
-    authReady.then(() => {
+    authReady.then(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const userId = session.user.id;
+      // DPO config
       supabase.from("opcoes").select("chave,valor")
         .in("chave", ["dpo_nome", "dpo_email"])
         .then(({ data }) => {
@@ -2511,10 +2548,16 @@ const Index = () => {
           const m: Record<string, string> = {};
           data.forEach((r: { chave: string; valor: string }) => { m[r.chave] = r.valor; });
           setDpoCfg({ nome: m["dpo_nome"] ?? "", email: m["dpo_email"] ?? "" });
-        });
-      supabase.from("profiles").select("is_admin").maybeSingle()
-        .then(({ data }) => { if (data?.is_admin) setIsAdmin(true); });
-    });
+        })
+        .catch((err: unknown) => console.error("Erro ao carregar DPO config:", err));
+      // Admin check — usa .eq("id", userId) como defesa em profundidade (não depende só de RLS)
+      supabase.from("profiles").select("is_admin").eq("id", userId).maybeSingle()
+        .then(({ data, error }) => {
+          if (error) { console.error("Erro ao verificar admin:", error.message); return; }
+          if (data?.is_admin) setIsAdmin(true);
+        })
+        .catch((err: unknown) => console.error("Erro ao verificar admin:", err));
+    }).catch((err: unknown) => console.error("authReady falhou:", err));
   }, []);
 
   const wrap = (fn: (val: Registro[]) => void) => (val: Registro[]) => {

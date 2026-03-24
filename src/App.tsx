@@ -30,6 +30,8 @@ const AppRoutes = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (!isRecoveryUrl) setLoading(false);
+    }).catch(() => {
+      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
