@@ -34,5 +34,5 @@ CREATE INDEX IF NOT EXISTS idx_terceiros_nome_trgm
 CREATE INDEX IF NOT EXISTS idx_audit_log_tabela_operacao
   ON public.audit_log (tabela, operacao);
 
-CREATE INDEX IF NOT EXISTS idx_audit_log_created_at
-  ON public.audit_log (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_criado_em
+  ON public.audit_log (criado_em DESC);
