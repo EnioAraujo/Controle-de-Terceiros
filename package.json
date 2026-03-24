@@ -10,7 +10,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:all": "vitest run && playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -71,6 +74,7 @@
   "devDependencies": {
     "@dyad-sh/react-vite-component-tagger": "^0.8.0",
     "@eslint/js": "^9.9.0",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/typography": "^0.5.15",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -94,6 +98,10 @@
     "vitest": "^4.1.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@swc/core", "core-js", "esbuild"]
+    "onlyBuiltDependencies": [
+      "@swc/core",
+      "core-js",
+      "esbuild"
+    ]
   }
 }

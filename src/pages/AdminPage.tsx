@@ -159,24 +159,15 @@ export default function AdminPage() {
 
   // ── Auth init ─────────────────────────────────────────────────────
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { setAuthReady(true); return; }
       setMyId(session.user.id);
       setMyEmail(session.user.email ?? "");
-      supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id", session.user.id)
-        .maybeSingle()
-        .then(({ data, error }) => {
-          if (error) console.error("Erro ao verificar admin:", error.message);
-          setIsAdmin(!!data?.is_admin);
-          setAuthReady(true);
-        })
-        .catch((err: unknown) => {
-          console.error("Erro ao verificar admin:", err);
-          setAuthReady(true);
-        });
+      // Usa rpc('is_admin') — SECURITY DEFINER, bypassa RLS, sem risco de recursão
+      const { data: adminResult, error: adminErr } = await supabase.rpc('is_admin');
+      if (adminErr) console.error("Erro ao verificar admin:", adminErr.message);
+      setIsAdmin(!!adminResult);
+      setAuthReady(true);
     }).catch((err: unknown) => {
       console.error("Erro ao obter sessão:", err);
       setAuthReady(true);
@@ -277,7 +268,13 @@ export default function AdminPage() {
       body: { action, ...params },
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      // Tenta extrair a mensagem real do corpo da resposta da Edge Function
+      // (error.message seria apenas "Edge Function returned a non-2xx status code")
+      const errBody = await (error as { context?: Response }).context
+        ?.json?.().catch(() => null) as { error?: string } | null;
+      throw new Error(errBody?.error ?? error.message);
+    }
     if (data?.error) throw new Error(data.error);
     return data;
   };
