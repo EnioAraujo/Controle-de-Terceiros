@@ -9,6 +9,8 @@ const LANGS: { value: Lang; label: string; code: string }[] = [
   { value: "en-US", label: "English",   code: "US" },
 ];
 
+type Step = "login" | "mfa";
+
 export default function LoginPage() {
   const { lang, setLang, t } = useI18n();
   const [email, setEmail]       = useState("");
@@ -16,18 +18,64 @@ export default function LoginPage() {
   const [loading, setLoading]   = useState(false);
   const [erro, setErro]         = useState("");
 
+  // MFA challenge state
+  const [step, setStep]             = useState<Step>("login");
+  const [mfaCode, setMfaCode]       = useState("");
+  const [factorId, setFactorId]     = useState("");
+  const [challengeId, setChallengeId] = useState("");
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro("");
     setLoading(true);
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setLoading(false);
+      setErro(mapSupabaseError(error.message, lang));
+      return;
+    }
+
+    // Verificar se MFA é necessário
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal?.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
+      // Usuário tem TOTP inscrito — iniciar challenge
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const totpFactor = factors?.totp?.[0];
+      if (totpFactor) {
+        const { data: challenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId: totpFactor.id });
+        if (chalErr || !challenge) {
+          setErro(lang === "pt-BR" ? "Erro ao iniciar verificação MFA." : "Error starting MFA challenge.");
+          setLoading(false);
+          return;
+        }
+        setFactorId(totpFactor.id);
+        setChallengeId(challenge.id);
+        setStep("mfa");
+      }
+    }
+    // Se AAL1 (sem MFA ou já verificado): App.tsx detecta sessão via onAuthStateChange
+    setLoading(false);
+  };
+
+  const handleMfaVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErro("");
+    setLoading(true);
+
+    const { error } = await supabase.auth.mfa.verify({
+      factorId,
+      challengeId,
+      code: mfaCode.replace(/\s/g, ""),
+    });
     setLoading(false);
 
     if (error) {
-      setErro(mapSupabaseError(error.message, lang));
+      setErro(lang === "pt-BR" ? "Código inválido. Tente novamente." : "Invalid code. Please try again.");
+      setMfaCode("");
+      return;
     }
-    // Se ok: App.tsx detecta a sessão via onAuthStateChange e renderiza o Index
+    // App.tsx detecta o upgrade para AAL2 via onAuthStateChange
   };
 
   return (
@@ -68,10 +116,59 @@ export default function LoginPage() {
         {/* Card */}
         <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,.08)", overflow: "hidden" }}>
           <div style={{ background: "linear-gradient(135deg,#0B1628,#1A2C4A)", padding: "24px 28px" }}>
-            <div style={{ color: "#F8FAFC", fontWeight: 700, fontSize: 18 }}>{t("login_title")}</div>
-            <div style={{ color: "#64748B", fontSize: 12, marginTop: 4 }}>{t("login_subtitle")}</div>
+            <div style={{ color: "#F8FAFC", fontWeight: 700, fontSize: 18 }}>{step === "mfa" ? (lang === "pt-BR" ? "Verificação em duas etapas" : "Two-step verification") : t("login_title")}</div>
+            <div style={{ color: "#64748B", fontSize: 12, marginTop: 4 }}>{step === "mfa" ? (lang === "pt-BR" ? "Digite o código do seu aplicativo autenticador" : "Enter the code from your authenticator app") : t("login_subtitle")}</div>
           </div>
 
+          {step === "mfa" ? (
+            <form onSubmit={handleMfaVerify} style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 18 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label htmlFor="mfa-code" style={{ fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: .7 }}>
+                  {lang === "pt-BR" ? "Código TOTP (6 dígitos)" : "TOTP Code (6 digits)"}
+                </label>
+                <input
+                  id="mfa-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="000000"
+                  value={mfaCode}
+                  onChange={e => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  required
+                  autoFocus
+                  style={{ border: "1.5px solid #E2E6EC", borderRadius: 8, padding: "10px 14px", fontSize: 22, fontFamily: "monospace", letterSpacing: 6, textAlign: "center", background: "#FAFBFC" }}
+                />
+              </div>
+
+              {erro && (
+                <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#E02424", fontWeight: 500 }}>
+                  {erro}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || mfaCode.length !== 6}
+                style={{
+                  background: (loading || mfaCode.length !== 6) ? "#93AEDE" : "#1A56DB",
+                  border: "none", borderRadius: 10, padding: "13px",
+                  cursor: (loading || mfaCode.length !== 6) ? "not-allowed" : "pointer",
+                  color: "#fff", fontWeight: 700, fontSize: 14,
+                  fontFamily: "inherit", transition: "all .15s",
+                }}
+              >
+                {loading ? (lang === "pt-BR" ? "Verificando…" : "Verifying…") : (lang === "pt-BR" ? "Verificar" : "Verify")}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setStep("login"); setErro(""); setMfaCode(""); }}
+                style={{ background: "none", border: "none", color: "#64748B", fontSize: 12, cursor: "pointer", textDecoration: "underline", fontFamily: "inherit" }}
+              >
+                {lang === "pt-BR" ? "← Voltar ao login" : "← Back to login"}
+              </button>
+            </form>
+          ) : (
           <form onSubmit={handleLogin} className="rsp-auth-card" style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 18 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <label htmlFor="email" style={{ fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: .7 }}>
@@ -129,6 +226,7 @@ export default function LoginPage() {
               {t("login_no_account")}
             </div>
           </form>
+          )}
         </div>
       </div>
     </div>

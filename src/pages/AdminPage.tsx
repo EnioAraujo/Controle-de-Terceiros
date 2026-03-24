@@ -143,6 +143,17 @@ export default function AdminPage() {
   const [passMsg,     setPassMsg]     = useState<{ ok: boolean; text: string } | null>(null);
   const [passLoading, setPassLoading] = useState(false);
 
+  // MFA enrollment
+  type MfaEnrollStep = "idle" | "qr" | "verify" | "done";
+  const [mfaFactors,    setMfaFactors]    = useState<{ id: string; friendly_name?: string }[]>([]);
+  const [mfaEnrollStep, setMfaEnrollStep] = useState<MfaEnrollStep>("idle");
+  const [mfaEnrollId,   setMfaEnrollId]   = useState("");
+  const [mfaQrCode,     setMfaQrCode]     = useState("");
+  const [mfaSecret,     setMfaSecret]     = useState("");
+  const [mfaCode,       setMfaCode]       = useState("");
+  const [mfaLoading,    setMfaLoading]    = useState(false);
+  const [mfaMsg,        setMfaMsg]        = useState<{ ok: boolean; text: string } | null>(null);
+
   // Reset feedback
   const [resetFeedback, setResetFeedback] = useState<Record<string, { text: string; ok: boolean }>>({});
 
@@ -163,6 +174,74 @@ export default function AdminPage() {
         });
     });
   }, []);
+
+  // ── MFA: carregar fatores inscritos ───────────────────────────────
+  const loadMfaFactors = useCallback(async () => {
+    const { data } = await supabase.auth.mfa.listFactors();
+    setMfaFactors(data?.totp ?? []);
+  }, []);
+
+  useEffect(() => {
+    loadMfaFactors();
+  }, [loadMfaFactors]);
+
+  const handleMfaEnroll = async () => {
+    setMfaLoading(true);
+    setMfaMsg(null);
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: "totp",
+      issuer: "Controle de Terceiros",
+    });
+    setMfaLoading(false);
+    if (error || !data) {
+      setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Erro ao iniciar inscrição MFA." : "Error starting MFA enrollment." });
+      return;
+    }
+    setMfaEnrollId(data.id);
+    setMfaQrCode(data.totp.qr_code);
+    setMfaSecret(data.totp.secret);
+    setMfaEnrollStep("qr");
+  };
+
+  const handleMfaVerifyEnroll = async () => {
+    setMfaLoading(true);
+    setMfaMsg(null);
+    const { data: challenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId: mfaEnrollId });
+    if (chalErr || !challenge) {
+      setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Erro ao criar desafio MFA." : "Error creating MFA challenge." });
+      setMfaLoading(false);
+      return;
+    }
+    const { error: verErr } = await supabase.auth.mfa.verify({
+      factorId: mfaEnrollId,
+      challengeId: challenge.id,
+      code: mfaCode.replace(/\s/g, ""),
+    });
+    setMfaLoading(false);
+    if (verErr) {
+      setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Código inválido. Tente novamente." : "Invalid code. Try again." });
+      setMfaCode("");
+      return;
+    }
+    setMfaEnrollStep("done");
+    setMfaMsg({ ok: true, text: lang === "pt-BR" ? "MFA ativado com sucesso!" : "MFA activated successfully!" });
+    setMfaCode("");
+    await loadMfaFactors();
+  };
+
+  const handleMfaUnenroll = async (factorId: string) => {
+    setMfaLoading(true);
+    setMfaMsg(null);
+    const { error } = await supabase.auth.mfa.unenroll({ factorId });
+    setMfaLoading(false);
+    if (error) {
+      setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Erro ao remover MFA." : "Error removing MFA." });
+      return;
+    }
+    setMfaMsg({ ok: true, text: lang === "pt-BR" ? "MFA removido." : "MFA removed." });
+    setMfaEnrollStep("idle");
+    await loadMfaFactors();
+  };
 
   // ── Edge Function helper ──────────────────────────────────────────
   const callAdminFn = async (action: string, params: Record<string, unknown>) => {
@@ -659,6 +738,101 @@ export default function AdminPage() {
                       {passLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                       {passLoading ? t("admin_saving") : t("admin_save_pwd")}
                     </Button>
+                  </form>
+
+                  {/* ── Seção MFA ── */}
+                  <div className="mt-8 pt-6 border-t border-slate-100 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <KeyRound className="h-4 w-4 text-slate-500" />
+                      <span className="font-semibold text-slate-900 text-sm">
+                        {lang === "pt-BR" ? "Autenticação em duas etapas (TOTP)" : "Two-factor authentication (TOTP)"}
+                      </span>
+                      {mfaFactors.length > 0 && (
+                        <Badge className="ml-1 bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">
+                          {lang === "pt-BR" ? "Ativo" : "Active"}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {mfaMsg && (
+                      <div className={`rounded-md p-3 text-sm font-medium ${mfaMsg.ok ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                        {mfaMsg.text}
+                      </div>
+                    )}
+
+                    {mfaFactors.length > 0 ? (
+                      <div className="space-y-3">
+                        <p className="text-xs text-slate-500">
+                          {lang === "pt-BR"
+                            ? "Seu aplicativo autenticador está configurado. Cada login exigirá um código TOTP."
+                            : "Your authenticator app is configured. Each login will require a TOTP code."}
+                        </p>
+                        {mfaFactors.map(f => (
+                          <Button
+                            key={f.id}
+                            variant="destructive"
+                            size="sm"
+                            className="w-full"
+                            disabled={mfaLoading}
+                            onClick={() => handleMfaUnenroll(f.id)}
+                          >
+                            {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldOff className="h-4 w-4 mr-2" />}
+                            {lang === "pt-BR" ? "Desativar MFA" : "Disable MFA"}
+                          </Button>
+                        ))}
+                      </div>
+                    ) : mfaEnrollStep === "idle" ? (
+                      <div className="space-y-3">
+                        <p className="text-xs text-slate-500">
+                          {lang === "pt-BR"
+                            ? "Use um aplicativo como Google Authenticator ou Authy para proteger sua conta."
+                            : "Use an app like Google Authenticator or Authy to protect your account."}
+                        </p>
+                        <Button variant="outline" size="sm" className="w-full" onClick={handleMfaEnroll} disabled={mfaLoading}>
+                          {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
+                          {lang === "pt-BR" ? "Configurar MFA" : "Set up MFA"}
+                        </Button>
+                      </div>
+                    ) : mfaEnrollStep === "qr" ? (
+                      <div className="space-y-4">
+                        <p className="text-xs text-slate-500">
+                          {lang === "pt-BR"
+                            ? "1. Escaneie o QR code com seu aplicativo autenticador."
+                            : "1. Scan the QR code with your authenticator app."}
+                        </p>
+                        <div className="flex justify-center">
+                          <img src={mfaQrCode} alt="QR Code MFA" className="w-48 h-48 border border-slate-200 rounded-lg p-1" />
+                        </div>
+                        <details className="text-xs text-slate-400">
+                          <summary className="cursor-pointer">{lang === "pt-BR" ? "Não consegue escanear? Ver chave manual" : "Can't scan? Show manual key"}</summary>
+                          <code className="block mt-1 break-all bg-slate-50 p-2 rounded text-slate-600 select-all">{mfaSecret}</code>
+                        </details>
+                        <p className="text-xs text-slate-500">
+                          {lang === "pt-BR"
+                            ? "2. Digite o código de 6 dígitos gerado pelo app para confirmar:"
+                            : "2. Enter the 6-digit code from your app to confirm:"}
+                        </p>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="000000"
+                          value={mfaCode}
+                          onChange={e => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                          className="text-center text-lg tracking-widest font-mono"
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" className="flex-1" onClick={() => { setMfaEnrollStep("idle"); setMfaMsg(null); setMfaCode(""); }}>
+                            {lang === "pt-BR" ? "Cancelar" : "Cancel"}
+                          </Button>
+                          <Button size="sm" className="flex-1" disabled={mfaLoading || mfaCode.length !== 6} onClick={handleMfaVerifyEnroll}>
+                            {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            {lang === "pt-BR" ? "Confirmar" : "Confirm"}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                   </form>
                 </CardContent>
               </Card>
