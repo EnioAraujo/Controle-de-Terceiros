@@ -10,7 +10,7 @@
 | 2026-03-16 | Adicionado botão 'Excluir TODOS' (admin-only) na tela principal, com modal de confirmação, log de auditoria e exclusão em massa dos registros. |
 # Controle de Terceiros — Contexto do Projeto
 
-> **Última atualização:** 2026-03-14
+> **Última atualização:** 2026-03-24
 > **Branch:** Main-terceiros
 
 ---
@@ -391,3 +391,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-15 | Extraída Análise de Demanda (DemandAnalysis) do Dashboard para página dedicada ProjecaoPage.tsx com aba própria "Projeção" na navegação; Dashboard agora não exibe mais a seção de demanda; componente totalmente autônomo com filtros, tabelas, projeção e distribuição proporcional |
 | 2026-03-15 | Importação de histórico via Excel: componente ImportExcelRegistros na aba Configurações; upload drag-and-drop de .xlsx; mapeamento automático de colunas (DATA_PRESENCA, TURNO, NOME_COMPLETO_TERCEIRO, etc.); detecção de duplicatas (nome+data+turno); pré-visualização; sanitização via DOMPurify; suporte a datas DD/MM/YYYY e serial Excel; 17 chaves i18n (imp_*) em pt-BR/en-US |
 | 2026-03-15 | Corrigidas políticas SELECT: agora apenas usuários autenticados podem consultar diarias_config, fechamento_itens, fechamentos, opcoes, profiles, registros, terceiros e turnos_config (migration fix_rls_select_authenticated.sql) |
+| 2026-03-24 | ProjecaoPage: tabelas "Média por Dia" e "Média por Turno" unificadas em uma única tabela full-width com colunas DATA / 1º / 2º / 3º / TOTAL / VALOR APROXIMADO; cálculo de valor incorporado (resolverDiaria por turno quando fornecedor filtrado, ou total×R$250 como fallback) |
