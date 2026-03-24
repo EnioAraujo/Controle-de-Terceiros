@@ -94,6 +94,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res
           .status(400)
           .json({ error: "E-mail e senha são obrigatórios." });
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email))
+        return res
+          .status(400)
+          .json({ error: "Formato de e-mail inválido." });
       if (password.length < 6)
         return res
           .status(400)

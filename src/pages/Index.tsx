@@ -885,14 +885,22 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }:
     setConflito(null);
   };
 
-  const excluir = (ids: string[]) => { setRegistros(registros.filter(r => !ids.includes(r.id))); setConfirm(null); };
+  const excluir = (ids: string[]) => { setRegistros(registros.filter(r => !ids.includes(r.id))); setSelectedIds([]); setConfirm(null); };
 
   // Proteção contra CSV injection: escapa campos que começam com caracteres perigosos
   const csvSafe = (val: string) => {
     if (!val) return val;
-    if (/^[=+\-@|\t]/.test(val)) return `'${val}`;
-    if (val.includes(";") || val.includes('"') || val.includes("\n")) return `"${val.replace(/"/g, '""')}"` ;
-    return val;
+    // Escape aspas existentes primeiro
+    const escaped = val.replace(/"/g, '""');
+    // Se começa com char perigoso ou contém separadores/quebras de linha, envolve com quote + apóstrofo
+    if (/^[=+\-@|\t`]/.test(escaped) || escaped.includes(";") || escaped.includes("\n") || escaped.includes("\r")) {
+      return `"'${escaped}"`;
+    }
+    // Se contém aspas escapadas ou espaços, envolve com quotes
+    if (escaped !== val || /[\s,"]/.test(escaped)) {
+      return `"${escaped}"`;
+    }
+    return escaped;
   };
 
   const exportCSV = () => {
