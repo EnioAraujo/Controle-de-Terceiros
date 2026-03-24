@@ -90,12 +90,18 @@ Deno.serve(async (req) => {
       });
       if (error) return json({ error: error.message }, 400, corsHeaders);
 
-      // Atualiza is_admin no profile (trigger já cria o registro base)
-      if (data.user && is_admin) {
+      if (data.user) {
+        // Garante que o profile existe e está aprovado
         await supabaseAdmin
           .from("profiles")
-          .update({ is_admin: true })
+          .upsert({ id: data.user.id, email, is_admin, is_approved: true })
           .eq("id", data.user.id);
+
+        // Insere role em user_roles (o trigger sync_is_admin_from_role cuida do profiles.is_admin)
+        const role = is_admin ? "admin" : "user";
+        await supabaseAdmin
+          .from("user_roles")
+          .upsert({ user_id: data.user.id, role }, { onConflict: "user_id" });
       }
       return json({ data: { id: data.user?.id, email: data.user?.email } }, 200, corsHeaders);
     }

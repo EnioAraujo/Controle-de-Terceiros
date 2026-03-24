@@ -98,7 +98,8 @@ supabase/functions/
 | `registros` | Registros de presença dos terceirizados |
 | `opcoes` | Listas de seleção configuráveis (chave/valor) |
 | `terceiros` | Cadastro de nomes de colaboradores terceirizados |
-| `profiles` | Perfis de usuário com flag `is_admin` |
+| `profiles` | Perfis de usuário com is_admin, is_approved e custom_permissions |
+| `user_roles` | Role RBAC por usuário (admin/moderator/user) |
 | `audit_log` | Trilha de auditoria de operações |
 
 ### Schema `registros`
@@ -135,11 +136,25 @@ UNIQUE(chave, valor)
 ### Schema `profiles`
 
 ```sql
-id         UUID  PK (FK → auth.users)
-email      TEXT
-is_admin   BOOLEAN  DEFAULT false
-created_at TIMESTAMPTZ
+id                 UUID  PK (FK → auth.users)
+email              TEXT
+is_admin           BOOLEAN  DEFAULT false
+is_approved        BOOLEAN  DEFAULT true
+custom_permissions TEXT[]   DEFAULT '{}'
+created_at         TIMESTAMPTZ
 ```
+
+### Schema `user_roles`
+
+```sql
+id         BIGINT  PK (identity)
+user_id    UUID    FK → auth.users (UNIQUE)
+role       app_role  ENUM ('admin', 'moderator', 'user')
+created_at TIMESTAMPTZ  DEFAULT now()
+```
+
+> `app_role` é um enum PostgreSQL criado pela migration `rbac_approvals.sql`.
+> Trigger `sync_is_admin_from_role` mantém `profiles.is_admin` sincronizado: `role='admin'` → `is_admin=true`.
 
 ### RLS — Políticas restritivas (2026-03-15)
 
@@ -237,14 +252,45 @@ Setores:      RECEBIMENTO, EXPEDIÇÃO, SEPARAÇÃO, CONFERÊNCIA, ENDEREÇAMENT
 ## 8. Painel Administrativo (AdminPage.tsx)
 
 - Acesso restrito a usuários com `is_admin = true` no `profiles`
-- **Aba Usuários:**
-  - Lista todos os usuários com stats (total, admins, comuns)
-  - **Novo usuário:** botão abre modal para criar usuário (e-mail + senha + flag admin)
-  - **Editar:** botão ⌘ por linha — altera e-mail e/ou senha do usuário
-  - **Excluir:** botão 🗑 por linha — remove permanentemente (não pode excluir a si mesmo)
-  - Toggle admin: promove/revoga permissão de administrador
-  - Envio de e-mail de redefinição de senha
-- **Aba Conta:** alteração de senha do usuário logado
+- Interface com **3 abas** via shadcn/ui Tabs:
+
+### Aba Usuários
+- Stats cards (total, admins, comuns)
+- Barra de busca + toggle **Grid / Lista**
+- **Grid:** cards por usuário com avatar, badge de role, Switch de aprovação, seletor de role, Criado em, botões Reset Senha e Excluir
+- **Lista:** tabela compacta com os mesmos controles
+- **Criar usuário:** AlertDialog com campos e-mail, senha e toggle admin
+- **Excluir:** AlertDialog de confirmação (não pode excluir a si mesmo)
+- **Reset de senha:** envia e-mail para `/reset-password` (mantém fluxo atual)
+- Não permite alterar o próprio role
+
+### Aba Permissões
+- Coluna esquerda: lista de usuários selecionáveis
+- Coluna direita: presets rápidos (user/moderator/admin) + checkboxes por categoria (Accordion) + botão salvar
+- Permissões salvas em `profiles.custom_permissions TEXT[]`
+
+### Aba Conta
+- Alteração de senha do usuário logado via `supabase.auth.updateUser()`
+
+### Roles disponíveis
+
+| Role | Label | Presets de permissão |
+|---|---|---|
+| `admin` | Admin | Todas as permissões |
+| `moderator` | Moderador | records.view/create/edit/export + projection.view |
+| `user` | Usuário | records.view/create |
+
+### Permissões do sistema
+
+| Chave | Descrição |
+|---|---|
+| `records.view` | Ver registros |
+| `records.create` | Criar lançamentos |
+| `records.edit` | Editar / excluir |
+| `records.export` | Exportar PDF/Excel |
+| `records.close` | Fechar período |
+| `projection.view` | Ver projeção |
+| `admin.access` | Painel admin |
 
 ### Edge Function `admin-users`
 
@@ -259,7 +305,7 @@ supabase functions deploy admin-users
 **Ações:**
 | Ação | Payload |
 |---|---|
-| `create` | `{ email, password, is_admin? }` |
+| `create` | `{ email, password, is_admin? }` — também insere em `user_roles` |
 | `update` | `{ userId, email?, password? }` |
 | `delete` | `{ userId }` |
 
@@ -392,3 +438,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-15 | Corrigidas políticas SELECT: agora apenas usuários autenticados podem consultar diarias_config, fechamento_itens, fechamentos, opcoes, profiles, registros, terceiros e turnos_config (migration fix_rls_select_authenticated.sql) |
 | 2026-03-24 | ProjecaoPage: tabelas "Média por Dia" e "Média por Turno" unificadas em uma única tabela full-width com colunas DATA / 1º / 2º / 3º / TOTAL / VALOR APROXIMADO; cálculo de valor incorporado (resolverDiaria por turno quando fornecedor filtrado, ou total×R$250 como fallback) |
 | 2026-03-24 | Segurança: campo `nome` agora sanitizado com DOMPurify (ALLOWED_TAGS:[]) antes de persistir no Supabase, tanto no fluxo de edição individual quanto no fluxo de lote; CONTEXT.md corrigido removendo referência incorreta ao ImportExcelRegistros.tsx (componente nunca implementado) |
+| 2026-03-24 | RBAC completo na AdminPage: migration rbac_approvals.sql adiciona enum app_role, tabela user_roles, colunas is_approved e custom_permissions em profiles, trigger sync_is_admin_from_role; AdminPage reescrita com 3 abas (Usuários/Permissões/Conta), grid/list view toggle, Switch de aprovação, seletor de role, AlertDialogs para criar/excluir, aba de permissões com Accordion + checkboxes + presets, shadcn/ui Tabs/Card/Switch/Select/Badge/Checkbox/Accordion/AlertDialog |
