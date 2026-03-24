@@ -262,11 +262,14 @@ export default function AdminPage() {
 
   // ── Edge Function helper ──────────────────────────────────────────
   const callAdminFn = async (action: string, params: Record<string, unknown>) => {
+    // Verifica se há sessão ativa — mas NÃO passa o token manualmente.
+    // supabase.functions.invoke já injeta Authorization automaticamente
+    // usando o token gerenciado pelo SDK (com auto-refresh). Passar manualmente
+    // pode enviar um token stale se getSession() retornar antes do refresh.
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) throw new Error("Sessão expirada. Faça login novamente.");
+    if (!session) throw new Error("Sessão expirada. Faça login novamente.");
     const { data, error } = await supabase.functions.invoke("admin-users", {
       body: { action, ...params },
-      headers: { Authorization: `Bearer ${session.access_token}` },
     });
     if (error) {
       // Tenta extrair a mensagem real do corpo da resposta da Edge Function
