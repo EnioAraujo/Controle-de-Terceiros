@@ -17,7 +17,7 @@
 
 > ⚠️ **REGRA OBRIGATÓRIA PARA O COPILOT**
 > Antes de **qualquer alteração de código** neste projeto, leia obrigatoriamente:
-> 1. Este arquivo `CONTEXT.md` — visão geral, schema, convenções e histórico
+> 1. Este arquivo `arquivolocal/CONTEXT.md` — visão geral, schema, convenções e histórico
 > 2. `arquivolocal/skill_tdd.md` — diretrizes de TDD obrigatórias para este projeto
 
 ---
