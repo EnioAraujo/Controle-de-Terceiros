@@ -144,7 +144,7 @@ export const buildWhatsAppMessage = (registros: Registro[], template: WhatsAppTe
   const { header, campos } = template;
   const lines: string[] = [];
 
-  lines.push(`📋 *${header}*`);
+  lines.push(`*${header}*`);
   lines.push("");
 
   if (registros.length === 1) {
@@ -165,7 +165,7 @@ export const buildWhatsAppMessage = (registros: Registro[], template: WhatsAppTe
     }
 
     lines.push("");
-    lines.push(`👥 *Colaboradores (${registros.length}):*`);
+    lines.push(`*Colaboradores (${registros.length}):*`);
     for (const r of registros) {
       const parts: string[] = [];
       if (personCampos.includes("nome")) parts.push(r.nome);

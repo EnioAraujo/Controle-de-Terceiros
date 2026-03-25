@@ -448,3 +448,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-25 | Agrupamento por loteId restaurado na tabela de Lançamentos: registros do mesmo lote voltam a ser exibidos em linha única com badge N×, nomes dos demais colaboradores abaixo e borda azul à esquerda; checkbox da linha seleciona/desseleciona todos os IDs do lote de uma vez |
 | 2026-03-25 | Agrupamento da tabela de Lançamentos alterado de loteId para data+turno: registros do mesmo dia e turno agrupados em uma única linha independente de terem sido lançados em sessões separadas; useMemo grupos usa chave composta "data||turno" |
 | 2026-03-25 | Mensagem WhatsApp: removida seta (→) entre horas de entrada e saída; novo formato: "HH:MM - HH:MM" quando ambas existem, só a hora quando apenas uma estiver preenchida; testes atualizados em format-utils.test.ts |
+| 2026-03-25 | Mensagem WhatsApp: removidos emojis 📋 e 👥 do texto gerado; header e seção de colaboradores ficam somente em negrito (formato *texto*) sem ícones |

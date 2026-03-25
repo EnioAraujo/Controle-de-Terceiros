@@ -230,7 +230,7 @@ describe("buildWhatsAppMessage", () => {
 
   it("monta mensagem individual com todos os campos", () => {
     const msg = buildWhatsAppMessage([baseReg], WA_DEFAULT_TEMPLATE);
-    expect(msg).toContain("📋 *REGISTRO DE PRESENÇA*");
+    expect(msg).toContain("*REGISTRO DE PRESENÇA*");
     expect(msg).toContain("*Data:* ");
     expect(msg).toContain("*Turno:* Dia");
     expect(msg).toContain("*Nome:* João Silva");
@@ -248,7 +248,7 @@ describe("buildWhatsAppMessage", () => {
   it("monta mensagem individual com campos parciais", () => {
     const template: WhatsAppTemplate = { header: "TESTE", campos: ["data", "nome"] };
     const msg = buildWhatsAppMessage([baseReg], template);
-    expect(msg).toContain("📋 *TESTE*");
+    expect(msg).toContain("*TESTE*");
     expect(msg).toContain("*Nome:* João Silva");
     expect(msg).not.toContain("*Turno:*");
     expect(msg).not.toContain("*Cargo:*");
@@ -267,9 +267,9 @@ describe("buildWhatsAppMessage", () => {
       { ...baseReg, id: "r3", loteId: "L1", nome: "Pedro", horaEntrada: "07:00", horaSaida: "16:00", totalHoras: "09:00" },
     ];
     const msg = buildWhatsAppMessage(lote, WA_DEFAULT_TEMPLATE);
-    expect(msg).toContain("📋 *REGISTRO DE PRESENÇA*");
+    expect(msg).toContain("*REGISTRO DE PRESENÇA*");
     expect(msg).toContain("*Turno:* Dia");
-    expect(msg).toContain("👥 *Colaboradores (3):*");
+    expect(msg).toContain("*Colaboradores (3):*");
     expect(msg).toContain("• João — 08:00 - 17:00 — (09:00)");
     expect(msg).toContain("• Maria — 09:00 - 18:00 — (09:00)");
     expect(msg).toContain("• Pedro — 07:00 - 16:00 — (09:00)");
