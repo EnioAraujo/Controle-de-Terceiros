@@ -10,8 +10,15 @@
 | 2026-03-16 | Adicionado botão 'Excluir TODOS' (admin-only) na tela principal, com modal de confirmação, log de auditoria e exclusão em massa dos registros. |
 # Controle de Terceiros — Contexto do Projeto
 
-> **Última atualização:** 2026-03-24
+> **Última atualização:** 2026-03-25
 > **Branch:** Main-terceiros
+
+---
+
+> ⚠️ **REGRA OBRIGATÓRIA PARA O COPILOT**
+> Antes de **qualquer alteração de código** neste projeto, leia obrigatoriamente:
+> 1. Este arquivo `CONTEXT.md` — visão geral, schema, convenções e histórico
+> 2. `arquivolocal/skill_tdd.md` — diretrizes de TDD obrigatórias para este projeto
 
 ---
 
@@ -456,3 +463,6 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-25 | Layout mobile: alternador PT/EN no header mobile; override CSS de Colaboradores no modal mobile (.mobile-form-worker-grid/header/outer) para layout vertical empilhado; autocomplete de nome usa position:fixed (viewport) sem scroll horizontal |
 | 2026-03-25 | Reorganização do FormLancamento: (1) CARGO movido de campo global do Bloco 1 para campo individual por pessoa no Bloco 5 (PessoaRow ganha campo cargo; handleQtd/handleSave/onSave use p.cargo); (2) Bloco JORNADA simplificado com apenas DATA + TURNO (removidos ENTRADA PADRÃO e SAÍDA PADRÃO — preenchimento automático de horas por turnosConfig mantido); Jornada movida para acima de Quantidade de Pessoas; (3) MOTIVO renomeado para OPERAÇÃO em todo o app (i18n: form_label_motivo, lanc_col_motivo, detail_motivo, cfg_opt_motivos, form_block_4; CSV header); campo OPERAÇÃO movido do Bloco 4 para o Bloco 1 (Identificação) ao lado de Fornecedor; Bloco 4 fica apenas OBSERVAÇÕES; CSS mobile atualizado com regra select para CARGO por pessoa |
 | 2026-03-25 | Fusão dos blocos IDENTIFICAÇÃO e LOTAÇÃO: Bloco LOTAÇÃO removido; bloco IDENTIFICAÇÃO (badge 2) absorve todos os 4 campos na ordem FORNECEDOR | UNIDADE | OPERAÇÃO | CC (G cols=4); badges renumerados: JORNADA→1, IDENTIFICAÇÃO→2, OBSERVAÇÕES→3, COLABORADORES→4; melhorias WhatsApp: nomes convertidos para Title Case (split por espaço — compatível com acentos pt-BR), separador nome→hora alterado de " — " para ": " (ex: "Alam Vilas Boas: 13:40"), label "Motivo" → "Operação" em WHATSAPP_FIELDS na mensagem gerada |
+| 2026-03-25 | Fix componente G movido para escopo de módulo (fora de FormLancamento) — corrige perda de foco ao digitar nos campos de texto (OBSERVAÇÃO etc.) |
+| 2026-03-25 | WhatsApp: (1) corrigido bug em que OBSERVAÇÃO nunca aparecia na mensagem — saveWaTemplate agora também chama setWaTemplate(payload); (2) reordenação drag-and-drop dos campos: campos habilitados exibidos primeiro com handle ⠿, arrastáveis entre si; ordem salva no template e refletida no corpo da mensagem |
+| 2026-03-25 | CONTEXT.md: adicionada regra obrigatória para o Copilot ler CONTEXT.md e arquivolocal/skill_tdd.md antes de qualquer alteração de código |
