@@ -27,7 +27,7 @@ import {
 } from "@/lib/fechamento-utils";
 
 // ─── TIPOS ───────────────────────────────────────────────────────
-interface Opcoes {
+export interface Opcoes {
   turnos:       string[];
   unidades:     string[];
   fornecedores: string[];
@@ -508,10 +508,10 @@ const AutocompleteNome = ({ value, onChange, suggestions, placeholder, style }: 
 };
 
 // ─── FORM DE LANÇAMENTO ─────────────────────────────────────────
-interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; }
-interface FormLancamentoProps { inicial?: Registro | null; loteInicial?: Registro[]; onSave: (registros: Registro[]) => void; onCancel: () => void; opcoes: Opcoes; registros?: Registro[]; turnosConfig?: TurnoConfig[]; }
+export interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; }
+export interface FormLancamentoProps { inicial?: Registro | null; loteInicial?: Registro[]; onSave: (registros: Registro[]) => void; onCancel: () => void; opcoes: Opcoes; registros?: Registro[]; turnosConfig?: TurnoConfig[]; }
 
-const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, registros: todosRegistros = [], turnosConfig = [] }: FormLancamentoProps) => {
+export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, registros: todosRegistros = [], turnosConfig = [] }: FormLancamentoProps) => {
   const { t } = useI18n();
   const isEdit = !!inicial && !loteInicial?.length;
   const isLoteEdit = !!loteInicial?.length;

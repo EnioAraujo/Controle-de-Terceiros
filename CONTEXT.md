@@ -65,8 +65,9 @@ src/
 │   └── utils.ts               # cn() helper
 ├── pages/
 │   ├── Index.tsx              # Página principal (lançamento + listagem)
+│   ├── MobileLancamentosPage.tsx # Versão mobile dos lançamentos (cards, FAB, bottom sheet)
 │   ├── ProjecaoPage.tsx       # Página dedicada de projeção/análise de demanda
-│   ├── LoginPage.tsx          # Autenticação email/senha
+│   ├── LoginPage.tsx          # Autenticação email/senha + seleção de dispositivo (mobile/desktop)
 │   ├── AdminPage.tsx          # Gerenciamento de usuários + conta
 │   ├── ResetPasswordPage.tsx  # Redefinição de senha
 │   └── NotFound.tsx
@@ -180,8 +181,9 @@ created_at TIMESTAMPTZ  DEFAULT now()
 
 | Rota | Acesso | Componente |
 |---|---|---|
-| `/login` | Público | `LoginPage` |
+| `/login` | Público | `LoginPage` — inclui seletor de modo (mobile/desktop) salvo em sessionStorage |
 | `/` | Autenticado | `Index` |
+| `/mobile` | Autenticado | `MobileLancamentosPage` — versão mobile-first da tela de lançamentos |
 | `/admin` | Autenticado | `AdminPage` |
 | `/reset-password` | Aberto (requer token de recuperação) | `ResetPasswordPage` |
 | `*` | Qualquer | `NotFound` |
@@ -450,3 +452,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-25 | Mensagem WhatsApp: removida seta (→) entre horas de entrada e saída; novo formato: "HH:MM - HH:MM" quando ambas existem, só a hora quando apenas uma estiver preenchida; testes atualizados em format-utils.test.ts |
 | 2026-03-25 | Mensagem WhatsApp: removidos emojis 📋 e 👥 do texto gerado; header e seção de colaboradores ficam somente em negrito (formato *texto*) sem ícones |
 | 2026-03-25 | Editar Lote: controle de quantidade de pessoas (botões −/+) exibido também no modo de edição de lote; novas linhas herdam horaEntrada e horaSaida padrão do formulário; nomes buscados via autocomplete de terceiros cadastrados; IDs novos recebem uuid() automaticamente ao salvar |
+| 2026-03-25 | Modo mobile: seletor de dispositivo (cards 📱 Mobile / 💻 Desktop) adicionado ao LoginPage antes do formulário de login; escolha salva em sessionStorage("deviceMode"); App.tsx detecta transição null→session e redireciona para /mobile ou / conforme o valor; nova página MobileLancamentosPage (src/pages/MobileLancamentosPage.tsx) com header fixo, filtros colapsáveis, lista de cards agrupados por data+turno, seleção em massa, FAB +, bottom sheet com Editar/Excluir/WhatsApp, reutiliza FormLancamento exportado de Index.tsx; Opcoes exportada de Index.tsx |

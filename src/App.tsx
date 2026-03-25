@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +12,7 @@ import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import AdminPage from "./pages/AdminPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import MobileLancamentosPage from "./pages/MobileLancamentosPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,6 +22,7 @@ const AppRoutes = () => {
   const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const prevSessionRef = useRef<Session | null>(null);
 
   useEffect(() => {
     // Se a URL contém token de recuperação, aguarda o evento PASSWORD_RECOVERY
@@ -41,6 +43,22 @@ const AppRoutes = () => {
         setLoading(false);
         return;
       }
+      // Ao fazer login (null → sessão válida), redirecionar por deviceMode
+      if (!prevSessionRef.current && session) {
+        const mode = sessionStorage.getItem("deviceMode");
+        if (mode === "mobile") {
+          setSession(session);
+          setLoading(false);
+          navigate("/mobile", { replace: true });
+          prevSessionRef.current = session;
+          return;
+        }
+      }
+      // Ao fazer logout, limpar preferência de dispositivo
+      if (prevSessionRef.current && !session) {
+        sessionStorage.removeItem("deviceMode");
+      }
+      prevSessionRef.current = session;
       setSession(session);
       setLoading(false);
     });
@@ -61,6 +79,7 @@ const AppRoutes = () => {
       <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />
       <Route path="/" element={session ? <Index /> : <Navigate to="/login" replace />} />
       <Route path="/admin" element={session ? <AdminPage /> : <Navigate to="/login" replace />} />
+      <Route path="/mobile" element={session ? <MobileLancamentosPage /> : <Navigate to="/login" replace />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
