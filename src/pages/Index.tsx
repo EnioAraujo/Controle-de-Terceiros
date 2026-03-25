@@ -508,7 +508,7 @@ const AutocompleteNome = ({ value, onChange, suggestions, placeholder, style }: 
 };
 
 // ─── FORM DE LANÇAMENTO ─────────────────────────────────────────
-export interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; }
+export interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; cargo: string; }
 export interface FormLancamentoProps { inicial?: Registro | null; loteInicial?: Registro[]; onSave: (registros: Registro[]) => void; onCancel: () => void; opcoes: Opcoes; registros?: Registro[]; turnosConfig?: TurnoConfig[]; }
 
 export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, registros: todosRegistros = [], turnosConfig = [] }: FormLancamentoProps) => {
@@ -533,8 +533,8 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
 
   const [pessoas, setPessoas] = useState<PessoaRow[]>(
     isLoteEdit
-      ? loteInicial!.map(r => ({ nome: r.nome, horaEntrada: r.horaEntrada, horaSaida: r.horaSaida }))
-      : [{ nome: inicial?.nome || "", horaEntrada: base?.horaEntrada || "05:00", horaSaida: base?.horaSaida || "13:20" }]
+      ? loteInicial!.map(r => ({ nome: r.nome, horaEntrada: r.horaEntrada, horaSaida: r.horaSaida, cargo: r.cargo || base?.cargo || opcoes.cargos[0] || "" }))
+      : [{ nome: inicial?.nome || "", horaEntrada: base?.horaEntrada || "05:00", horaSaida: base?.horaSaida || "13:20", cargo: base?.cargo || opcoes.cargos[0] || "" }]
   );
 
   const setC = (k: string, v: string) => {
@@ -556,7 +556,7 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
     const cap = Math.max(1, Math.min(20, n));
     setPessoas(prev => {
       if (cap > prev.length)
-        return [...prev, ...Array.from({ length: cap - prev.length }, () => ({ nome: "", horaEntrada: comum.horaEntrada, horaSaida: comum.horaSaida }))];
+        return [...prev, ...Array.from({ length: cap - prev.length }, () => ({ nome: "", horaEntrada: comum.horaEntrada, horaSaida: comum.horaSaida, cargo: comum.cargo }))];
       return prev.slice(0, cap);
     });
   };
@@ -591,7 +591,7 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
         }
       }
       // Conflito turno diferente é tratado em salvar() de Lancamentos
-      onSave([{ ...inicial!, ...comum, nome: nomeTrimmed, horaEntrada: p.horaEntrada, horaSaida: p.horaSaida, totalHoras: calcHoras(p.horaEntrada, p.horaSaida) }]);
+      onSave([{ ...inicial!, ...comum, cargo: p.cargo, nome: nomeTrimmed, horaEntrada: p.horaEntrada, horaSaida: p.horaSaida, totalHoras: calcHoras(p.horaEntrada, p.horaSaida) }]);
     } else {
       const validPessoas = pessoas.filter(p => p.nome.trim().length > 2);
       if (!force) {
@@ -628,6 +628,7 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
         id: isLoteEdit ? (loteInicial![i]?.id ?? uuid()) : uuid(),
         ...(lId ? { loteId: lId } : {}),
         ...comum,
+        cargo: p.cargo,
         nome: sanitize(p.nome.trim()),
         horaEntrada: p.horaEntrada,
         horaSaida: p.horaSaida,
@@ -641,7 +642,6 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
     return <div className={cls} style={{ display:"grid", gridTemplateColumns:`repeat(${cols},1fr)`, gap:14 }}>{children}</div>;
   };
 
-  const totalPadrao = calcHoras(comum.horaEntrada, comum.horaSaida);
   const btnLabel = (isEdit || isLoteEdit)
     ? t("form_btn_save_edit")
     : validCount > 1
@@ -650,6 +650,18 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+
+      {/* Bloco 3 — Jornada */}
+      <div>
+        <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:20, height:20, borderRadius:6, background:"#D97706", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>3</div>
+          {t("form_block_3")}
+        </div>
+        <G cols={2}>
+          <Input label={t("form_label_data")} type="date" value={comum.data} onChange={e => setC("data", e.target.value)} />
+          <Select label={t("form_label_turno")} value={comum.turno} onChange={e => setC("turno", e.target.value)}>{opcoes.turnos.map(c => <option key={c}>{c}</option>)}</Select>
+        </G>
+      </div>
 
       {/* Bloco 0 — Quantidade */}
       {!isEdit && (
@@ -672,8 +684,8 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
           {t("form_block_1")}
         </div>
         <G cols={2}>
-          <Select label={t("form_label_cargo")} value={comum.cargo} onChange={e => setC("cargo", e.target.value)}>{opcoes.cargos.map(c => <option key={c}>{c}</option>)}</Select>
           <Select label={t("form_label_forn")} value={comum.fornecedor} onChange={e => setC("fornecedor", e.target.value)}>{opcoes.fornecedores.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label={t("form_label_motivo")} value={comum.motivo} onChange={e => setC("motivo", e.target.value)}>{opcoes.motivos.map(c => <option key={c}>{c}</option>)}</Select>
         </G>
       </div>
 
@@ -689,35 +701,13 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
         </G>
       </div>
 
-      {/* Bloco 3 — Jornada */}
-      <div>
-        <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ width:20, height:20, borderRadius:6, background:"#D97706", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>3</div>
-          {t("form_block_3")}
-          {!isEdit && <span style={{ fontSize:10, color:"#94A3B8", fontWeight:400, letterSpacing:.3, marginLeft:4 }}>{t("form_block_3_note")}</span>}
-        </div>
-        <G cols={4}>
-          <Input label={t("form_label_data")} type="date" value={comum.data} onChange={e => setC("data", e.target.value)} />
-          <Select label={t("form_label_turno")} value={comum.turno} onChange={e => setC("turno", e.target.value)}>{opcoes.turnos.map(c => <option key={c}>{c}</option>)}</Select>
-          <Input label={isEdit ? t("form_label_entrada") : t("form_label_entrada_padrao")} type="time" value={comum.horaEntrada} onChange={e => setC("horaEntrada", e.target.value)} />
-          <Input label={isEdit ? t("form_label_saida") : t("form_label_saida_padrao")} type="time" value={comum.horaSaida} onChange={e => setC("horaSaida", e.target.value)} />
-        </G>
-        {totalPadrao && (
-          <div style={{ marginTop:10, display:"inline-flex", alignItems:"center", gap:8, background:"#E6F9F4", borderRadius:8, padding:"8px 14px" }}>
-            <Icon d="M12 8v4l3 3M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0" size={14} />
-            <span style={{ fontSize:13, fontWeight:700, color:"#0E9F6E", fontFamily:"monospace" }}>{isEdit ? t("form_total") : t("form_padrao")} {totalPadrao}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Bloco 4 — Motivo */}
+      {/* Bloco 4 — Observações */}
       <div>
         <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
           <div style={{ width:20, height:20, borderRadius:6, background:"#6C63FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>4</div>
           {t("form_block_4")}
         </div>
         <G cols={1}>
-          <Select label={t("form_label_motivo")} value={comum.motivo} onChange={e => setC("motivo", e.target.value)}>{opcoes.motivos.map(c => <option key={c}>{c}</option>)}</Select>
           <Input label={t("form_label_obs")} value={comum.obs} onChange={e => setC("obs", e.target.value)} placeholder={t("form_obs_placeholder")} />
         </G>
       </div>
@@ -730,17 +720,21 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
         </div>
         <div style={{ border:"1px solid #E2E6EC", borderRadius:10, overflow:"hidden" }}>
           <div style={{ overflowX:"auto" }}>
-          <div className="mobile-form-worker-outer" style={{ minWidth:460 }}>
-          <div className="mobile-form-worker-header" style={{ display:"grid", gridTemplateColumns:"36px 1fr 124px 124px 72px", background:"#F8FAFC", borderBottom:"1px solid #E2E6EC", padding:"9px 14px", gap:8 }}>
-            {[t("form_col_num"), t("form_col_nome"), t("form_col_entrada"), t("form_col_saida"), t("form_col_total")].map(h => (
+          <div className="mobile-form-worker-outer" style={{ minWidth:560 }}>
+          <div className="mobile-form-worker-header" style={{ display:"grid", gridTemplateColumns:"36px 130px 1fr 110px 110px 62px", background:"#F8FAFC", borderBottom:"1px solid #E2E6EC", padding:"9px 14px", gap:8 }}>
+            {[t("form_col_num"), t("form_label_cargo"), t("form_col_nome"), t("form_col_entrada"), t("form_col_saida"), t("form_col_total")].map(h => (
               <div key={h} style={{ fontSize:10, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:.6 }}>{h}</div>
             ))}
           </div>
           {pessoas.map((p, i) => {
             const total = calcHoras(p.horaEntrada, p.horaSaida);
             return (
-              <div key={i} className="mobile-form-worker-grid" style={{ display:"grid", gridTemplateColumns:"36px 1fr 124px 124px 72px", gap:8, padding:"8px 14px", borderBottom: i < pessoas.length - 1 ? "1px solid #F1F5F9" : "none", alignItems:"center", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+              <div key={i} className="mobile-form-worker-grid" style={{ display:"grid", gridTemplateColumns:"36px 130px 1fr 110px 110px 62px", gap:8, padding:"8px 14px", borderBottom: i < pessoas.length - 1 ? "1px solid #F1F5F9" : "none", alignItems:"center", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                 <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textAlign:"center" }}>{i + 1}</div>
+                <select value={p.cargo} onChange={e => setP(i, "cargo", e.target.value)}
+                  style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:12, background:"#FAFBFC", width:"100%", outline:"none", fontFamily:"inherit" }}>
+                  {opcoes.cargos.map(c => <option key={c}>{c}</option>)}
+                </select>
                 <AutocompleteNome
                   value={p.nome}
                   onChange={v => setP(i, "nome", v)}
@@ -921,7 +915,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin, w
   };
 
   const exportCSV = () => {
-    const h = ["Data","Turno","Hora Entrada","Hora Saída","Total Horas","Nome","Cargo","Unidade","CC","Motivo","Fornecedor","Obs"];
+    const h = ["Data","Turno","Hora Entrada","Hora Saída","Total Horas","Nome","Cargo","Unidade","CC","Operação","Fornecedor","Obs"];
     const rows = filtered.map(r => [r.data,r.turno,r.horaEntrada,r.horaSaida,r.totalHoras,r.nome,r.cargo,r.unidade,r.cc,r.motivo,r.fornecedor,r.obs].map(csvSafe).join(";"));
     const blob = new Blob(["\uFEFF" + [h.join(";"), ...rows].join("\n")], { type:"text/csv;charset=utf-8;" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `terceiros_${filtros.data || "todos"}.csv`; a.click();

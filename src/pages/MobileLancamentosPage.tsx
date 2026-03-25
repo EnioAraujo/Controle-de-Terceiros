@@ -281,6 +281,16 @@ const MobileModal = ({ title, onClose, children }: { title: string; onClose: () 
         font-weight: 700 !important;
         width: auto !important;
       }
+      /* Cargo select (segundo filho — select direto) */
+      .mobile-form-worker-grid > select {
+        width: 100% !important;
+        font-size: 15px !important;
+        padding: 10px 12px !important;
+        border-radius: 8px !important;
+        border: 1.5px solid #E2E6EC !important;
+        background: #FAFBFC !important;
+        box-sizing: border-box !important;
+      }
       /* Autocomplete de nome (segundo filho div) */
       .mobile-form-worker-grid > div:not(:first-child):not(:last-child) {
         width: 100% !important;
