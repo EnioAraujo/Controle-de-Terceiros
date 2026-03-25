@@ -15,6 +15,12 @@ import type { TurnoConfig } from "@/lib/fechamento-utils";
 import { FormLancamento } from "@/pages/Index";
 import type { Opcoes } from "@/pages/Index";
 import { useI18n } from "@/hooks/use-i18n";
+import type { Lang } from "@/lib/i18n-translations";
+
+const LANGS: { value: Lang; label: string }[] = [
+  { value: "pt-BR", label: "PT" },
+  { value: "en-US", label: "EN" },
+];
 
 // ─── CONSTANTES ─────────────────────────────────────────────────
 const OPCOES_DEFAULT: Opcoes = {
@@ -272,7 +278,7 @@ const MobileModal = ({ title, onClose, children }: { title: string; onClose: () 
 // ─── PÁGINA PRINCIPAL ────────────────────────────────────────────
 const MobileLancamentosPage = () => {
   const navigate = useNavigate();
-  const { lang } = useI18n();
+  const { lang, setLang } = useI18n();
 
   // ── Estado dos dados ──
   const [registros, setRegistrosState] = useState<Registro[]>([]);
@@ -519,20 +525,40 @@ const MobileLancamentosPage = () => {
               <span>📱</span> Mobile
             </div>
           </div>
-          <button
-            onClick={irParaDesktop}
-            style={{
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              borderRadius: 8, padding: "8px 12px",
-              color: "#CBD5E1", fontSize: 12, fontWeight: 600,
-              fontFamily: "inherit", cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 6,
-              flexShrink: 0,
-            }}
-          >
-            <span>💻</span> Desktop
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+            {/* Toggle de idioma */}
+            {LANGS.map(l => (
+              <button
+                key={l.value}
+                onClick={() => setLang(l.value)}
+                style={{
+                  border: lang === l.value ? "1.5px solid #60A5FA" : "1px solid rgba(255,255,255,0.2)",
+                  background: lang === l.value ? "rgba(96,165,250,0.2)" : "rgba(255,255,255,0.05)",
+                  borderRadius: 6, padding: "5px 9px",
+                  color: lang === l.value ? "#BFDBFE" : "#94A3B8",
+                  fontSize: 11, fontWeight: 700,
+                  fontFamily: "inherit", cursor: "pointer",
+                  letterSpacing: 0.5,
+                }}
+              >
+                {l.label}
+              </button>
+            ))}
+            {/* Botão Desktop */}
+            <button
+              onClick={irParaDesktop}
+              style={{
+                border: "1px solid rgba(255,255,255,0.2)",
+                background: "rgba(255,255,255,0.08)",
+                borderRadius: 8, padding: "8px 12px",
+                color: "#CBD5E1", fontSize: 12, fontWeight: 600,
+                fontFamily: "inherit", cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 6,
+              }}
+            >
+              <span>💻</span> Desktop
+            </button>
+          </div>
         </div>
       </div>
 
