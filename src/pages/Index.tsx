@@ -730,8 +730,8 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
         </div>
         <div style={{ border:"1px solid #E2E6EC", borderRadius:10, overflow:"hidden" }}>
           <div style={{ overflowX:"auto" }}>
-          <div style={{ minWidth:460 }}>
-          <div style={{ display:"grid", gridTemplateColumns:"36px 1fr 124px 124px 72px", background:"#F8FAFC", borderBottom:"1px solid #E2E6EC", padding:"9px 14px", gap:8 }}>
+          <div className="mobile-form-worker-outer" style={{ minWidth:460 }}>
+          <div className="mobile-form-worker-header" style={{ display:"grid", gridTemplateColumns:"36px 1fr 124px 124px 72px", background:"#F8FAFC", borderBottom:"1px solid #E2E6EC", padding:"9px 14px", gap:8 }}>
             {[t("form_col_num"), t("form_col_nome"), t("form_col_entrada"), t("form_col_saida"), t("form_col_total")].map(h => (
               <div key={h} style={{ fontSize:10, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:.6 }}>{h}</div>
             ))}
@@ -739,7 +739,7 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
           {pessoas.map((p, i) => {
             const total = calcHoras(p.horaEntrada, p.horaSaida);
             return (
-              <div key={i} style={{ display:"grid", gridTemplateColumns:"36px 1fr 124px 124px 72px", gap:8, padding:"8px 14px", borderBottom: i < pessoas.length - 1 ? "1px solid #F1F5F9" : "none", alignItems:"center", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+              <div key={i} className="mobile-form-worker-grid" style={{ display:"grid", gridTemplateColumns:"36px 1fr 124px 124px 72px", gap:8, padding:"8px 14px", borderBottom: i < pessoas.length - 1 ? "1px solid #F1F5F9" : "none", alignItems:"center", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                 <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textAlign:"center" }}>{i + 1}</div>
                 <AutocompleteNome
                   value={p.nome}

@@ -247,6 +247,67 @@ const ConfirmDialog = ({ count, onConfirm, onCancel }: { count: number; onConfir
 // ─── MODAL WRAPPER ───────────────────────────────────────────────
 const MobileModal = ({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) => (
   <>
+    {/*
+      CSS override: transforma a grid de colaboradores (Bloco 5 do FormLancamento)
+      em layout vertical empilhado no mobile, evitando colunas espremidas e nomes
+      truncados. O autocomplete usa position:fixed (relativo à viewport) e funciona
+      corretamente pois o modal também está na viewport.
+    */}
+    <style>{`
+      /* Remove minWidth do container para não causar scroll horizontal no modal */
+      .mobile-form-worker-outer {
+        min-width: unset !important;
+        overflow: visible !important;
+      }
+      /* Oculta o header da tabela (colunas #, NOME, ENTRADA, SAÍDA, TOTAL) */
+      .mobile-form-worker-header {
+        display: none !important;
+      }
+      /* Cada linha de colaborador vira layout vertical empilhado */
+      .mobile-form-worker-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        padding: 10px 12px !important;
+        border-radius: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      /* Número do colaborador (primeiro filho div) */
+      .mobile-form-worker-grid > div:first-child {
+        font-size: 11px !important;
+        color: #94A3B8 !important;
+        text-align: left !important;
+        font-weight: 700 !important;
+        width: auto !important;
+      }
+      /* Autocomplete de nome (segundo filho div) */
+      .mobile-form-worker-grid > div:not(:first-child):not(:last-child) {
+        width: 100% !important;
+      }
+      .mobile-form-worker-grid > div:not(:first-child):not(:last-child) > div {
+        width: 100% !important;
+      }
+      .mobile-form-worker-grid > div:not(:first-child):not(:last-child) input {
+        width: 100% !important;
+        font-size: 15px !important;
+        padding: 11px 12px !important;
+      }
+      /* Inputs de hora (filhos diretos input) */
+      .mobile-form-worker-grid > input[type="time"] {
+        width: 100% !important;
+        font-size: 15px !important;
+        padding: 11px 12px !important;
+        border-radius: 8px !important;
+        box-sizing: border-box !important;
+      }
+      /* Total de horas (último filho div) */
+      .mobile-form-worker-grid > div:last-child {
+        text-align: left !important;
+        font-size: 12px !important;
+        width: auto !important;
+      }
+    `}</style>
     <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.5)" }} />
     <div style={{
       position: "fixed", inset: 0, zIndex: 401,
