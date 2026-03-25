@@ -826,30 +826,22 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin, w
     return true;
   }), [registros, filtros]);
 
-  // Agrupa registros do mesmo lote em uma única entrada para exibição
+  // Agrupa registros com mesma data + turno em uma única linha para exibição
   const grupos = useMemo(() => {
-    const loteMap = new Map<string, Registro[]>();
-    const solos: (Registro | Registro[])[] = [];
+    const groupMap = new Map<string, Registro[]>();
     for (const r of filtered) {
-      if (r.loteId) {
-        if (!loteMap.has(r.loteId)) loteMap.set(r.loteId, []);
-        loteMap.get(r.loteId)!.push(r);
-      } else {
-        solos.push(r);
-      }
+      const key = `${r.data}||${r.turno}`;
+      if (!groupMap.has(key)) groupMap.set(key, []);
+      groupMap.get(key)!.push(r);
     }
     const result: (Registro | Registro[])[] = [];
-    // Insere lotes na posição do 1º registro de cada lote para manter a ordem
-    const usedLotes = new Set<string>();
+    const seen = new Set<string>();
     for (const r of filtered) {
-      if (r.loteId) {
-        if (!usedLotes.has(r.loteId)) {
-          usedLotes.add(r.loteId);
-          const group = loteMap.get(r.loteId)!;
-          result.push(group.length === 1 ? group[0] : group);
-        }
-      } else {
-        result.push(r);
+      const key = `${r.data}||${r.turno}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        const group = groupMap.get(key)!;
+        result.push(group.length === 1 ? group[0] : group);
       }
     }
     return result;
