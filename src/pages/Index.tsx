@@ -508,6 +508,11 @@ const AutocompleteNome = ({ value, onChange, suggestions, placeholder, style }: 
 };
 
 // ─── FORM DE LANÇAMENTO ─────────────────────────────────────────
+const G = ({ children, cols = 2 }: { children: ReactNode; cols?: number }) => {
+  const cls = cols >= 4 ? "rsp-grid-4" : cols === 3 ? "rsp-grid-3" : "rsp-grid-2";
+  return <div className={cls} style={{ display:"grid", gridTemplateColumns:`repeat(${cols},1fr)`, gap:14 }}>{children}</div>;
+};
+
 export interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; cargo: string; }
 export interface FormLancamentoProps { inicial?: Registro | null; loteInicial?: Registro[]; onSave: (registros: Registro[]) => void; onCancel: () => void; opcoes: Opcoes; registros?: Registro[]; turnosConfig?: TurnoConfig[]; }
 
@@ -635,11 +640,6 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
         totalHoras: calcHoras(p.horaEntrada, p.horaSaida),
       })));
     }
-  };
-
-  const G = ({ children, cols = 2 }: { children: ReactNode; cols?: number }) => {
-    const cls = cols >= 4 ? "rsp-grid-4" : cols === 3 ? "rsp-grid-3" : "rsp-grid-2";
-    return <div className={cls} style={{ display:"grid", gridTemplateColumns:`repeat(${cols},1fr)`, gap:14 }}>{children}</div>;
   };
 
   const btnLabel = (isEdit || isLoteEdit)
