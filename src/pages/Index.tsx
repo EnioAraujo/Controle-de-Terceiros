@@ -652,7 +652,7 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
 
       {/* Bloco 0 — Quantidade */}
-      {!isEdit && !isLoteEdit && (
+      {!isEdit && (
         <div style={{ background:"#F0F6FF", border:"1.5px solid #BFDBFE", borderRadius:12, padding:"12px 18px", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
           <div style={{ fontSize:11, fontWeight:700, color:"#1A56DB", textTransform:"uppercase", letterSpacing:.8 }}>{t("form_block_qty")}</div>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
