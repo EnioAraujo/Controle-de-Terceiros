@@ -172,7 +172,9 @@ export const buildWhatsAppMessage = (registros: Registro[], template: WhatsAppTe
       if (personCampos.includes("horaEntrada") || personCampos.includes("horaSaida")) {
         const e = personCampos.includes("horaEntrada") ? r.horaEntrada : "";
         const s = personCampos.includes("horaSaida") ? r.horaSaida : "";
-        if (e || s) parts.push(`${e}→${s}`);
+        if (e && s) parts.push(`${e} - ${s}`);
+        else if (e) parts.push(e);
+        else if (s) parts.push(s);
       }
       if (personCampos.includes("totalHoras") && r.totalHoras) parts.push(`(${r.totalHoras})`);
       lines.push(`• ${parts.join(" — ")}`);
