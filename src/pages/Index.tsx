@@ -828,8 +828,31 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin, w
 
   // Agrupa registros do mesmo lote em uma única entrada para exibição
   const grupos = useMemo(() => {
-    // Exibe cada registro individualmente, sem agrupar por loteId
-    return filtered;
+    const loteMap = new Map<string, Registro[]>();
+    const solos: (Registro | Registro[])[] = [];
+    for (const r of filtered) {
+      if (r.loteId) {
+        if (!loteMap.has(r.loteId)) loteMap.set(r.loteId, []);
+        loteMap.get(r.loteId)!.push(r);
+      } else {
+        solos.push(r);
+      }
+    }
+    const result: (Registro | Registro[])[] = [];
+    // Insere lotes na posição do 1º registro de cada lote para manter a ordem
+    const usedLotes = new Set<string>();
+    for (const r of filtered) {
+      if (r.loteId) {
+        if (!usedLotes.has(r.loteId)) {
+          usedLotes.add(r.loteId);
+          const group = loteMap.get(r.loteId)!;
+          result.push(group.length === 1 ? group[0] : group);
+        }
+      } else {
+        result.push(r);
+      }
+    }
+    return result;
   }, [filtered]);
 
   const salvar = (novos: Registro[], forceComJustificativa = "") => {
@@ -1004,8 +1027,9 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin, w
                 const isLote = Array.isArray(item);
                 const r = isLote ? item[0] : item;
                 const count = isLote ? item.length : 1;
+                const allIds = isLote ? item.map(x => x.id) : [r.id];
                 const bgBase = i % 2 === 0 ? "#fff" : "#FAFBFC";
-                const isChecked = selectedIds.includes(r.id);
+                const isChecked = allIds.every(id => selectedIds.includes(id));
                 return (
                   <tr key={isLote ? r.loteId : r.id}
                     style={{ borderBottom:"1px solid #F1F5F9", background: bgBase, cursor:"pointer",
@@ -1016,7 +1040,7 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin, w
                     <td style={{ padding:"10px 12px", textAlign:"center" }} onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={isChecked} onChange={e => {
                         e.stopPropagation();
-                        setSelectedIds(val => e.target.checked ? [...val, r.id] : val.filter(id => id !== r.id));
+                        setSelectedIds(val => e.target.checked ? [...new Set([...val, ...allIds])] : val.filter(id => !allIds.includes(id)));
                       }} />
                     </td>
                     <td style={{ padding:"10px 12px", fontFamily:"monospace", fontSize:11, color:"#64748B" }}>{fmt(r.data, lang)}</td>
