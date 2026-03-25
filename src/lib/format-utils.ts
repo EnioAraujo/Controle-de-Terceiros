@@ -115,7 +115,7 @@ export const WHATSAPP_FIELDS: { key: WhatsAppField; label: string }[] = [
   { key: "horaEntrada", label: "Hora Entrada" },
   { key: "horaSaida",   label: "Hora Saída" },
   { key: "totalHoras",  label: "Total Horas" },
-  { key: "motivo",      label: "Motivo" },
+  { key: "motivo",      label: "Operação" },
   { key: "obs",         label: "Observação" },
 ];
 
@@ -128,8 +128,12 @@ export const WA_DEFAULT_TEMPLATE: WhatsAppTemplate = {
   campos: ["data", "turno", "nome", "cargo", "fornecedor", "unidade", "cc", "horaEntrada", "horaSaida", "totalHoras", "motivo", "obs"],
 };
 
+const toTitleCase = (s: string) =>
+  s.toLowerCase().split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+
 const fieldValue = (r: Registro, field: WhatsAppField): string => {
   if (field === "data") return fmt(r.data);
+  if (field === "nome") return toTitleCase((r as Record<string, string>).nome ?? "");
   return (r as Record<string, string>)[field] ?? "";
 };
 
@@ -167,17 +171,16 @@ export const buildWhatsAppMessage = (registros: Registro[], template: WhatsAppTe
     lines.push("");
     lines.push(`*Colaboradores (${registros.length}):*`);
     for (const r of registros) {
-      const parts: string[] = [];
-      if (personCampos.includes("nome")) parts.push(r.nome);
+      const nomeFormatado = personCampos.includes("nome") ? toTitleCase(r.nome) : "";
+      let linha = nomeFormatado;
       if (personCampos.includes("horaEntrada") || personCampos.includes("horaSaida")) {
         const e = personCampos.includes("horaEntrada") ? r.horaEntrada : "";
         const s = personCampos.includes("horaSaida") ? r.horaSaida : "";
-        if (e && s) parts.push(`${e} - ${s}`);
-        else if (e) parts.push(e);
-        else if (s) parts.push(s);
+        const tempoStr = e && s ? `${e} - ${s}` : e || s;
+        if (tempoStr) linha += `: ${tempoStr}`;
       }
-      if (personCampos.includes("totalHoras") && r.totalHoras) parts.push(`(${r.totalHoras})`);
-      lines.push(`• ${parts.join(" — ")}`);
+      if (personCampos.includes("totalHoras") && r.totalHoras) linha += ` (${r.totalHoras})`;
+      if (linha) lines.push(`• ${linha}`);
     }
 
     if (hasObs && first.obs) {

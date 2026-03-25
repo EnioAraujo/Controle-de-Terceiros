@@ -651,10 +651,10 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
 
-      {/* Bloco 3 — Jornada */}
+      {/* Bloco 1 — Jornada */}
       <div>
         <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ width:20, height:20, borderRadius:6, background:"#D97706", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>3</div>
+          <div style={{ width:20, height:20, borderRadius:6, background:"#D97706", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>1</div>
           {t("form_block_3")}
         </div>
         <G cols={2}>
@@ -677,34 +677,24 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
         </div>
       )}
 
-      {/* Bloco 1 — Identificação */}
+      {/* Bloco 2 — Identificação */}
       <div>
         <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ width:20, height:20, borderRadius:6, background:"#1A56DB", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>1</div>
+          <div style={{ width:20, height:20, borderRadius:6, background:"#1A56DB", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>2</div>
           {t("form_block_1")}
         </div>
-        <G cols={2}>
+        <G cols={4}>
           <Select label={t("form_label_forn")} value={comum.fornecedor} onChange={e => setC("fornecedor", e.target.value)}>{opcoes.fornecedores.map(c => <option key={c}>{c}</option>)}</Select>
-          <Select label={t("form_label_motivo")} value={comum.motivo} onChange={e => setC("motivo", e.target.value)}>{opcoes.motivos.map(c => <option key={c}>{c}</option>)}</Select>
-        </G>
-      </div>
-
-      {/* Bloco 2 — Lotação */}
-      <div>
-        <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ width:20, height:20, borderRadius:6, background:"#0E9F6E", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>2</div>
-          {t("form_block_2")}
-        </div>
-        <G cols={2}>
           <Select label={t("form_label_unidade")} value={comum.unidade} onChange={e => setC("unidade", e.target.value)}>{opcoes.unidades.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label={t("form_label_motivo")} value={comum.motivo} onChange={e => setC("motivo", e.target.value)}>{opcoes.motivos.map(c => <option key={c}>{c}</option>)}</Select>
           <Select label={t("form_label_cc")} value={comum.cc} onChange={e => setC("cc", e.target.value)}>{opcoes.ccList.map(c => <option key={c}>{c}</option>)}</Select>
         </G>
       </div>
 
-      {/* Bloco 4 — Observações */}
+      {/* Bloco 3 — Observações */}
       <div>
         <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ width:20, height:20, borderRadius:6, background:"#6C63FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>4</div>
+          <div style={{ width:20, height:20, borderRadius:6, background:"#6C63FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>3</div>
           {t("form_block_4")}
         </div>
         <G cols={1}>
@@ -712,10 +702,10 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
         </G>
       </div>
 
-      {/* Bloco 5 — Colaboradores */}
+      {/* Bloco 4 — Colaboradores */}
       <div>
         <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ width:20, height:20, borderRadius:6, background:"#0891B2", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>5</div>
+          <div style={{ width:20, height:20, borderRadius:6, background:"#0891B2", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>4</div>
           {isEdit ? t("form_block_5") : `${t("form_block_5_multi")} — ${pessoas.length} ${pessoas.length !== 1 ? t("form_persons") : t("form_person")}`}
         </div>
         <div style={{ border:"1px solid #E2E6EC", borderRadius:10, overflow:"hidden" }}>

@@ -241,7 +241,7 @@ describe("buildWhatsAppMessage", () => {
     expect(msg).toContain("*Hora Entrada:* 08:00");
     expect(msg).toContain("*Hora Saída:* 17:00");
     expect(msg).toContain("*Total Horas:* 09:00");
-    expect(msg).toContain("*Motivo:* Demanda operacional");
+    expect(msg).toContain("*Operação:* Demanda operacional");
     expect(msg).toContain("*Observação:* Fez hora extra");
   });
 
@@ -270,9 +270,9 @@ describe("buildWhatsAppMessage", () => {
     expect(msg).toContain("*REGISTRO DE PRESENÇA*");
     expect(msg).toContain("*Turno:* Dia");
     expect(msg).toContain("*Colaboradores (3):*");
-    expect(msg).toContain("• João — 08:00 - 17:00 — (09:00)");
-    expect(msg).toContain("• Maria — 09:00 - 18:00 — (09:00)");
-    expect(msg).toContain("• Pedro — 07:00 - 16:00 — (09:00)");
+    expect(msg).toContain("• João: 08:00 - 17:00 (09:00)");
+    expect(msg).toContain("• Maria: 09:00 - 18:00 (09:00)");
+    expect(msg).toContain("• Pedro: 07:00 - 16:00 (09:00)");
   });
 
   it("retorna string vazia para array vazio", () => {
