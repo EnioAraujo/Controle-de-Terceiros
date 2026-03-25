@@ -10,7 +10,11 @@ import {
   KEY_TO_FIELD,
   FORN_PALETTE,
   RETENCAO_ANOS,
+  buildWhatsAppMessage,
+  WHATSAPP_FIELDS,
+  WA_DEFAULT_TEMPLATE,
 } from "@/lib/format-utils";
+import type { WhatsAppTemplate } from "@/lib/format-utils";
 
 // ─── fmt ─────────────────────────────────────────────────────────
 describe("fmt", () => {
@@ -203,4 +207,104 @@ describe("KEY_TO_FIELD", () => {
     expect(KEY_TO_FIELD.cargos).toBe("cargo");
     expect(KEY_TO_FIELD.ccList).toBe("cc");
     });
+});
+
+// ─── buildWhatsAppMessage ────────────────────────────────────────
+describe("buildWhatsAppMessage", () => {
+  const baseReg = {
+    id: "r1",
+    data: "2026-03-15",
+    turno: "Dia",
+    horaEntrada: "08:00",
+    horaSaida: "17:00",
+    totalHoras: "09:00",
+    nome: "João Silva",
+    cargo: "Operador",
+    setor: "",
+    unidade: "SP-001",
+    cc: "1234",
+    motivo: "Demanda operacional",
+    fornecedor: "ABC Serviços",
+    obs: "Fez hora extra",
+  };
+
+  it("monta mensagem individual com todos os campos", () => {
+    const msg = buildWhatsAppMessage([baseReg], WA_DEFAULT_TEMPLATE);
+    expect(msg).toContain("📋 *REGISTRO DE PRESENÇA*");
+    expect(msg).toContain("*Data:* ");
+    expect(msg).toContain("*Turno:* Dia");
+    expect(msg).toContain("*Nome:* João Silva");
+    expect(msg).toContain("*Cargo:* Operador");
+    expect(msg).toContain("*Fornecedor:* ABC Serviços");
+    expect(msg).toContain("*Unidade:* SP-001");
+    expect(msg).toContain("*Centro de Custo:* 1234");
+    expect(msg).toContain("*Hora Entrada:* 08:00");
+    expect(msg).toContain("*Hora Saída:* 17:00");
+    expect(msg).toContain("*Total Horas:* 09:00");
+    expect(msg).toContain("*Motivo:* Demanda operacional");
+    expect(msg).toContain("*Observação:* Fez hora extra");
+  });
+
+  it("monta mensagem individual com campos parciais", () => {
+    const template: WhatsAppTemplate = { header: "TESTE", campos: ["data", "nome"] };
+    const msg = buildWhatsAppMessage([baseReg], template);
+    expect(msg).toContain("📋 *TESTE*");
+    expect(msg).toContain("*Nome:* João Silva");
+    expect(msg).not.toContain("*Turno:*");
+    expect(msg).not.toContain("*Cargo:*");
+  });
+
+  it("omite obs vazia em registro individual", () => {
+    const reg = { ...baseReg, obs: "" };
+    const msg = buildWhatsAppMessage([reg], WA_DEFAULT_TEMPLATE);
+    expect(msg).not.toContain("*Observação:*");
+  });
+
+  it("monta mensagem de lote com colaboradores", () => {
+    const lote = [
+      { ...baseReg, loteId: "L1", nome: "João", horaEntrada: "08:00", horaSaida: "17:00", totalHoras: "09:00" },
+      { ...baseReg, id: "r2", loteId: "L1", nome: "Maria", horaEntrada: "09:00", horaSaida: "18:00", totalHoras: "09:00" },
+      { ...baseReg, id: "r3", loteId: "L1", nome: "Pedro", horaEntrada: "07:00", horaSaida: "16:00", totalHoras: "09:00" },
+    ];
+    const msg = buildWhatsAppMessage(lote, WA_DEFAULT_TEMPLATE);
+    expect(msg).toContain("📋 *REGISTRO DE PRESENÇA*");
+    expect(msg).toContain("*Turno:* Dia");
+    expect(msg).toContain("👥 *Colaboradores (3):*");
+    expect(msg).toContain("• João — 08:00→17:00 — (09:00)");
+    expect(msg).toContain("• Maria — 09:00→18:00 — (09:00)");
+    expect(msg).toContain("• Pedro — 07:00→16:00 — (09:00)");
+  });
+
+  it("retorna string vazia para array vazio", () => {
+    expect(buildWhatsAppMessage([], WA_DEFAULT_TEMPLATE)).toBe("");
+  });
+
+  it("lote mostra obs do primeiro registro se presente", () => {
+    const lote = [
+      { ...baseReg, loteId: "L1", nome: "A", obs: "Nota importante" },
+      { ...baseReg, id: "r2", loteId: "L1", nome: "B", obs: "" },
+    ];
+    const msg = buildWhatsAppMessage(lote, WA_DEFAULT_TEMPLATE);
+    expect(msg).toContain("*Observação:* Nota importante");
+  });
+
+  it("lote omite obs se primeiro registro não tem obs", () => {
+    const lote = [
+      { ...baseReg, loteId: "L1", nome: "A", obs: "" },
+      { ...baseReg, id: "r2", loteId: "L1", nome: "B", obs: "" },
+    ];
+    const msg = buildWhatsAppMessage(lote, WA_DEFAULT_TEMPLATE);
+    expect(msg).not.toContain("*Observação:*");
+  });
+
+  it("WHATSAPP_FIELDS tem exatamente 12 campos", () => {
+    expect(WHATSAPP_FIELDS).toHaveLength(12);
+  });
+
+  it("mensagem resultante é encodável para URL", () => {
+    const msg = buildWhatsAppMessage([baseReg], WA_DEFAULT_TEMPLATE);
+    const encoded = encodeURIComponent(msg);
+    expect(encoded).toBeTruthy();
+    expect(decodeURIComponent(encoded)).toBe(msg);
+  });
 });

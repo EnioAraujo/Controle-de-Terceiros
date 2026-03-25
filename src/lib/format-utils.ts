@@ -94,3 +94,95 @@ export const KEY_TO_FIELD: Record<string, keyof Registro> = {
   cargos: "cargo",
   ccList: "cc",
 };
+
+// ─── WHATSAPP ───────────────────────────────────────────────────
+
+export type WhatsAppField = "data" | "turno" | "nome" | "cargo" | "fornecedor" | "unidade" | "cc" | "horaEntrada" | "horaSaida" | "totalHoras" | "motivo" | "obs";
+
+export interface WhatsAppTemplate {
+  header: string;
+  campos: WhatsAppField[];
+}
+
+export const WHATSAPP_FIELDS: { key: WhatsAppField; label: string }[] = [
+  { key: "data",        label: "Data" },
+  { key: "turno",       label: "Turno" },
+  { key: "nome",        label: "Nome" },
+  { key: "cargo",       label: "Cargo" },
+  { key: "fornecedor",  label: "Fornecedor" },
+  { key: "unidade",     label: "Unidade" },
+  { key: "cc",          label: "Centro de Custo" },
+  { key: "horaEntrada", label: "Hora Entrada" },
+  { key: "horaSaida",   label: "Hora Saída" },
+  { key: "totalHoras",  label: "Total Horas" },
+  { key: "motivo",      label: "Motivo" },
+  { key: "obs",         label: "Observação" },
+];
+
+const FIELD_LABELS: Record<WhatsAppField, string> = Object.fromEntries(
+  WHATSAPP_FIELDS.map(f => [f.key, f.label])
+) as Record<WhatsAppField, string>;
+
+export const WA_DEFAULT_TEMPLATE: WhatsAppTemplate = {
+  header: "REGISTRO DE PRESENÇA",
+  campos: ["data", "turno", "nome", "cargo", "fornecedor", "unidade", "cc", "horaEntrada", "horaSaida", "totalHoras", "motivo", "obs"],
+};
+
+const fieldValue = (r: Registro, field: WhatsAppField): string => {
+  if (field === "data") return fmt(r.data);
+  return (r as Record<string, string>)[field] ?? "";
+};
+
+/** Campos considerados "comuns" em lotes (aparecem uma vez, não por pessoa). */
+const COMMON_FIELDS: Set<WhatsAppField> = new Set(["data", "turno", "cargo", "fornecedor", "unidade", "cc", "motivo"]);
+
+/** Campos que são "por pessoa" em lotes. */
+const PER_PERSON_FIELDS: Set<WhatsAppField> = new Set(["nome", "horaEntrada", "horaSaida", "totalHoras"]);
+
+export const buildWhatsAppMessage = (registros: Registro[], template: WhatsAppTemplate): string => {
+  if (registros.length === 0) return "";
+  const { header, campos } = template;
+  const lines: string[] = [];
+
+  lines.push(`📋 *${header}*`);
+  lines.push("");
+
+  if (registros.length === 1) {
+    const r = registros[0];
+    for (const campo of campos) {
+      const val = fieldValue(r, campo);
+      if (campo === "obs" && !val) continue;
+      lines.push(`*${FIELD_LABELS[campo]}:* ${val}`);
+    }
+  } else {
+    const first = registros[0];
+    const commonCampos = campos.filter(c => COMMON_FIELDS.has(c));
+    const personCampos = campos.filter(c => PER_PERSON_FIELDS.has(c));
+    const hasObs = campos.includes("obs");
+
+    for (const campo of commonCampos) {
+      lines.push(`*${FIELD_LABELS[campo]}:* ${fieldValue(first, campo)}`);
+    }
+
+    lines.push("");
+    lines.push(`👥 *Colaboradores (${registros.length}):*`);
+    for (const r of registros) {
+      const parts: string[] = [];
+      if (personCampos.includes("nome")) parts.push(r.nome);
+      if (personCampos.includes("horaEntrada") || personCampos.includes("horaSaida")) {
+        const e = personCampos.includes("horaEntrada") ? r.horaEntrada : "";
+        const s = personCampos.includes("horaSaida") ? r.horaSaida : "";
+        if (e || s) parts.push(`${e}→${s}`);
+      }
+      if (personCampos.includes("totalHoras") && r.totalHoras) parts.push(`(${r.totalHoras})`);
+      lines.push(`• ${parts.join(" — ")}`);
+    }
+
+    if (hasObs && first.obs) {
+      lines.push("");
+      lines.push(`*${FIELD_LABELS.obs}:* ${first.obs}`);
+    }
+  }
+
+  return lines.join("\n");
+};

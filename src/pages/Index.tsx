@@ -10,7 +10,9 @@ import {
   FORN_PALETTE, fornCor,
   dbToRegistro, registroToDb,
   KEY_TO_FIELD,
+  buildWhatsAppMessage, WHATSAPP_FIELDS, WA_DEFAULT_TEMPLATE,
 } from "@/lib/format-utils";
+import type { WhatsAppTemplate, WhatsAppField } from "@/lib/format-utils";
 import ProjecaoPage from "@/pages/ProjecaoPage";
 import {
   type TurnoConfig, type DiariaConfig, type FechamentoItem, type Fechamento,
@@ -802,7 +804,7 @@ const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, regist
 // ─── TELA: LANÇAMENTOS ──────────────────────────────────────────
 interface Filtros { data: string; turno: string; fornecedor: string; unidade: string; busca: string; }
 
-const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }: { registros: Registro[]; setRegistros: (val: Registro[]) => void; opcoes: Opcoes; turnosConfig: TurnoConfig[]; isAdmin: boolean }) => {
+const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin, waTemplate }: { registros: Registro[]; setRegistros: (val: Registro[]) => void; opcoes: Opcoes; turnosConfig: TurnoConfig[]; isAdmin: boolean; waTemplate: WhatsAppTemplate }) => {
   const { t, lang } = useI18n();
   const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", busca: "" });
   const [modal, setModal]     = useState<null | "new" | Registro | Registro[]>(null);
@@ -1132,6 +1134,16 @@ const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }:
           )}
           <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:16, paddingTop:16, borderTop:"1px solid #F1F5F9" }}>
             <Btn variant="ghost" onClick={() => setDetalhe(null)}>{t("lanc_detail_close")}</Btn>
+            <button
+              onClick={() => {
+                const regs = Array.isArray(detalhe) ? detalhe : [detalhe];
+                const msg = buildWhatsAppMessage(regs, waTemplate);
+                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+              }}
+              style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#25D366", border:"none", borderRadius:8, padding:"8px 18px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              WhatsApp
+            </button>
             <Btn onClick={() => { setModal(detalhe); setDetalhe(null); }}>{t("lanc_detail_edit")}</Btn>
           </div>
         </Modal>
@@ -1443,6 +1455,36 @@ const Configuracoes = ({
   };
 
 
+
+  // ── WhatsApp Template ──
+  const [waHeader, setWaHeader] = useState(WA_DEFAULT_TEMPLATE.header);
+  const [waCampos, setWaCampos] = useState<WhatsAppField[]>(WA_DEFAULT_TEMPLATE.campos);
+  const [waSaved, setWaSaved]   = useState(false);
+
+  useEffect(() => {
+    authReady.then(async () => {
+      const { data } = await supabase.from("opcoes").select("valor").eq("chave", "whatsapp_template").maybeSingle();
+      if (data?.valor) {
+        try {
+          const parsed = JSON.parse(data.valor) as { header?: string; campos?: WhatsAppField[] };
+          if (parsed.header) setWaHeader(parsed.header);
+          if (Array.isArray(parsed.campos) && parsed.campos.length > 0) setWaCampos(parsed.campos);
+        } catch { /* ignore bad JSON */ }
+      }
+    }).catch((err: unknown) => console.error("Erro ao carregar WA template:", err));
+  }, []);
+
+  const saveWaTemplate = async () => {
+    const payload: WhatsAppTemplate = { header: waHeader.trim() || WA_DEFAULT_TEMPLATE.header, campos: waCampos };
+    await supabase.from("opcoes").delete().eq("chave", "whatsapp_template");
+    await supabase.from("opcoes").insert({ chave: "whatsapp_template", valor: JSON.stringify(payload) });
+    setWaSaved(true);
+    setTimeout(() => setWaSaved(false), 2500);
+  };
+
+  const toggleWaCampo = (key: WhatsAppField) => {
+    setWaCampos(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+  };
 
   // ── DPO (Art. 41 LGPD)
   const [dpoNome,       setDpoNome]       = useState("");
@@ -1916,6 +1958,53 @@ const Configuracoes = ({
         </div>
       </div>
       )}
+
+      {/* ── WhatsApp: Template de Mensagem ── */}
+      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
+          <div style={{ width:10, height:10, borderRadius:"50%", background:"#25D366", flexShrink:0 }} />
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>Template WhatsApp</div>
+          <div style={{ fontSize:11, background:"#25D36618", color:"#25D366", fontWeight:700, borderRadius:99, padding:"2px 8px" }}>Mensagem</div>
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", gap:4, marginBottom:14 }}>
+          <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>Título da mensagem</label>
+          <input value={waHeader} onChange={e => setWaHeader(sanitize(e.target.value))}
+            placeholder="REGISTRO DE PRESENÇA"
+            style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none", maxWidth:340 }} />
+        </div>
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7, display:"block", marginBottom:8 }}>Campos incluídos na mensagem</label>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+            {WHATSAPP_FIELDS.map(f => (
+              <label key={f.key} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, cursor:"pointer", padding:"4px 10px", borderRadius:6, background: waCampos.includes(f.key) ? "#25D36614" : "#F8FAFC", border: waCampos.includes(f.key) ? "1px solid #25D366" : "1px solid #E2E6EC", transition:"all .15s" }}>
+                <input type="checkbox" checked={waCampos.includes(f.key)} onChange={() => toggleWaCampo(f.key)}
+                  style={{ accentColor:"#25D366" }} />
+                <span style={{ fontWeight: waCampos.includes(f.key) ? 600 : 400, color: waCampos.includes(f.key) ? "#166534" : "#64748B" }}>{f.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+        {waCampos.length > 0 && (
+          <div style={{ background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:8, padding:"12px 16px", marginBottom:14, fontFamily:"monospace", fontSize:11, whiteSpace:"pre-wrap", color:"#166534", lineHeight:1.6 }}>
+            {buildWhatsAppMessage([{
+              id: "preview", data: "2026-03-15", turno: "Dia", horaEntrada: "08:00", horaSaida: "17:00",
+              totalHoras: "09:00", nome: "João Silva", cargo: "Operador", setor: "",
+              unidade: "SP-001", cc: "1234", motivo: "Demanda operacional",
+              fornecedor: "ABC Serviços", obs: "Exemplo de observação",
+            }], { header: waHeader || WA_DEFAULT_TEMPLATE.header, campos: waCampos })}
+          </div>
+        )}
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <button onClick={saveWaTemplate} disabled={waCampos.length === 0}
+            style={{ background: waCampos.length > 0 ? "#25D366" : "#94A3B8", border:"none", borderRadius:8, padding:"9px 22px", cursor: waCampos.length > 0 ? "pointer" : "not-allowed", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
+            Salvar Template
+          </button>
+          {waSaved && <span style={{ fontSize:12, color:"#0E9F6E", fontWeight:600 }}>✓ Salvo!</span>}
+        </div>
+        <div style={{ fontSize:11, color:"#94A3B8", marginTop:10 }}>
+          Configure quais campos aparecem na mensagem do WhatsApp ao compartilhar registros.
+        </div>
+      </div>
 
       {/* ── LGPD: Exclusão por Solicitação (Art. 18) — somente admin ── */}
       {(
@@ -2534,6 +2623,7 @@ const Index = () => {
   const [dpoCfg, setDpoCfg]                       = useState<{ nome: string; email: string }>({ nome: "", email: "" });
   const [isAdmin, setIsAdmin]                     = useState(false);
   const [turnosConfig, setTurnosConfig]           = useState<TurnoConfig[]>([]);
+  const [waTemplate, setWaTemplate]               = useState<WhatsAppTemplate>(WA_DEFAULT_TEMPLATE);
 
   useEffect(() => {
     authReady.then(async () => {
@@ -2557,6 +2647,18 @@ const Index = () => {
           setDpoCfg({ nome: m["dpo_nome"] ?? "", email: m["dpo_email"] ?? "" });
         })
         .catch((err: unknown) => console.error("Erro ao carregar DPO config:", err));
+      // WhatsApp template
+      supabase.from("opcoes").select("valor").eq("chave", "whatsapp_template").maybeSingle()
+        .then(({ data }) => {
+          if (!data?.valor) return;
+          try {
+            const parsed = JSON.parse(data.valor) as { header?: string; campos?: WhatsAppField[] };
+            if (parsed.header && Array.isArray(parsed.campos) && parsed.campos.length > 0) {
+              setWaTemplate({ header: parsed.header, campos: parsed.campos });
+            }
+          } catch { /* ignore bad JSON */ }
+        })
+        .catch((err: unknown) => console.error("Erro ao carregar WA template:", err));
       // Admin check — usa RPC is_admin() (SECURITY DEFINER) que bypassa RLS e retorna boolean diretamente
       // Não usa supabase.from("profiles") pois a política profiles_select pode ter recursão que causa erro
       const { data: isAdminResult, error: adminErr } = await supabase.rpc('is_admin');
@@ -2664,7 +2766,7 @@ const Index = () => {
         ) : (
           <>
             {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} />}
-            {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} turnosConfig={turnosConfig} isAdmin={isAdmin} />}
+            {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} turnosConfig={turnosConfig} isAdmin={isAdmin} waTemplate={waTemplate} />}
             {tab === "projecao"      && <ProjecaoPage  registros={registros} opcoes={opcoes} />}
             {tab === "fechamento"    && <FechamentoTab registros={registros} opcoes={opcoes} />}
             {tab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} registros={registros} setRegistros={setRegistros} isAdmin={isAdmin} />}
