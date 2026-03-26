@@ -110,9 +110,7 @@ const Index = () => {
 
       <header className="rsp-header" style={{ background:"#212B36", borderBottom:"1px solid #2E3B4A", height:58, display:"flex", alignItems:"center", padding:"0 24px", gap:0, position:"sticky", top:0, zIndex:200 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, paddingRight:28, borderRight:"1px solid #2E3B4A", marginRight:20 }}>
-          <div style={{ width:34, height:34, background:"linear-gradient(135deg,#F37E38,#F9A86A)", borderRadius:9, display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <Icon d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8zM5.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM18.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" size={18} />
-          </div>
+          <img src="/logo.png" alt="Controle de Terceiros" style={{ width:34, height:34, borderRadius:9, objectFit:"cover" }} />
           <div>
             <div style={{ color:"#F8FAFC", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Controle de</div>
             <div style={{ color:"#F37E38", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Terceiros</div>
