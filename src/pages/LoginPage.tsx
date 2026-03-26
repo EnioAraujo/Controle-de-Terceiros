@@ -45,39 +45,38 @@ export default function LoginPage() {
       return;
     }
 
-    // Verificar se MFA é necessário
-    const { data: aal, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (aalErr) { console.error("Erro ao verificar nível MFA:", aalErr.message); setLoading(false); return; }
+    // Verificar fatores MFA do usuário
+    const { data: factors, error: factErr } = await supabase.auth.mfa.listFactors();
+    if (factErr) { console.error("Erro ao listar fatores MFA:", factErr.message); setLoading(false); return; }
 
-    if (aal?.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
-      // Usuário tem TOTP inscrito — iniciar challenge
-      const { data: factors, error: factErr } = await supabase.auth.mfa.listFactors();
-      if (factErr) { console.error("Erro ao listar fatores MFA:", factErr.message); setLoading(false); return; }
-      const totpFactor = factors?.totp?.[0];
-      if (totpFactor) {
-        const { data: challenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId: totpFactor.id });
+    // Fator TOTP já verificado (enrollment completo)
+    const verifiedTotp = factors?.totp?.find(f => f.factor_type === "totp" && f.status === "verified");
+
+    if (verifiedTotp) {
+      // Usuário tem MFA ativo — verificar se a sessão atual ainda é AAL1
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal?.currentLevel !== "aal2") {
+        // Sessão AAL1: exigir código TOTP antes de prosseguir
+        const { data: challenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId: verifiedTotp.id });
         if (chalErr || !challenge) {
           setErro(lang === "pt-BR" ? "Erro ao iniciar verificação MFA." : "Error starting MFA challenge.");
           setLoading(false);
           return;
         }
-        setFactorId(totpFactor.id);
+        setFactorId(verifiedTotp.id);
         setChallengeId(challenge.id);
         setStep("mfa");
         setLoading(false);
         return;
       }
-    }
-
-    // Usuário sem TOTP inscrito — redirecionar para setup
-    const { data: factors } = await supabase.auth.mfa.listFactors();
-    if (!factors?.totp?.[0]) {
+    } else {
+      // Usuário sem TOTP verificado — redirecionar para setup
       navigate("/mfa-setup", { replace: true });
       setLoading(false);
       return;
     }
 
-    // AAL1 já verificado: App.tsx detecta sessão via onAuthStateChange
+    // Sessão já é AAL2: App.tsx detecta via onAuthStateChange
     setLoading(false);
   };
 
