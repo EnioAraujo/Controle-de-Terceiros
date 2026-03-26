@@ -1924,44 +1924,7 @@ const Configuracoes = ({
 
 
 
-      {/* ── LGPD: DPO (Art. 41) — somente admin ── */}
-      {(
-      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
-          <div style={{ width:10, height:10, borderRadius:"50%", background:"#6C63FF", flexShrink:0 }} />
-          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{t("dpo_title")}</div>
-          <div style={{ fontSize:11, background:"#6C63FF18", color:"#6C63FF", fontWeight:700, borderRadius:99, padding:"2px 8px" }}>{t("dpo_badge")}</div>
-        </div>
-        <div className="rsp-grid-3" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:14 }}>
-          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("dpo_label_nome")}</label>
-            <input value={dpoNome} onChange={e => setDpoNomeSafe(e.target.value)} placeholder={t("dpo_ph_nome")}
-              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("dpo_label_email")}</label>
-            <input type="email" value={dpoEmail} onChange={e => setDpoEmailSafe(e.target.value)} placeholder={t("dpo_ph_email")}
-              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("dpo_label_tel")}</label>
-            <input value={dpoTelefone} onChange={e => setDpoTelefoneSafe(e.target.value)} placeholder={t("dpo_ph_tel")}
-              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
-          </div>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <button onClick={saveDpo} style={{ background:"#6C63FF", border:"none", borderRadius:8, padding:"9px 22px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
-            {t("dpo_btn_save")}
-          </button>
-          {dpoSaved && <span style={{ fontSize:12, color:"#0E9F6E", fontWeight:600 }}>{t("dpo_saved")}</span>}
-        </div>
-        <div style={{ fontSize:11, color:"#94A3B8", marginTop:10 }}>
-          {t("dpo_desc")}
-        </div>
-      </div>
-      )}
-
-      {/* ── WhatsApp: Template de Mensagem ── */}
+      {/* ── WhatsApp: Template de Mensagem ── */
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
           <div style={{ width:10, height:10, borderRadius:"50%", background:"#25D366", flexShrink:0 }} />
@@ -2054,6 +2017,43 @@ const Configuracoes = ({
           Configure quais campos aparecem na mensagem do WhatsApp ao compartilhar registros.
         </div>
       </div>
+
+      {/* ── LGPD: DPO (Art. 41) — somente admin ── */}
+      {(
+      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
+          <div style={{ width:10, height:10, borderRadius:"50%", background:"#6C63FF", flexShrink:0 }} />
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{t("dpo_title")}</div>
+          <div style={{ fontSize:11, background:"#6C63FF18", color:"#6C63FF", fontWeight:700, borderRadius:99, padding:"2px 8px" }}>{t("dpo_badge")}</div>
+        </div>
+        <div className="rsp-grid-3" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:14 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("dpo_label_nome")}</label>
+            <input value={dpoNome} onChange={e => setDpoNomeSafe(e.target.value)} placeholder={t("dpo_ph_nome")}
+              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("dpo_label_email")}</label>
+            <input type="email" value={dpoEmail} onChange={e => setDpoEmailSafe(e.target.value)} placeholder={t("dpo_ph_email")}
+              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+            <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("dpo_label_tel")}</label>
+            <input value={dpoTelefone} onChange={e => setDpoTelefoneSafe(e.target.value)} placeholder={t("dpo_ph_tel")}
+              style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none" }} />
+          </div>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <button onClick={saveDpo} style={{ background:"#6C63FF", border:"none", borderRadius:8, padding:"9px 22px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
+            {t("dpo_btn_save")}
+          </button>
+          {dpoSaved && <span style={{ fontSize:12, color:"#0E9F6E", fontWeight:600 }}>{t("dpo_saved")}</span>}
+        </div>
+        <div style={{ fontSize:11, color:"#94A3B8", marginTop:10 }}>
+          {t("dpo_desc")}
+        </div>
+      </div>
+      )}
 
       {/* ── LGPD: Exclusão por Solicitação (Art. 18) — somente admin ── */}
       {(
