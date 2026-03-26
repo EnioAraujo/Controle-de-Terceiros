@@ -1,3 +1,31 @@
+# Regras de Processo — Copilot Dev
+
+## OBRIGATÓRIO antes de qualquer alteração de código
+
+1. **Ler `CONTEXT.md` completo** — visão geral, schema, convenções e histórico
+2. **Ler `AI_RULES.md` completo** — regras de processo, stack e armadilhas
+
+## Processo a cada alteração
+
+1. **Ler o arquivo inteiro** antes de editar qualquer trecho (nunca editar com leitura parcial)
+2. **Checar props ignoradas** — buscar `_prefix` em todos os componentes modificados; se encontrar, verificar se é intencional ou bug de uso
+3. **Rodar `npx tsc --noEmit`** antes de declarar qualquer alteração como concluída
+4. **Rodar `pnpm test --run`** antes de commitar — nunca commitar com testes falhando
+5. **Commitar apenas após tsc + tests passando** — formato Conventional Commits
+
+## Regras de Qualidade de Código
+
+- Nunca introduzir `as any` — usar tipos explícitos; dados do Supabase DB usam `DbRegistro` de `@/lib/format-utils`
+- `sanitize()` de `@/lib/audit` obrigatório em todos os campos de texto livre antes de persistir
+- `logAudit()` obrigatório em INSERT, UPDATE, DELETE, PURGE
+- `authReady.then()` deve envolver toda operação de escrita no Supabase
+- Operações de delete + insert atômicas usam `upsert({ onConflict: "chave" })`
+- `dangerouslySetInnerHTML` só aceito com `DOMPurify.sanitize()` — nunca raw
+- `isAdmin` controla renderização de: seção DPO, Exclusão LGPD/titular, botão "Excluir Todos"
+- TypeScript `strict: true` ativo — o compilador é a primeira linha de defesa
+
+---
+
 # Tech Stack
 
 - You are building a React application.
