@@ -206,13 +206,13 @@ export const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; op
       doc.text(`Fechamento — ${fornecedor} (${fmt(intervalo.inicio, lang)} a ${fmt(intervalo.fim, lang)})`, 14, 16);
       autoTable(doc, {
         startY: 22,
-        head: [[t("fech_col_nome"), t("fech_col_data"), t("fech_col_turno"), t("fech_col_horas"), t("fech_col_diaria"), t("fech_col_vlr_hora"), t("fech_col_vlr_dia"), t("fech_col_diff"), t("fech_col_obs")]],
-        body: itens.map(i => [i.nome, fmt(i.data, lang), i.turno, i.horas, fmtCurrency(i.valorDiaria), fmtCurrency(i.valorHora), fmtCurrency(i.valorCalculado), (() => { const d = i.valorCalculado - i.valorDiaria; return d !== 0 ? fmtCurrency(d) : "—"; })(), i.obs ?? ""]),
-        foot: [["", "", "", "", "", t("fech_total"), fmtCurrency(total), "", ""]],
+        head: [[t("fech_col_data"), t("fech_col_turno"), t("fech_col_nome"), t("fech_col_horas"), t("fech_col_diaria"), t("fech_col_vlr_dia"), t("fech_col_diff"), t("fech_col_obs")]],
+        body: itens.map(i => [fmt(i.data, lang), i.turno, i.nome, i.horas, fmtCurrency(i.valorDiaria), fmtCurrency(i.valorCalculado), (() => { const d = i.valorCalculado - i.valorDiaria; return d !== 0 ? fmtCurrency(d) : "—"; })(), i.obs ?? ""]),
+        foot: [[""  , "", "", "", t("fech_total"), fmtCurrency(total), "", ""]],
         styles: { fontSize: 9, cellPadding: 3 },
         headStyles: { fillColor: [26, 86, 219], textColor: 255, fontStyle: "bold" },
         footStyles: { fillColor: [241, 245, 249], textColor: [15, 28, 46], fontStyle: "bold" },
-        columnStyles: { 6: { textColor: [14, 159, 110] } },
+        columnStyles: { 5: { textColor: [14, 159, 110] } },
       });
       doc.save(`fechamento_${fornecedor}_${intervalo.inicio}_${intervalo.fim}.pdf`);
     } catch (err) { console.error("Erro ao exportar PDF:", err); }
@@ -222,9 +222,9 @@ export const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; op
     try {
       const XLSX = await import("xlsx");
       const rows = itens.map(i => ({
-        [t("fech_col_nome")]: i.nome, [t("fech_col_data")]: fmt(i.data, lang),
-        [t("fech_col_turno")]: i.turno, [t("fech_col_horas")]: i.horas,
-        [t("fech_col_diaria")]: i.valorDiaria, [t("fech_col_vlr_hora")]: i.valorHora,
+        [t("fech_col_data")]: fmt(i.data, lang), [t("fech_col_turno")]: i.turno,
+        [t("fech_col_nome")]: i.nome, [t("fech_col_horas")]: i.horas,
+        [t("fech_col_diaria")]: i.valorDiaria,
         [t("fech_col_vlr_dia")]: i.valorCalculado, [t("fech_col_diff")]: i.valorCalculado - i.valorDiaria,
         [t("fech_col_obs")]: i.obs,
       }));
@@ -327,7 +327,7 @@ export const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; op
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: "#F1F5F9", textAlign: "left" }}>
-                      {[t("fech_col_nome"), t("fech_col_data"), t("fech_col_turno"), t("fech_col_horas"), t("fech_col_diaria"), t("fech_col_vlr_hora"), t("fech_col_vlr_dia"), t("fech_col_diff"), t("fech_col_obs"), t("fech_col_acoes")].map(h => (
+                      {[t("fech_col_data"), t("fech_col_turno"), t("fech_col_nome"), t("fech_col_horas"), t("fech_col_diaria"), t("fech_col_vlr_dia"), t("fech_col_diff"), t("fech_col_obs"), t("fech_col_acoes")].map(h => (
                         <th key={h} style={{ padding: "8px 10px", fontWeight: 700, color: "#475569", borderBottom: "2px solid #E2E6EC", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
@@ -335,12 +335,11 @@ export const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; op
                   <tbody>
                     {itens.map((item, idx) => (
                       <tr key={idx} style={{ borderBottom: "1px solid #F1F5F9", background: item.ajusteManual ? "#FFFBEB" : "transparent" }}>
-                        <td style={{ padding: "7px 10px", fontWeight: 600, color: "#0F1C2E", whiteSpace: "nowrap" }}>{item.nome}</td>
                         <td style={{ padding: "7px 10px", color: "#64748B", fontFamily: "monospace" }}>{fmt(item.data, lang)}</td>
                         <td style={{ padding: "7px 10px", color: "#64748B" }}>{item.turno}</td>
+                        <td style={{ padding: "7px 10px", fontWeight: 600, color: "#0F1C2E", whiteSpace: "nowrap" }}>{item.nome}</td>
                         <td style={{ padding: "7px 10px", color: "#64748B", fontFamily: "monospace" }}>{item.horas}</td>
                         <td style={{ padding: "7px 10px", color: "#64748B" }}>{fmtCurrency(item.valorDiaria)}</td>
-                        <td style={{ padding: "7px 10px", color: "#64748B" }}>{fmtCurrency(item.valorHora)}</td>
                         {editIdx === idx ? (
                           <>
                             <td style={{ padding: "4px 6px" }}>
@@ -380,7 +379,7 @@ export const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; op
                   </tbody>
                   <tfoot>
                     <tr style={{ background: "#F1F5F9" }}>
-                      <td colSpan={6} style={{ padding: "8px 10px", fontWeight: 800, color: "#0F1C2E", textAlign: "right" }}>{t("fech_total")}</td>
+                      <td colSpan={5} style={{ padding: "8px 10px", fontWeight: 800, color: "#0F1C2E", textAlign: "right" }}>{t("fech_total")}</td>
                       <td style={{ padding: "8px 10px", fontWeight: 800, color: "#0E9F6E" }}>{fmtCurrency(total)}</td>
                       <td colSpan={3}></td>
                     </tr>
