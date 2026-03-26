@@ -13,6 +13,7 @@ import LoginPage from "./pages/LoginPage";
 import AdminPage from "./pages/AdminPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import MobileLancamentosPage from "./pages/MobileLancamentosPage";
+import MfaSetupPage from "./pages/MfaSetupPage";
 import NotFound from "./pages/NotFound";
 
 // Componente interno que fica dentro do BrowserRouter para poder usar useNavigate
@@ -78,6 +79,7 @@ const AppRoutes = () => {
       <Route path="/" element={session ? <Index /> : <Navigate to="/login" replace />} />
       <Route path="/admin" element={session ? <AdminPage /> : <Navigate to="/login" replace />} />
       <Route path="/mobile" element={session ? <MobileLancamentosPage /> : <Navigate to="/login" replace />} />
+      <Route path="/mfa-setup" element={session ? <MfaSetupPage /> : <Navigate to="/login" replace />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

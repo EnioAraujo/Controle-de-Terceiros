@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
 import type { Lang } from "@/lib/i18n-translations";
@@ -13,6 +14,7 @@ type Step = "login" | "mfa";
 type DeviceChoice = "mobile" | "desktop" | null;
 
 export default function LoginPage() {
+  const navigate = useNavigate();
   const { lang, setLang, t } = useI18n();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
@@ -46,6 +48,7 @@ export default function LoginPage() {
     // Verificar se MFA é necessário
     const { data: aal, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aalErr) { console.error("Erro ao verificar nível MFA:", aalErr.message); setLoading(false); return; }
+
     if (aal?.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
       // Usuário tem TOTP inscrito — iniciar challenge
       const { data: factors, error: factErr } = await supabase.auth.mfa.listFactors();
@@ -61,9 +64,20 @@ export default function LoginPage() {
         setFactorId(totpFactor.id);
         setChallengeId(challenge.id);
         setStep("mfa");
+        setLoading(false);
+        return;
       }
     }
-    // Se AAL1 (sem MFA ou já verificado): App.tsx detecta sessão via onAuthStateChange
+
+    // Usuário sem TOTP inscrito — redirecionar para setup
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    if (!factors?.totp?.[0]) {
+      navigate("/mfa-setup", { replace: true });
+      setLoading(false);
+      return;
+    }
+
+    // AAL1 já verificado: App.tsx detecta sessão via onAuthStateChange
     setLoading(false);
   };
 

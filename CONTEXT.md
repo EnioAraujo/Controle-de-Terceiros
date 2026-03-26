@@ -192,6 +192,7 @@ created_at TIMESTAMPTZ  DEFAULT now()
 | `/` | Autenticado | `Index` |
 | `/mobile` | Autenticado | `MobileLancamentosPage` — versão mobile-first da tela de lançamentos |
 | `/admin` | Autenticado | `AdminPage` |
+| `/mfa-setup` | Autenticado | `MfaSetupPage` — enrollment TOTP: enroll → QR code → verify → ativa MFA |
 | `/reset-password` | Aberto (requer token de recuperação) | `ResetPasswordPage` |
 | `*` | Qualquer | `NotFound` |
 
@@ -475,3 +476,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-26 | Varredura de segurança completa: DOMPurify confirmado em todos os pontos de persistência, csvSafe validado, encodeURIComponent no WhatsApp, logAudit em todas as operações críticas |
 | 2026-03-26 | Security fixes: seções DPO e Exclusão LGPD restritas a isAdmin; botão Excluir Todos ativado apenas para admin; upsert atômico em saveWaTemplate e saveDpo; any[] substituído por DbRegistro[]; validação de range em editValor do FechamentoTab |
 | 2026-03-26 | TypeScript strict: true habilitado; zero erros de compilação; AI_RULES.md e CONTEXT.md atualizados com regras de processo obrigatório do dev (ler arquivos completos, checar _prefix, tsc antes de declarar pronto) |
+| 2026-03-26 | Implementado enrollment MFA TOTP: nova página MfaSetupPage.tsx com fluxo QR code → verify → ativação; LoginPage redireciona para /mfa-setup quando usuário não tem TOTP inscrito; rota /mfa-setup adicionada em App.tsx |
