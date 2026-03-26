@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -83,18 +84,22 @@ const AppRoutes = () => {
   );
 };
 
+const queryClient = new QueryClient();
+
 const App = () => (
-  <ErrorBoundary>
-    <I18nProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </TooltipProvider>
-    </I18nProvider>
-  </ErrorBoundary>
+  <QueryClientProvider client={queryClient}>
+    <ErrorBoundary>
+      <I18nProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </TooltipProvider>
+      </I18nProvider>
+    </ErrorBoundary>
+  </QueryClientProvider>
 );
 
 export default App;
