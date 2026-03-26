@@ -69,7 +69,7 @@ export default function MfaSetupPage() {
 
     const { data: challenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId });
     if (chalErr || !challenge) {
-      setErro(t("Erro ao iniciar verificacao. Tente novamente.", "Error starting verification. Please try again."));
+      setErro(t("Erro ao iniciar verificação. Tente novamente.", "Error starting verification. Please try again."));
       setLoading(false);
       return;
     }
@@ -83,7 +83,7 @@ export default function MfaSetupPage() {
     setLoading(false);
 
     if (verErr) {
-      setErro(t("Codigo invalido. Verifique o app autenticador e tente novamente.", "Invalid code. Check your authenticator app and try again."));
+      setErro(t("Código inválido. Verifique o app autenticador e tente novamente.", "Invalid code. Check your authenticator app and try again."));
       setCode("");
       return;
     }
@@ -114,7 +114,7 @@ export default function MfaSetupPage() {
     return (
       <div style={containerStyle}>
         <div style={{ fontSize: 14, color: "#64748B", fontWeight: 600 }}>
-          {t("Configurando autenticacao...", "Setting up authentication...")}
+          {t("Configurando autenticação...", "Setting up authentication...")}
         </div>
       </div>
     );
@@ -125,7 +125,7 @@ export default function MfaSetupPage() {
       <div style={containerStyle}>
         <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", boxShadow: "0 4px 24px rgba(0,0,0,.08)", maxWidth: 420, width: "100%", textAlign: "center" }}>
           <div style={{ fontSize: 14, color: "#E02424", fontWeight: 600 }}>
-            {t("Erro ao configurar autenticacao em dois fatores.", "Error setting up two-factor authentication.")}
+            {t("Erro ao configurar autenticação em dois fatores.", "Error setting up two-factor authentication.")}
           </div>
           <button
             onClick={() => navigate("/", { replace: true })}
@@ -144,7 +144,7 @@ export default function MfaSetupPage() {
         <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", boxShadow: "0 4px 24px rgba(0,0,0,.08)", maxWidth: 420, width: "100%", textAlign: "center" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>&#x2705;</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: "#0F1C2E" }}>
-            {t("Autenticacao ativada!", "Authentication enabled!")}
+            {t("Autenticação ativada!", "Authentication enabled!")}
           </div>
           <div style={{ fontSize: 13, color: "#64748B", marginTop: 8 }}>
             {t("Redirecionando para o sistema...", "Redirecting to the app...")}
@@ -163,7 +163,7 @@ export default function MfaSetupPage() {
 
           <div style={{ background: "linear-gradient(135deg,#0B1628,#1A2C4A)", padding: "24px 28px" }}>
             <div style={{ color: "#F8FAFC", fontWeight: 700, fontSize: 18 }}>
-              {t("Configurar Autenticacao em 2 Fatores", "Set Up Two-Factor Authentication")}
+              {t("Configurar Autenticação em 2 Fatores", "Set Up Two-Factor Authentication")}
             </div>
             <div style={{ color: "#94A3B8", fontSize: 13, marginTop: 4 }}>
               {t("Proteja sua conta com um app autenticador", "Protect your account with an authenticator app")}
@@ -183,7 +183,7 @@ export default function MfaSetupPage() {
                     </div>
                     <div style={{ fontSize: 12, color: "#64748B", marginTop: 4, lineHeight: 1.6 }}>
                       {t(
-                        "Ex: Google Authenticator, Microsoft Authenticator ou Authy. Disponivel gratuitamente.",
+                        "Ex: Google Authenticator, Microsoft Authenticator ou Authy. Disponível gratuitamente.",
                         "E.g.: Google Authenticator, Microsoft Authenticator or Authy. Free on the app stores."
                       )}
                     </div>
@@ -220,13 +220,13 @@ export default function MfaSetupPage() {
                   <div style={{ minWidth: 28, height: 28, background: "#EFF6FF", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#1A56DB" }}>3</div>
                   <div style={{ width: "100%" }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: "#0F1C2E", marginBottom: 8 }}>
-                      {t("Confirme o codigo gerado", "Confirm the generated code")}
+                      {t("Confirme o código gerado", "Confirm the generated code")}
                     </div>
                     <button
                       onClick={() => setStep("verify")}
                       style={{ background: "#1A56DB", border: "none", borderRadius: 10, padding: "12px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit", width: "100%" }}
                     >
-                      {t("Ja escaneei -- inserir codigo", "I scanned it -- enter code")}
+                      {t("Já escaneei — inserir código", "I scanned it — enter code")}
                     </button>
                   </div>
                 </div>
@@ -236,7 +236,7 @@ export default function MfaSetupPage() {
                   onClick={handleSkip}
                   style={{ background: "none", border: "none", color: "#94A3B8", fontSize: 12, cursor: "pointer", textDecoration: "underline", fontFamily: "inherit", textAlign: "center" }}
                 >
-                  {t("Configurar mais tarde (nao recomendado)", "Set up later (not recommended)")}
+                  {t("Configurar mais tarde (não recomendado)", "Set up later (not recommended)")}
                 </button>
               </>
             )}
@@ -245,14 +245,14 @@ export default function MfaSetupPage() {
               <form onSubmit={handleVerify} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                 <div style={{ textAlign: "center", fontSize: 13, color: "#475569", lineHeight: 1.6 }}>
                   {t(
-                    "Abra seu app autenticador e insira o codigo de 6 digitos gerado para esta conta.",
+                    "Abra seu app autenticador e insira o código de 6 dígitos gerado para esta conta.",
                     "Open your authenticator app and enter the 6-digit code generated for this account."
                   )}
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <label htmlFor="totp-code" style={{ fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: .7 }}>
-                    {t("Codigo de 6 digitos", "6-digit code")}
+                    {t("Código de 6 dígitos", "6-digit code")}
                   </label>
                   <input
                     id="totp-code"
@@ -295,7 +295,7 @@ export default function MfaSetupPage() {
                 >
                   {loading
                     ? t("Verificando...", "Verifying...")
-                    : t("Ativar autenticacao em 2 fatores", "Enable two-factor authentication")}
+                    : t("Ativar autenticação em 2 fatores", "Enable two-factor authentication")}
                 </button>
 
                 <button

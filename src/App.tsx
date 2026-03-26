@@ -42,8 +42,29 @@ const AppRoutes = () => {
         setLoading(false);
         return;
       }
-      // Ao fazer login (null → sessão válida), redirecionar por deviceMode
+      // Ao fazer login (null → sessão válida), verificar MFA pendente antes de redirecionar
       if (!prevSessionRef.current && session) {
+        // Se a sessão é AAL1 e o usuário tem fator TOTP verificado, o challenge ainda não
+        // foi completado. Não chamar setSession() para que LoginPage fique montado e exiba
+        // o step de verificação TOTP sem ser desmontado pelo redirect do Route.
+        // NÃO atualizar prevSessionRef aqui — permite que o evento SIGNED_IN do AAL2
+        // (pós-verify) entre normalmente pelo mesmo bloco e libere o app.
+        const hasVerifiedFactor = session.user.factors?.some(
+          (f: { status: string }) => f.status === "verified"
+        );
+        if (hasVerifiedFactor) {
+          try {
+            const jwtPayload = JSON.parse(
+              atob(session.access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
+            ) as { aal?: string };
+            if (jwtPayload.aal === "aal1") {
+              // MFA pendente: apenas libera o loading, sem redirecionar
+              setLoading(false);
+              return;
+            }
+          } catch { /* ignora erro de decode */ }
+        }
+
         const mode = sessionStorage.getItem("deviceMode");
         if (mode === "mobile") {
           setSession(session);
@@ -53,6 +74,7 @@ const AppRoutes = () => {
           return;
         }
       }
+
       // Ao fazer logout, limpar preferência de dispositivo
       if (prevSessionRef.current && !session) {
         sessionStorage.removeItem("deviceMode");
