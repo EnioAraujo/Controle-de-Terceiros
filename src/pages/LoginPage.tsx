@@ -229,7 +229,7 @@ export default function LoginPage() {
               ))}
             </div>
 
-            {/* Card de login */
+            {/* Card de login */}
             <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,.08)", overflow: "hidden" }}>
               <div style={{ background: "linear-gradient(135deg,#212B36,#2E3B4A)", padding: "24px 28px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
