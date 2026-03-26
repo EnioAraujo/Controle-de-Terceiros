@@ -406,6 +406,24 @@ const { lang, setLang, t } = useI18n();
 
 ---
 
+## 13. Dívida Técnica Identificada (2026-03-26)
+
+Resultado da varredura de verbosidade e over-engineering realizada em 2026-03-26. Os itens abaixo estão classificados por prioridade e devem ser tratados antes de implementar novas funcionalidades.
+
+| Prioridade | Localização | Problema | Ação Recomendada |
+|---|---|---|---------|
+| 🔴 Alta | `Index.tsx` (inteiro) | Monolith ~2700 linhas — hooks, UI e lógica de negócio no mesmo arquivo | Extrair `useStorage` e `useOpcoes` para `src/hooks/`; sub-componentes (`Lancamentos`, `Dashboard`, `FechamentoTab`, `Configuracoes`) para `src/components/` |
+| 🟠 Média | `Index.tsx`: `useOpcoes.save()` | Lógica diff `toAdd`/`toRemove` duplicada para options e names | Extrair helper genérico `diffSyncItems(prev, next)` |
+| 🟠 Média | `App.tsx` | `QueryClientProvider` configurado mas zero `useQuery`/`useMutation` em todo o projeto | Remover `QueryClientProvider` e dependência `@tanstack/react-query` |
+| 🟠 Média | `Index.tsx`: `salvar()` | `registros.some()` com a mesma condição executado duas vezes | Extrair resultado para variável e reutilizar |
+| 🟡 Baixa | `Index.tsx`: `FormLancamento` | `<G cols={1}>` — wrapper de grid de 1 coluna desnecessário | Remover `G` e usar o elemento filho diretamente |
+| 🟡 Baixa | `Index.tsx` (~30 ocorrências) | Inline label styles com os mesmos 5 atributos repetidos | Extrair constante `labelStyle` |
+| 🟡 Baixa | `Index.tsx` (4 ocorrências) | Block header badge (div numerada) duplicada 4× | Extrair componente `BlockHeader` |
+| 🟡 Baixa | `Index.tsx`: `Btn` component | Variante `outline` definida mas nunca usada em lugar nenhum | Remover variante ou aplicá-la onde fizer sentido |
+| 🟡 Baixa | `src/lib/format-utils.ts`: `fmtMes` | Array manual de meses pt-BR em vez de API nativa | Substituir por `Intl.DateTimeFormat` com `{ month: 'long' }` |
+
+---
+
 ## 14. Histórico de Alterações
 
 | Data | Alteração |
@@ -466,3 +484,4 @@ const { lang, setLang, t } = useI18n();
 | 2026-03-25 | Fix componente G movido para escopo de módulo (fora de FormLancamento) — corrige perda de foco ao digitar nos campos de texto (OBSERVAÇÃO etc.) |
 | 2026-03-25 | WhatsApp: (1) corrigido bug em que OBSERVAÇÃO nunca aparecia na mensagem — saveWaTemplate agora também chama setWaTemplate(payload); (2) reordenação drag-and-drop dos campos: campos habilitados exibidos primeiro com handle ⠿, arrastáveis entre si; ordem salva no template e refletida no corpo da mensagem |
 | 2026-03-25 | CONTEXT.md: adicionada regra obrigatória para o Copilot ler CONTEXT.md e arquivolocal/skill_tdd.md antes de qualquer alteração de código |
+| 2026-03-26 | Análise de verbosidade e over-engineering em Index.tsx: 9 achados catalogados na Seção 13 — monolith ~2700 linhas, QueryClientProvider sem uso, lógica duplicada em useOpcoes, double traversal em salvar(), estilos inline repetidos, G cols=1 desnecessário, BlockHeader duplicado 4×, Btn outline sem uso, fmtMes com array manual |

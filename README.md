@@ -386,6 +386,16 @@ pnpm test:watch    # Testes em modo watch
 **Causa:** Variável não configurada no dashboard da Vercel (não pode vir do `.env` do repositório).  
 **Solução:** Acessar Vercel → Project → Settings → Environment Variables → adicionar `SUPABASE_SERVICE_ROLE_KEY`.
 
+### 8. `Index.tsx` monolítico (+2500 linhas)
+**Causa:** Crescimento orgânico sem extração de hooks e componentes ao longo do desenvolvimento.  
+**Sintoma:** Dificuldade de testar funções isoladas; imports gigantes; tempo de leitura e manutenção alto.  
+**Solução:** Extrair hooks customizados para `src/hooks/` (`useStorage`, `useOpcoes`) e sub-componentes para `src/components/` (`Lancamentos`, `Dashboard`, `FechamentoTab`, `Configuracoes`). Funções puras de formatação e cálculo já vivem em `src/lib/` — seguir o mesmo padrão para tudo o que puder ser testado isoladamente.
+
+### 9. Dependência instalada mas não usada
+**Causa:** Biblioteca adicionada antecipando necessidade futura que nunca se concretizou.  
+**Sintoma:** `QueryClientProvider` envolve toda a aplicação em `App.tsx`, mas nenhum `useQuery` ou `useMutation` existe em qualquer arquivo do projeto.  
+**Solução:** Remover `@tanstack/react-query` das dependências e o `QueryClientProvider` de `App.tsx` para evitar bundle size desnecessário. Se queries assíncronas forem necessárias no futuro, reinstalar e usar corretamente.
+
 ---
 
 ## 🔒 Conformidade LGPD / LGPD Compliance
