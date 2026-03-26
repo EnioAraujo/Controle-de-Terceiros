@@ -36,7 +36,7 @@ export const Configuracoes = ({
   setOpcoes,
   registros,
   setRegistros,
-  isAdmin: _isAdmin,
+  isAdmin,
   setWaTemplate,
 }: ConfiguracoesProps) => {
   const { t, lang } = useI18n();
@@ -137,8 +137,8 @@ export const Configuracoes = ({
 
   const saveWaTemplate = async () => {
     const payload: WhatsAppTemplate = { header: waHeader.trim() || WA_DEFAULT_TEMPLATE.header, campos: waCampos };
-    await supabase.from("opcoes").delete().eq("chave", "whatsapp_template");
-    await supabase.from("opcoes").insert({ chave: "whatsapp_template", valor: JSON.stringify(payload) });
+    await supabase.from("opcoes")
+      .upsert({ chave: "whatsapp_template", valor: JSON.stringify(payload) }, { onConflict: "chave" });
     setWaTemplate(payload);
     setWaSaved(true);
     setTimeout(() => setWaSaved(false), 2500);
@@ -182,8 +182,11 @@ export const Configuracoes = ({
       { chave: "dpo_telefone",  valor: dpoTelefone.trim() },
     ];
     for (const f of fields) {
-      await supabase.from("opcoes").delete().eq("chave", f.chave);
-      if (f.valor) await supabase.from("opcoes").insert({ chave: f.chave, valor: f.valor });
+      if (f.valor) {
+        await supabase.from("opcoes").upsert({ chave: f.chave, valor: f.valor }, { onConflict: "chave" });
+      } else {
+        await supabase.from("opcoes").delete().eq("chave", f.chave);
+      }
     }
     setDpoSaved(true);
     setTimeout(() => setDpoSaved(false), 2500);
@@ -666,8 +669,8 @@ export const Configuracoes = ({
         </div>
       </div>
 
-      {/* ── LGPD: DPO (Art. 41) ── */}
-      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+      {/* ── LGPD: DPO (Art. 41) — visível só para admins ── */}
+      {isAdmin && <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
           <div style={{ width:10, height:10, borderRadius:"50%", background:"#6C63FF", flexShrink:0 }} />
           <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{t("dpo_title")}</div>
@@ -699,10 +702,10 @@ export const Configuracoes = ({
         <div style={{ fontSize:11, color:"#94A3B8", marginTop:10 }}>
           {t("dpo_desc")}
         </div>
-      </div>
+      </div>}
 
-      {/* ── LGPD: Exclusão por Solicitação (Art. 18) ── */}
-      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+      {/* ── LGPD: Exclusão por Solicitação (Art. 18) — visível só para admins ── */}
+      {isAdmin && <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
           <div style={{ width:10, height:10, borderRadius:"50%", background:"#E02424", flexShrink:0 }} />
           <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{t("lgpd_title")}</div>
@@ -778,7 +781,7 @@ export const Configuracoes = ({
             {exclusaoFeedback}
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 };

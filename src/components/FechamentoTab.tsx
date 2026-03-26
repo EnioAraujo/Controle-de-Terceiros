@@ -101,7 +101,7 @@ export const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; op
 
   const aplicarEdicao = (idx: number) => {
     const val = parseFloat(editValor);
-    if (isNaN(val)) return;
+    if (isNaN(val) || val <= 0 || val > 100_000) return;
     setItens(prev => {
       const next = [...prev];
       next[idx] = { ...next[idx], valorCalculado: val, ajusteManual: true, obs: editObs };

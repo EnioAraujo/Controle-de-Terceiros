@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Registro } from "@/types/attendance";
 import { supabase, authReady } from "@/lib/supabase";
-import { dataLimiteRetencao, dbToRegistro, registroToDb } from "@/lib/format-utils";
+import { dataLimiteRetencao, dbToRegistro, registroToDb, type DbRegistro } from "@/lib/format-utils";
 import { logAudit } from "@/lib/audit";
 
 export const useStorage = (): [Registro[], (val: Registro[]) => void, boolean] => {
@@ -19,7 +19,7 @@ export const useStorage = (): [Registro[], (val: Registro[]) => void, boolean] =
           if (error) {
             console.error("Erro ao carregar registros:", error.message);
           } else if (rows && rows.length > 0) {
-            const parsed = (rows as any[]).map(dbToRegistro);
+            const parsed = (rows as DbRegistro[]).map(dbToRegistro);
             setData(parsed);
             prevRef.current = parsed;
           }

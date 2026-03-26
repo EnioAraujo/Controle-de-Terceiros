@@ -46,7 +46,7 @@ export const fornCor = (forn: string, lista: string[]) =>
   FORN_PALETTE[lista.indexOf(forn) % FORN_PALETTE.length] || "#64748B";
 
 // ─── MAPEAMENTO DB ↔ MODELO ────────────────────────────────────
-type DbRegistro = Record<string, unknown>;
+export type DbRegistro = Record<string, unknown>;
 
 export const dbToRegistro = (row: DbRegistro): Registro => ({
   id:          row.id as string,

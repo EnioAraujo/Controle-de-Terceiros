@@ -38,7 +38,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isA
   const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", busca: "" });
   const [modal, setModal]     = useState<null | "new" | Registro | Registro[]>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [confirm, setConfirm] = useState<string[] | null>(null);
+  const [confirm, setConfirm] = useState<string[] | 'ALL' | null>(null);
   const [detalhe, setDetalhe] = useState<Registro | Registro[] | null>(null);
   const [conflito, setConflito] = useState<{ novos: Registro[]; nomes: string[]; justificativa: string } | null>(null);
 
@@ -156,6 +156,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isA
         <BlockHeader section={t("lanc_section")} title={t("lanc_title")} />
         <div style={{ display:"flex", gap:8 }}>
           <Btn variant="ghost" onClick={exportCSV} icon={<Icon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />}>{t("lanc_btn_export")}</Btn>
+          {isAdmin && <Btn variant="danger" onClick={() => setConfirm('ALL')} icon={<Icon d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />}>Excluir Todos</Btn>}
           <Btn onClick={() => setModal("new")} icon={<Icon d="M12 5v14M5 12h14" />}>{t("lanc_btn_new")}</Btn>
         </div>
       </div>
@@ -354,7 +355,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isA
 
       {confirm && (
         <Modal title={t("lanc_confirm_title")} onClose={() => setConfirm(null)}>
-          {(confirm as any) === 'ALL' ? (
+          {confirm === 'ALL' ? (
             <>
               <p style={{ color:"#E02424", fontWeight:700, fontSize:15, lineHeight:1.6 }}>
                 Tem certeza que deseja <b>EXCLUIR TODOS os registros</b>?<br/>Esta ação não poderá ser desfeita e será registrada no log de auditoria.
@@ -371,13 +372,13 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isA
           ) : (
             <>
               <p style={{ color:"#475569", fontSize:13, lineHeight:1.6 }}>
-                {confirm.length > 1
-                  ? t("lanc_confirm_lote").replace("{n}", String(confirm.length))
+                {(confirm as string[]).length > 1
+                  ? t("lanc_confirm_lote").replace("{n}", String((confirm as string[]).length))
                   : t("lanc_confirm_single")}
               </p>
               <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20 }}>
                 <Btn variant="ghost" onClick={() => setConfirm(null)}>{t("lanc_confirm_cancel")}</Btn>
-                <Btn variant="danger" onClick={() => excluir(confirm)}>{t("lanc_confirm_delete")}</Btn>
+                <Btn variant="danger" onClick={() => excluir(confirm as string[])}>{t("lanc_confirm_delete")}</Btn>
               </div>
             </>
           )}
