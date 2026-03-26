@@ -58,6 +58,13 @@ async function mockLoginError(page: import("@playwright/test").Page) {
 
 // ─── Testes ───────────────────────────────────────────────────────────────────
 
+// Helper: navega para /login e seleciona modo Desktop antes de interagir com o formulário.
+// A LoginPage exibe uma tela de seleção de dispositivo (Mobile/Desktop) antes do formulário.
+async function gotoLoginForm(page: import("@playwright/test").Page) {
+  await page.goto("/login");
+  await page.getByText("Desktop").first().click();
+}
+
 test.describe("LoginPage", () => {
   test.beforeEach(async ({ page }) => {
     // Sem sessão → redireciona para /login
@@ -67,28 +74,27 @@ test.describe("LoginPage", () => {
   });
 
   test("renderiza os campos de email e senha", async ({ page }) => {
-    await page.goto("/login");
-    await expect(page.locator("input[type='email'], input[placeholder*='mail'], input[name='email']").first()).toBeVisible();
+    await gotoLoginForm(page);
+    await expect(page.locator("input[type='email']").first()).toBeVisible();
     await expect(page.locator("input[type='password']").first()).toBeVisible();
   });
 
   test("botão de login está visível e habilitado", async ({ page }) => {
-    await page.goto("/login");
-    const btn = page.locator("button[type='submit'], button:has-text('Entrar'), button:has-text('Login')").first();
+    await gotoLoginForm(page);
+    const btn = page.locator("button[type='submit']").first();
     await expect(btn).toBeVisible();
     await expect(btn).toBeEnabled();
   });
 
   test("exibe erro com credenciais inválidas", async ({ page }) => {
     await mockLoginError(page);
-    await page.goto("/login");
+    await gotoLoginForm(page);
 
-    await page.locator("input[type='email'], input[placeholder*='mail']").first().fill("wrong@example.com");
+    await page.locator("input[type='email']").first().fill("wrong@example.com");
     await page.locator("input[type='password']").first().fill("wrongpassword");
-    await page.locator("button[type='submit'], button:has-text('Entrar'), button:has-text('Login')").first().click();
+    await page.locator("button[type='submit']").first().click();
 
-    // Aguarda mensagem de erro inline — a div usa cor #E02424 e texto "E-mail ou senha incorretos."
-    // Usamos regex para ser agnóstico ao idioma
+    // Aguarda mensagem de erro inline
     await expect(
       page.getByText(/incorretos|Incorrect|inválido|invalid/i).first()
     ).toBeVisible({ timeout: 8000 });
@@ -104,10 +110,10 @@ test.describe("LoginPage", () => {
       route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(false) })
     );
 
-    await page.goto("/login");
-    await page.locator("input[type='email'], input[placeholder*='mail']").first().fill("test@example.com");
+    await gotoLoginForm(page);
+    await page.locator("input[type='email']").first().fill("test@example.com");
     await page.locator("input[type='password']").first().fill("password123");
-    await page.locator("button[type='submit'], button:has-text('Entrar'), button:has-text('Login')").first().click();
+    await page.locator("button[type='submit']").first().click();
 
     // Deve sair da rota /login
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
