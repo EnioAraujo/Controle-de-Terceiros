@@ -180,7 +180,7 @@ _Create a `.env` file at the project root based on [`.env.example`](.env.example
 ├── supabase/
 │   ├── schema/schema.sql       # Schema base completo
 │   └── migrations/             # Migrations incrementais
-└── REGRAS_FECHAMENTO.md        # Regras de negócio do fechamento financeiro
+└── arquivolocal/REGRAS_FECHAMENTO.md  # Regras de negócio do fechamento financeiro
 ```
 
 ---
