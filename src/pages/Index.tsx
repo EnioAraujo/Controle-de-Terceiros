@@ -103,19 +103,19 @@ const Index = () => {
       {!privacyAccepted && (
         <PrivacyNotice dpoNome={dpoCfg.nome} dpoEmail={dpoCfg.email} onAccept={acceptPrivacy} />
       )}
-    <div style={{ minHeight:"100vh", background:"#F0F2F5", fontFamily:"'DM Sans',system-ui,sans-serif", display:"flex", flexDirection:"column" }}>
+    <div style={{ minHeight:"100vh", background:"#FAF9FB", fontFamily:"'DM Sans',system-ui,sans-serif", display:"flex", flexDirection:"column" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
       `}</style>
 
-      <header className="rsp-header" style={{ background:"#0B1628", borderBottom:"1px solid #1E293B", height:58, display:"flex", alignItems:"center", padding:"0 24px", gap:0, position:"sticky", top:0, zIndex:200 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10, paddingRight:28, borderRight:"1px solid #1E293B", marginRight:20 }}>
-          <div style={{ width:34, height:34, background:"linear-gradient(135deg,#1A56DB,#3B82F6)", borderRadius:9, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <header className="rsp-header" style={{ background:"#212B36", borderBottom:"1px solid #2E3B4A", height:58, display:"flex", alignItems:"center", padding:"0 24px", gap:0, position:"sticky", top:0, zIndex:200 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, paddingRight:28, borderRight:"1px solid #2E3B4A", marginRight:20 }}>
+          <div style={{ width:34, height:34, background:"linear-gradient(135deg,#F37E38,#F9A86A)", borderRadius:9, display:"flex", alignItems:"center", justifyContent:"center" }}>
             <Icon d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8zM5.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM18.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" size={18} />
           </div>
           <div>
             <div style={{ color:"#F8FAFC", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Controle de</div>
-            <div style={{ color:"#3B82F6", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Terceiros</div>
+            <div style={{ color:"#F37E38", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Terceiros</div>
           </div>
         </div>
 
@@ -124,8 +124,8 @@ const Index = () => {
             <button key={n.id} onClick={() => setTab(n.id)} style={{
               display:"flex", alignItems:"center", gap:7, padding:"7px 15px", borderRadius:8, border:"none", cursor:"pointer",
               fontFamily:"inherit", fontWeight:600, fontSize:13,
-              background: tab === n.id ? "#1A56DB" : "transparent",
-              color: tab === n.id ? "#fff" : "#64748B",
+              background: tab === n.id ? "#F37E38" : "transparent",
+              color: tab === n.id ? "#fff" : "#9898B0",
             }}>
               <Icon d={n.icon} size={15} /><span className="rsp-nav-label">{n.label}</span>
             </button>
@@ -134,11 +134,11 @@ const Index = () => {
 
         <div className="rsp-header-right" style={{ display:"flex", alignItems:"center", gap:16 }}>
           <div className="rsp-header-stats" style={{ display:"flex", gap:12, fontSize:11 }}>
-            <div style={{ color:"#64748B" }}>{t("nav_hoje")} <strong style={{ color:"#F8FAFC" }}>{hoje_}</strong></div>
-            <div style={{ color:"#64748B" }}>{t("nav_mes")} <strong style={{ color:"#F8FAFC" }}>{mes_}</strong></div>
+            <div style={{ color:"#9898B0" }}>{t("nav_hoje")} <strong style={{ color:"#F8FAFC" }}>{hoje_}</strong></div>
+            <div style={{ color:"#9898B0" }}>{t("nav_mes")} <strong style={{ color:"#F8FAFC" }}>{mes_}</strong></div>
           </div>
           {loading && (
-            <div style={{ display:"flex", alignItems:"center", gap:6, background:"#1A56DB18", border:"1px solid #1A56DB33", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#1A56DB", fontWeight:600 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6, background:"#F37E3818", border:"1px solid #F37E3833", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#F37E38", fontWeight:600 }}>
               <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
               {t("nav_loading")}
             </div>
@@ -148,7 +148,7 @@ const Index = () => {
               <Icon d="M5 13l4 4L19 7" size={12} /> {t("nav_saved")}
             </div>
           )}
-          <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"#475569", fontFamily:"'DM Mono',monospace" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"#9898B0", fontFamily:"'DM Mono',monospace" }}>
             <div style={{ width:7, height:7, borderRadius:"50%", background:"#0E9F6E", boxShadow:"0 0 0 3px #0E9F6E30" }} />
             {new Date().toLocaleTimeString(lang, { hour:"2-digit", minute:"2-digit" })}
           </div>
@@ -156,7 +156,7 @@ const Index = () => {
             <button
               onClick={() => navigate("/admin")}
               title="Painel de administração"
-              style={{ display:"flex", alignItems:"center", gap:5, background:"#1A56DB18", border:"1px solid #1A56DB44", borderRadius:8, padding:"4px 10px", cursor:"pointer", color:"#1A56DB", fontSize:11, fontFamily:"inherit", fontWeight:600 }}
+              style={{ display:"flex", alignItems:"center", gap:5, background:"#F37E3818", border:"1px solid #F37E3844", borderRadius:8, padding:"4px 10px", cursor:"pointer", color:"#F37E38", fontSize:11, fontFamily:"inherit", fontWeight:600 }}
             >
               <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               {t("nav_admin")}
@@ -165,7 +165,7 @@ const Index = () => {
           <button
             onClick={() => supabase.auth.signOut()}
             title="Sair do sistema"
-            style={{ display:"flex", alignItems:"center", gap:5, background:"transparent", border:"1px solid #1E293B", borderRadius:8, padding:"4px 10px", cursor:"pointer", color:"#64748B", fontSize:11, fontFamily:"inherit", fontWeight:600 }}
+            style={{ display:"flex", alignItems:"center", gap:5, background:"transparent", border:"1px solid #2E3B4A", borderRadius:8, padding:"4px 10px", cursor:"pointer", color:"#9898B0", fontSize:11, fontFamily:"inherit", fontWeight:600 }}
           >
             <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
             {t("nav_logout")}
@@ -176,8 +176,8 @@ const Index = () => {
       <main className="rsp-main" style={{ flex:1, padding:"24px", maxWidth:1440, width:"100%", margin:"0 auto" }}>
         {loading ? (
           <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"60vh", gap:16 }}>
-            <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="#1A56DB" strokeWidth={2} style={{ animation:"spin 1s linear infinite" }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-            <div style={{ fontSize:14, color:"#64748B", fontWeight:600 }}>{t("nav_loading_data")}</div>
+            <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="#F37E38" strokeWidth={2} style={{ animation:"spin 1s linear infinite" }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            <div style={{ fontSize:14, color:"#9898B0", fontWeight:600 }}>{t("nav_loading_data")}</div>
             <style>{"@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}"}</style>
           </div>
         ) : (

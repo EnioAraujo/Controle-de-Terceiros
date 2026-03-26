@@ -103,7 +103,7 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#F0F2F5",
+      background: "#FAF9FB",
       fontFamily: "'DM Sans',system-ui,sans-serif",
       display: "flex",
       alignItems: "center",
@@ -127,9 +127,9 @@ export default function LoginPage() {
                     display: "flex", alignItems: "center", gap: 5,
                     padding: "5px 11px", borderRadius: 8, cursor: "pointer",
                     fontFamily: "inherit", fontWeight: 600, fontSize: 12,
-                    border: lang === l.value ? "1.5px solid #1A56DB" : "1.5px solid #E2E6EC",
-                    background: lang === l.value ? "#EFF6FF" : "#fff",
-                    color: lang === l.value ? "#1A56DB" : "#64748B",
+                    border: lang === l.value ? "1.5px solid #F37E38" : "1.5px solid #E8E8EA",
+                    background: lang === l.value ? "#FFF4EC" : "#fff",
+                    color: lang === l.value ? "#F37E38" : "#9898B0",
                     transition: "all .15s",
                   }}
                 >
@@ -141,11 +141,11 @@ export default function LoginPage() {
 
             <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,.08)", overflow: "hidden" }}>
               {/* Header */}
-              <div style={{ background: "linear-gradient(135deg,#0B1628,#1A2C4A)", padding: "24px 28px" }}>
+              <div style={{ background: "linear-gradient(135deg,#212B36,#2E3B4A)", padding: "24px 28px" }}>
                 <div style={{ color: "#F8FAFC", fontWeight: 700, fontSize: 18 }}>
                   {lang === "pt-BR" ? "Controle de Terceiros" : "Third-party Control"}
                 </div>
-                <div style={{ color: "#94A3B8", fontSize: 13, marginTop: 4 }}>
+                <div style={{ color: "#9898B0", fontSize: 13, marginTop: 4 }}>
                   {lang === "pt-BR" ? "Como você vai acessar hoje?" : "How will you access today?"}
                 </div>
               </div>
@@ -161,15 +161,15 @@ export default function LoginPage() {
                       flex: 1,
                       display: "flex", flexDirection: "column", alignItems: "center",
                       gap: 8, padding: "22px 12px",
-                      borderRadius: 12, border: "2px solid #BFDBFE",
-                      background: "#EFF6FF", cursor: "pointer",
+                      borderRadius: 12, border: "2px solid #FDD9B5",
+                      background: "#FFF4EC", cursor: "pointer",
                       fontFamily: "inherit", transition: "all .15s",
                     }}
                   >
                     <span style={{ fontSize: 34, lineHeight: 1 }}>📱</span>
-                    <div style={{ fontWeight: 800, fontSize: 15, color: "#1A56DB" }}>Mobile</div>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: "#F37E38" }}>Mobile</div>
                     <div style={{
-                      fontSize: 11, color: "#64748B", textAlign: "center",
+                      fontSize: 11, color: "#9898B0", textAlign: "center",
                       lineHeight: 1.5, maxWidth: 140,
                     }}>
                       {lang === "pt-BR"
@@ -185,15 +185,15 @@ export default function LoginPage() {
                       flex: 1,
                       display: "flex", flexDirection: "column", alignItems: "center",
                       gap: 8, padding: "22px 12px",
-                      borderRadius: 12, border: "2px solid #E2E6EC",
+                      borderRadius: 12, border: "2px solid #E8E8EA",
                       background: "#F8FAFC", cursor: "pointer",
                       fontFamily: "inherit", transition: "all .15s",
                     }}
                   >
                     <span style={{ fontSize: 34, lineHeight: 1 }}>💻</span>
-                    <div style={{ fontWeight: 800, fontSize: 15, color: "#334155" }}>Desktop</div>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: "#212B36" }}>Desktop</div>
                     <div style={{
-                      fontSize: 11, color: "#64748B", textAlign: "center",
+                      fontSize: 11, color: "#9898B0", textAlign: "center",
                       lineHeight: 1.5, maxWidth: 140,
                     }}>
                       {lang === "pt-BR"
@@ -217,9 +217,9 @@ export default function LoginPage() {
                     display: "flex", alignItems: "center", gap: 5,
                     padding: "5px 11px", borderRadius: 8, cursor: "pointer",
                     fontFamily: "inherit", fontWeight: 600, fontSize: 12,
-                    border: lang === l.value ? "1.5px solid #1A56DB" : "1.5px solid #E2E6EC",
-                    background: lang === l.value ? "#EFF6FF" : "#fff",
-                    color: lang === l.value ? "#1A56DB" : "#64748B",
+                    border: lang === l.value ? "1.5px solid #F37E38" : "1.5px solid #E8E8EA",
+                    background: lang === l.value ? "#FFF4EC" : "#fff",
+                    color: lang === l.value ? "#F37E38" : "#9898B0",
                     transition: "all .15s",
                   }}
                 >
@@ -229,9 +229,9 @@ export default function LoginPage() {
               ))}
             </div>
 
-            {/* Card de login */}
+            {/* Card de login */
             <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,.08)", overflow: "hidden" }}>
-              <div style={{ background: "linear-gradient(135deg,#0B1628,#1A2C4A)", padding: "24px 28px" }}>
+              <div style={{ background: "linear-gradient(135deg,#212B36,#2E3B4A)", padding: "24px 28px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
                     <div style={{ color: "#F8FAFC", fontWeight: 700, fontSize: 18 }}>
@@ -239,7 +239,7 @@ export default function LoginPage() {
                         ? (lang === "pt-BR" ? "Verificação em duas etapas" : "Two-step verification")
                         : t("login_title")}
                     </div>
-                    <div style={{ color: "#64748B", fontSize: 12, marginTop: 4 }}>
+                    <div style={{ color: "#9898B0", fontSize: 12, marginTop: 4 }}>
                       {step === "mfa"
                         ? (lang === "pt-BR" ? "Digite o código do seu aplicativo autenticador" : "Enter the code from your authenticator app")
                         : t("login_subtitle")}
@@ -247,7 +247,7 @@ export default function LoginPage() {
                   </div>
                   {/* Badge do modo escolhido */}
                   <span style={{
-                    background: deviceChoice === "mobile" ? "#1A56DB" : "#334155",
+                    background: deviceChoice === "mobile" ? "#F37E38" : "#212B36",
                     color: "#fff", borderRadius: 8, padding: "4px 10px",
                     fontSize: 11, fontWeight: 700, letterSpacing: .5, whiteSpace: "nowrap",
                   }}>
@@ -259,7 +259,7 @@ export default function LoginPage() {
               {step === "mfa" ? (
                 <form onSubmit={handleMfaVerify} style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 18 }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label htmlFor="mfa-code" style={{ fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: .7 }}>
+                    <label htmlFor="mfa-code" style={{ fontSize: 12, fontWeight: 600, color: "#9898B0", textTransform: "uppercase", letterSpacing: .7 }}>
                       {lang === "pt-BR" ? "Código TOTP (6 dígitos)" : "TOTP Code (6 digits)"}
                     </label>
                     <input
@@ -272,7 +272,7 @@ export default function LoginPage() {
                       onChange={e => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                       required
                       autoFocus
-                      style={{ border: "1.5px solid #E2E6EC", borderRadius: 8, padding: "10px 14px", fontSize: 22, fontFamily: "monospace", letterSpacing: 6, textAlign: "center", background: "#FAFBFC" }}
+                      style={{ border: "1.5px solid #E8E8EA", borderRadius: 8, padding: "10px 14px", fontSize: 22, fontFamily: "monospace", letterSpacing: 6, textAlign: "center", background: "#FAFAFA" }}
                     />
                   </div>
                   {erro && (
@@ -281,31 +281,31 @@ export default function LoginPage() {
                     </div>
                   )}
                   <button type="submit" disabled={loading || mfaCode.length !== 6}
-                    style={{ background: (loading || mfaCode.length !== 6) ? "#93AEDE" : "#1A56DB", border: "none", borderRadius: 10, padding: "13px", cursor: (loading || mfaCode.length !== 6) ? "not-allowed" : "pointer", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit", transition: "all .15s" }}>
+                    style={{ background: (loading || mfaCode.length !== 6) ? "#F9C49A" : "#F37E38", border: "none", borderRadius: 10, padding: "13px", cursor: (loading || mfaCode.length !== 6) ? "not-allowed" : "pointer", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit", transition: "all .15s" }}>
                     {loading ? (lang === "pt-BR" ? "Verificando…" : "Verifying…") : (lang === "pt-BR" ? "Verificar" : "Verify")}
                   </button>
                   <button type="button" onClick={() => { setStep("login"); setErro(""); setMfaCode(""); }}
-                    style={{ background: "none", border: "none", color: "#64748B", fontSize: 12, cursor: "pointer", textDecoration: "underline", fontFamily: "inherit" }}>
+                    style={{ background: "none", border: "none", color: "#9898B0", fontSize: 12, cursor: "pointer", textDecoration: "underline", fontFamily: "inherit" }}>
                     {lang === "pt-BR" ? "← Voltar ao login" : "← Back to login"}
                   </button>
                 </form>
               ) : (
                 <form onSubmit={handleLogin} className="rsp-auth-card" style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 18 }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label htmlFor="email" style={{ fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: .7 }}>
+                    <label htmlFor="email" style={{ fontSize: 12, fontWeight: 600, color: "#9898B0", textTransform: "uppercase", letterSpacing: .7 }}>
                       {t("login_email")}
                     </label>
                     <input id="email" type="email" autoComplete="email" placeholder={t("login_placeholder_email")}
                       value={email} onChange={e => setEmail(e.target.value)} required
-                      style={{ border: "1.5px solid #E2E6EC", borderRadius: 8, padding: "10px 14px", fontSize: 14, fontFamily: "inherit", background: "#FAFBFC" }} />
+                      style={{ border: "1.5px solid #E8E8EA", borderRadius: 8, padding: "10px 14px", fontSize: 14, fontFamily: "inherit", background: "#FAFAFA" }} />
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label htmlFor="password" style={{ fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: .7 }}>
+                    <label htmlFor="password" style={{ fontSize: 12, fontWeight: 600, color: "#9898B0", textTransform: "uppercase", letterSpacing: .7 }}>
                       {t("login_password")}
                     </label>
                     <input id="password" type="password" autoComplete="current-password" placeholder={t("login_placeholder_pass")}
                       value={password} onChange={e => setPassword(e.target.value)} required
-                      style={{ border: "1.5px solid #E2E6EC", borderRadius: 8, padding: "10px 14px", fontSize: 14, fontFamily: "inherit", background: "#FAFBFC" }} />
+                      style={{ border: "1.5px solid #E8E8EA", borderRadius: 8, padding: "10px 14px", fontSize: 14, fontFamily: "inherit", background: "#FAFAFA" }} />
                   </div>
                   {erro && (
                     <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#E02424", fontWeight: 500 }}>
@@ -313,15 +313,15 @@ export default function LoginPage() {
                     </div>
                   )}
                   <button type="submit" disabled={loading}
-                    style={{ background: loading ? "#93AEDE" : "#1A56DB", border: "none", borderRadius: 10, padding: "13px", cursor: loading ? "not-allowed" : "pointer", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit", transition: "all .15s" }}>
+                    style={{ background: loading ? "#F9C49A" : "#F37E38", border: "none", borderRadius: 10, padding: "13px", cursor: loading ? "not-allowed" : "pointer", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit", transition: "all .15s" }}>
                     {loading ? t("login_btn_loading") : t("login_btn")}
                   </button>
-                  <div style={{ textAlign: "center", fontSize: 12, color: "#94A3B8", marginTop: -4 }}>
+                  <div style={{ textAlign: "center", fontSize: 12, color: "#9898B0", marginTop: -4 }}>
                     {t("login_no_account")}
                   </div>
                   {/* Voltar para seleção de dispositivo */}
                   <button type="button" onClick={() => { setDeviceChoice(null); sessionStorage.removeItem("deviceMode"); setErro(""); }}
-                    style={{ background: "none", border: "none", color: "#94A3B8", fontSize: 11, cursor: "pointer", textDecoration: "underline", fontFamily: "inherit", marginTop: -8 }}>
+                    style={{ background: "none", border: "none", color: "#9898B0", fontSize: 11, cursor: "pointer", textDecoration: "underline", fontFamily: "inherit", marginTop: -8 }}>
                     {lang === "pt-BR" ? "← Trocar tipo de acesso" : "← Change access type"}
                   </button>
                 </form>

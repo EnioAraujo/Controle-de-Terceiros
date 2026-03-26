@@ -46,69 +46,69 @@ export default function ResetPasswordPage() {
 
   if (hasSession === null) {
     return (
-      <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif" }}>
-        <div style={{ fontSize: 14, color: "#64748B", fontWeight: 600 }}>{t("reset_checking")}</div>
+      <div style={{ minHeight: "100vh", background: "#FAF9FB", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif" }}>
+        <div style={{ fontSize: 14, color: "#9898B0", fontWeight: 600 }}>{t("reset_checking")}</div>
       </div>
     );
   }
 
   if (!hasSession) {
     return (
-      <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif", padding: 24 }}>
+      <div style={{ minHeight: "100vh", background: "#FAF9FB", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif", padding: 24 }}>
         <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", boxShadow: "0 4px 24px rgba(0,0,0,.08)", maxWidth: 420, width: "100%", textAlign: "center" }}>
           <div style={{ fontSize: 14, color: "#E02424", fontWeight: 600 }}>{t("reset_invalid_link")}</div>
-          <div style={{ fontSize: 13, color: "#64748B", marginTop: 8 }}>{t("reset_redirecting")}</div>
+          <div style={{ fontSize: 13, color: "#9898B0", marginTop: 8 }}>{t("reset_redirecting")}</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F0F2F5", fontFamily: "'DM Sans',system-ui,sans-serif", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+    <div style={{ minHeight: "100vh", background: "#FAF9FB", fontFamily: "'DM Sans',system-ui,sans-serif", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');`}</style>
 
       <div style={{ width: "100%", maxWidth: 420 }}>
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 32 }}>
-          <div style={{ width: 44, height: 44, background: "linear-gradient(135deg,#1A56DB,#3B82F6)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 44, height: 44, background: "linear-gradient(135deg,#F37E38,#F9A86A)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <path d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8zM5.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM18.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
             </svg>
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: -.5, color: "#0F1C2E", lineHeight: 1.1 }}>Controle de</div>
-            <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: -.5, color: "#1A56DB", lineHeight: 1.1 }}>Terceiros</div>
+            <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: -.5, color: "#212B36", lineHeight: 1.1 }}>Controle de</div>
+            <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: -.5, color: "#F37E38", lineHeight: 1.1 }}>Terceiros</div>
           </div>
         </div>
 
         <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,.08)", overflow: "hidden" }}>
-          <div style={{ background: "linear-gradient(135deg,#0B1628,#1A2C4A)", padding: "24px 28px" }}>
+          <div style={{ background: "linear-gradient(135deg,#212B36,#2E3B4A)", padding: "24px 28px" }}>
             <div style={{ color: "#F8FAFC", fontWeight: 700, fontSize: 18 }}>{t("reset_title")}</div>
-            <div style={{ color: "#64748B", fontSize: 12, marginTop: 4 }}>{t("reset_subtitle")}</div>
+            <div style={{ color: "#9898B0", fontSize: 12, marginTop: 4 }}>{t("reset_subtitle")}</div>
           </div>
 
           <form onSubmit={handleSubmit} className="rsp-auth-card" style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: .7 }}>{t("reset_label_new")}</label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: "#9898B0", textTransform: "uppercase", letterSpacing: .7 }}>{t("reset_label_new")}</label>
               <input
                 type="password"
                 value={newPass}
                 onChange={e => setNewPass(e.target.value)}
                 placeholder={t("reset_placeholder_new")}
                 required
-                style={{ border: "1.5px solid #E2E6EC", borderRadius: 9, padding: "11px 14px", fontSize: 14, fontFamily: "inherit", background: "#FAFBFC" }}
+                style={{ border: "1.5px solid #E8E8EA", borderRadius: 9, padding: "11px 14px", fontSize: 14, fontFamily: "inherit", background: "#FAFAFA" }}
               />
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: .7 }}>{t("reset_label_confirm")}</label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: "#9898B0", textTransform: "uppercase", letterSpacing: .7 }}>{t("reset_label_confirm")}</label>
               <input
                 type="password"
                 value={confirmPass}
                 onChange={e => setConfirmPass(e.target.value)}
                 placeholder={t("reset_placeholder_confirm")}
                 required
-                style={{ border: "1.5px solid #E2E6EC", borderRadius: 9, padding: "11px 14px", fontSize: 14, fontFamily: "inherit", background: "#FAFBFC" }}
+                style={{ border: "1.5px solid #E8E8EA", borderRadius: 9, padding: "11px 14px", fontSize: 14, fontFamily: "inherit", background: "#FAFAFA" }}
               />
             </div>
 
@@ -127,7 +127,7 @@ export default function ResetPasswordPage() {
               type="submit"
               disabled={loading}
               style={{
-                background: loading ? "#93AEDE" : "#1A56DB",
+                background: loading ? "#F9C49A" : "#F37E38",
                 border: "none", borderRadius: 10, padding: "13px",
                 cursor: loading ? "not-allowed" : "pointer",
                 color: "#fff", fontWeight: 700, fontSize: 15, fontFamily: "inherit",

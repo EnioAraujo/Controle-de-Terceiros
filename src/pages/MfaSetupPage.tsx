@@ -102,7 +102,7 @@ export default function MfaSetupPage() {
 
   const containerStyle: React.CSSProperties = {
     minHeight: "100vh",
-    background: "#F0F2F5",
+    background: "#FAF9FB",
     fontFamily: "'DM Sans',system-ui,sans-serif",
     display: "flex",
     alignItems: "center",
@@ -113,7 +113,7 @@ export default function MfaSetupPage() {
   if (step === "loading") {
     return (
       <div style={containerStyle}>
-        <div style={{ fontSize: 14, color: "#64748B", fontWeight: 600 }}>
+          <div style={{ fontSize: 14, color: "#9898B0", fontWeight: 600 }}>
           {t("Configurando autenticação...", "Setting up authentication...")}
         </div>
       </div>
@@ -129,7 +129,7 @@ export default function MfaSetupPage() {
           </div>
           <button
             onClick={() => navigate("/", { replace: true })}
-            style={{ marginTop: 16, background: "#1A56DB", border: "none", borderRadius: 10, padding: "11px 24px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit" }}
+            style={{ marginTop: 16, background: "#F37E38", border: "none", borderRadius: 10, padding: "11px 24px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit" }}
           >
             {t("Continuar sem MFA", "Continue without MFA")}
           </button>
@@ -143,10 +143,10 @@ export default function MfaSetupPage() {
       <div style={containerStyle}>
         <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", boxShadow: "0 4px 24px rgba(0,0,0,.08)", maxWidth: 420, width: "100%", textAlign: "center" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>&#x2705;</div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "#0F1C2E" }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "#212B36" }}>
             {t("Autenticação ativada!", "Authentication enabled!")}
           </div>
-          <div style={{ fontSize: 13, color: "#64748B", marginTop: 8 }}>
+          <div style={{ fontSize: 13, color: "#9898B0", marginTop: 8 }}>
             {t("Redirecionando para o sistema...", "Redirecting to the app...")}
           </div>
         </div>
@@ -161,11 +161,11 @@ export default function MfaSetupPage() {
       <div style={{ width: "100%", maxWidth: 440 }}>
         <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,.08)", overflow: "hidden" }}>
 
-          <div style={{ background: "linear-gradient(135deg,#0B1628,#1A2C4A)", padding: "24px 28px" }}>
+          <div style={{ background: "linear-gradient(135deg,#212B36,#2E3B4A)", padding: "24px 28px" }}>
             <div style={{ color: "#F8FAFC", fontWeight: 700, fontSize: 18 }}>
               {t("Configurar Autenticação em 2 Fatores", "Set Up Two-Factor Authentication")}
             </div>
-            <div style={{ color: "#94A3B8", fontSize: 13, marginTop: 4 }}>
+            <div style={{ color: "#9898B0", fontSize: 13, marginTop: 4 }}>
               {t("Proteja sua conta com um app autenticador", "Protect your account with an authenticator app")}
             </div>
           </div>
@@ -176,12 +176,12 @@ export default function MfaSetupPage() {
               <>
                 {/* Passo 1 */}
                 <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  <div style={{ minWidth: 28, height: 28, background: "#EFF6FF", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#1A56DB" }}>1</div>
+                  <div style={{ minWidth: 28, height: 28, background: "#FFF4EC", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#F37E38" }}>1</div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#0F1C2E" }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#212B36" }}>
                       {t("Instale um app autenticador", "Install an authenticator app")}
                     </div>
-                    <div style={{ fontSize: 12, color: "#64748B", marginTop: 4, lineHeight: 1.6 }}>
+                    <div style={{ fontSize: 12, color: "#9898B0", marginTop: 4, lineHeight: 1.6 }}>
                       {t(
                         "Ex: Google Authenticator, Microsoft Authenticator ou Authy. Disponível gratuitamente.",
                         "E.g.: Google Authenticator, Microsoft Authenticator or Authy. Free on the app stores."
@@ -192,22 +192,22 @@ export default function MfaSetupPage() {
 
                 {/* Passo 2 */}
                 <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  <div style={{ minWidth: 28, height: 28, background: "#EFF6FF", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#1A56DB" }}>2</div>
+                  <div style={{ minWidth: 28, height: 28, background: "#FFF4EC", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#F37E38" }}>2</div>
                   <div style={{ width: "100%" }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#0F1C2E", marginBottom: 12 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#212B36", marginBottom: 12 }}>
                       {t("Escaneie o QR Code", "Scan the QR Code")}
                     </div>
                     <div style={{ display: "flex", justifyContent: "center" }}>
-                      <div style={{ background: "#fff", border: "2px solid #E2E6EC", borderRadius: 12, padding: 12, display: "inline-block" }}>
+                      <div style={{ background: "#fff", border: "2px solid #E8E8EA", borderRadius: 12, padding: 12, display: "inline-block" }}>
                         <img src={qrUrl} alt="QR Code MFA" width={160} height={160} style={{ display: "block" }} />
                       </div>
                     </div>
                     {secret && (
                       <div style={{ marginTop: 12, background: "#F8FAFC", border: "1px dashed #CBD5E1", borderRadius: 8, padding: "10px 14px" }}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: .7, marginBottom: 4 }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: "#9898B0", textTransform: "uppercase", letterSpacing: .7, marginBottom: 4 }}>
                           {t("Ou insira o codigo manualmente:", "Or enter the secret key manually:")}
                         </div>
-                        <div style={{ fontFamily: "monospace", fontSize: 13, color: "#0F1C2E", letterSpacing: 1, wordBreak: "break-all" }}>
+                        <div style={{ fontFamily: "monospace", fontSize: 13, color: "#212B36", letterSpacing: 1, wordBreak: "break-all" }}>
                           {secret}
                         </div>
                       </div>
@@ -217,14 +217,14 @@ export default function MfaSetupPage() {
 
                 {/* Passo 3 */}
                 <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  <div style={{ minWidth: 28, height: 28, background: "#EFF6FF", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#1A56DB" }}>3</div>
+                  <div style={{ minWidth: 28, height: 28, background: "#FFF4EC", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#F37E38" }}>3</div>
                   <div style={{ width: "100%" }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#0F1C2E", marginBottom: 8 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#212B36", marginBottom: 8 }}>
                       {t("Confirme o código gerado", "Confirm the generated code")}
                     </div>
                     <button
                       onClick={() => setStep("verify")}
-                      style={{ background: "#1A56DB", border: "none", borderRadius: 10, padding: "12px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit", width: "100%" }}
+                      style={{ background: "#F37E38", border: "none", borderRadius: 10, padding: "12px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit", width: "100%" }}
                     >
                       {t("Já escaneei — inserir código", "I scanned it — enter code")}
                     </button>
@@ -234,7 +234,7 @@ export default function MfaSetupPage() {
                 <button
                   type="button"
                   onClick={handleSkip}
-                  style={{ background: "none", border: "none", color: "#94A3B8", fontSize: 12, cursor: "pointer", textDecoration: "underline", fontFamily: "inherit", textAlign: "center" }}
+                  style={{ background: "none", border: "none", color: "#9898B0", fontSize: 12, cursor: "pointer", textDecoration: "underline", fontFamily: "inherit", textAlign: "center" }}
                 >
                   {t("Configurar mais tarde (não recomendado)", "Set up later (not recommended)")}
                 </button>
@@ -243,7 +243,7 @@ export default function MfaSetupPage() {
 
             {step === "verify" && (
               <form onSubmit={handleVerify} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                <div style={{ textAlign: "center", fontSize: 13, color: "#475569", lineHeight: 1.6 }}>
+                <div style={{ textAlign: "center", fontSize: 13, color: "#9898B0", lineHeight: 1.6 }}>
                   {t(
                     "Abra seu app autenticador e insira o código de 6 dígitos gerado para esta conta.",
                     "Open your authenticator app and enter the 6-digit code generated for this account."
@@ -251,7 +251,7 @@ export default function MfaSetupPage() {
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label htmlFor="totp-code" style={{ fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: .7 }}>
+                  <label htmlFor="totp-code" style={{ fontSize: 12, fontWeight: 600, color: "#9898B0", textTransform: "uppercase", letterSpacing: .7 }}>
                     {t("Código de 6 dígitos", "6-digit code")}
                   </label>
                   <input
@@ -265,14 +265,14 @@ export default function MfaSetupPage() {
                     required
                     autoFocus
                     style={{
-                      border: "1.5px solid #E2E6EC",
+                      border: "1.5px solid #E8E8EA",
                       borderRadius: 8,
                       padding: "12px 14px",
                       fontSize: 28,
                       fontFamily: "monospace",
                       letterSpacing: 10,
                       textAlign: "center",
-                      background: "#FAFBFC",
+                      background: "#FAFAFA",
                     }}
                   />
                 </div>
@@ -287,7 +287,7 @@ export default function MfaSetupPage() {
                   type="submit"
                   disabled={loading || code.length !== 6}
                   style={{
-                    background: (loading || code.length !== 6) ? "#93AEDE" : "#1A56DB",
+                    background: (loading || code.length !== 6) ? "#F9C49A" : "#F37E38",
                     border: "none", borderRadius: 10, padding: "13px",
                     cursor: (loading || code.length !== 6) ? "not-allowed" : "pointer",
                     color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit",
@@ -301,7 +301,7 @@ export default function MfaSetupPage() {
                 <button
                   type="button"
                   onClick={() => { setStep("qr"); setErro(""); setCode(""); }}
-                  style={{ background: "none", border: "none", color: "#64748B", fontSize: 12, cursor: "pointer", textDecoration: "underline", fontFamily: "inherit", textAlign: "center" }}
+                  style={{ background: "none", border: "none", color: "#9898B0", fontSize: 12, cursor: "pointer", textDecoration: "underline", fontFamily: "inherit", textAlign: "center" }}
                 >
                   {t("Ver o QR Code novamente", "See the QR code again")}
                 </button>

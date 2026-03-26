@@ -7,7 +7,7 @@ export const Icon = ({ d, size = 16 }: { d: string; size?: number }) => (
 
 // ─── CHIP ─────────────────────────────────────────────────────────
 export interface ChipProps { label: string; color?: string; bg?: string; size?: "sm" | "lg"; }
-export const Chip = ({ label, color = "#1A56DB", bg, size = "sm" }: ChipProps) => (
+export const Chip = ({ label, color = "#F37E38", bg, size = "sm" }: ChipProps) => (
   <span style={{ display:"inline-flex", alignItems:"center", padding: size === "lg" ? "4px 12px" : "2px 8px", borderRadius:99, fontSize: size === "lg" ? 12 : 11, fontWeight:700, color, background: bg || color + "1A", whiteSpace:"nowrap", letterSpacing:.2 }}>{label}</span>
 );
 
@@ -16,7 +16,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> { labe
 export const Input = ({ label, ...props }: InputProps) => (
   <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
     {label && <label style={LABEL_STYLE}>{label}</label>}
-    <input {...props} style={{ border:"1.5px solid #E2E6EC", borderRadius:8, padding:"8px 11px", fontSize:13, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", transition:"border .15s", ...props.style }} />
+    <input {...props} style={{ border:"1.5px solid #E8E8EA", borderRadius:8, padding:"8px 11px", fontSize:13, fontFamily:"inherit", background:"#FAFAFA", width:"100%", outline:"none", transition:"border .15s", ...props.style }} />
   </div>
 );
 
@@ -25,7 +25,7 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> { l
 export const Select = ({ label, children, ...props }: SelectProps) => (
   <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
     {label && <label style={LABEL_STYLE}>{label}</label>}
-    <select {...props} style={{ border:"1.5px solid #E2E6EC", borderRadius:8, padding:"8px 11px", fontSize:13, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", ...props.style }}>
+    <select {...props} style={{ border:"1.5px solid #E8E8EA", borderRadius:8, padding:"8px 11px", fontSize:13, fontFamily:"inherit", background:"#FAFAFA", width:"100%", outline:"none", ...props.style }}>
       {children}
     </select>
   </div>
@@ -36,8 +36,8 @@ export type BtnVariant = "primary" | "ghost" | "danger" | "success" | "warning";
 export interface BtnProps { children: ReactNode; onClick?: () => void; variant?: BtnVariant; small?: boolean; icon?: ReactNode; disabled?: boolean; full?: boolean; style?: CSSProperties; }
 export const Btn = ({ children, onClick, variant = "primary", small, icon, disabled, full, style: s }: BtnProps) => {
   const V: Record<BtnVariant, { bg: string; c: string; border?: string }> = {
-    primary: { bg:"#1A56DB", c:"#fff" },
-    ghost:   { bg:"#F1F5F9", c:"#334155" },
+    primary: { bg:"#F37E38", c:"#fff" },
+    ghost:   { bg:"#F4F3F5", c:"#212B36" },
     danger:  { bg:"#FDE8E8", c:"#E02424" },
     success: { bg:"#E6F9F4", c:"#0E9F6E" },
     warning: { bg:"#FEF3C7", c:"#B45309" },
@@ -55,12 +55,12 @@ export interface ModalProps { title: string; subtitle?: string; onClose: () => v
 export const Modal = ({ title, subtitle, onClose, children, wide, xl }: ModalProps) => (
   <div style={{ position:"fixed", inset:0, background:"rgba(10,18,35,.6)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:16, backdropFilter:"blur(2px)" }}>
     <div style={{ background:"#fff", borderRadius:16, width:"100%", maxWidth: xl ? 960 : wide ? 680 : 520, maxHeight:"92vh", overflowY:"auto", boxShadow:"0 32px 80px rgba(10,18,35,.22)", display:"flex", flexDirection:"column" }}>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"18px 24px", borderBottom:"1px solid #F1F5F9", position:"sticky", top:0, background:"#fff", zIndex:1, borderRadius:"16px 16px 0 0" }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"18px 24px", borderBottom:"1px solid #F4F3F5", position:"sticky", top:0, background:"#fff", zIndex:1, borderRadius:"16px 16px 0 0" }}>
         <div>
-          <div style={{ fontWeight:800, fontSize:15, color:"#0F1C2E" }}>{title}</div>
-          {subtitle && <div style={{ fontSize:12, color:"#94A3B8", marginTop:2 }}>{subtitle}</div>}
+          <div style={{ fontWeight:800, fontSize:15, color:"#212B36" }}>{title}</div>
+          {subtitle && <div style={{ fontSize:12, color:"#9898B0", marginTop:2 }}>{subtitle}</div>}
         </div>
-        <button onClick={onClose} style={{ background:"#F1F5F9", border:"none", borderRadius:8, padding:7, cursor:"pointer", color:"#64748B", display:"flex" }}>
+        <button onClick={onClose} style={{ background:"#F4F3F5", border:"none", borderRadius:8, padding:7, cursor:"pointer", color:"#9898B0", display:"flex" }}>
           <Icon d="M18 6L6 18M6 6l12 12" />
         </button>
       </div>
@@ -129,13 +129,13 @@ export const AutocompleteNome = ({ value, onChange, suggestions, placeholder, st
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         autoComplete="off"
-        style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", fontWeight:600, boxSizing:"border-box", ...style }}
+        style={{ border:"1.5px solid #E8E8EA", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFAFA", width:"100%", outline:"none", fontWeight:600, boxSizing:"border-box", ...style }}
       />
       {open && filtered.length > 0 && (
-        <div style={{ position:"fixed", top: dropPos.top, left: dropPos.left, width: dropPos.width, background:"#fff", border:"1.5px solid #BFDBFE", borderRadius:8, boxShadow:"0 8px 24px rgba(10,18,35,.13)", zIndex:9999, maxHeight:200, overflowY:"auto", marginTop:0 }}>
+        <div style={{ position:"fixed", top: dropPos.top, left: dropPos.left, width: dropPos.width, background:"#fff", border:"1.5px solid #FDD9B5", borderRadius:8, boxShadow:"0 8px 24px rgba(10,18,35,.13)", zIndex:9999, maxHeight:200, overflowY:"auto", marginTop:0 }}>
           {filtered.map((name, idx) => (
             <div key={name} onMouseDown={() => select(name)} onMouseEnter={() => setHighlighted(idx)}
-              style={{ padding:"8px 12px", fontSize:12, fontWeight:600, color:"#334155", cursor:"pointer", background: idx === highlighted ? "#EFF6FF" : "transparent", borderBottom: idx < filtered.length - 1 ? "1px solid #F1F5F9" : "none" }}>
+              style={{ padding:"8px 12px", fontSize:12, fontWeight:600, color:"#212B36", cursor:"pointer", background: idx === highlighted ? "#FFF4EC" : "transparent", borderBottom: idx < filtered.length - 1 ? "1px solid #F4F3F5" : "none" }}>
               {name}
             </div>
           ))}
@@ -154,7 +154,7 @@ export const G = ({ children, cols = 2 }: { children: ReactNode; cols?: number }
 // ─── LABEL_STYLE ─────────────────────────────────────────────────
 /** Estilo padronizado para labels de campos. */
 export const LABEL_STYLE: CSSProperties = {
-  fontSize: 11, fontWeight: 600, color: "#64748B",
+  fontSize: 11, fontWeight: 600, color: "#9898B0",
   textTransform: "uppercase", letterSpacing: .7,
 };
 
@@ -162,8 +162,8 @@ export const LABEL_STYLE: CSSProperties = {
 /** Cabeçalho padronizado de seção (seção, título, descrição). */
 export const BlockHeader = ({ section, title, desc }: { section: string; title: string; desc?: string }) => (
   <div>
-    <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{section}</div>
-    <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>{title}</div>
-    {desc && <div style={{ fontSize:12, color:"#64748B", marginTop:2 }}>{desc}</div>}
+    <div style={{ fontSize:11, color:"#9898B0", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{section}</div>
+    <div style={{ fontSize:20, fontWeight:800, color:"#212B36" }}>{title}</div>
+    {desc && <div style={{ fontSize:12, color:"#9898B0", marginTop:2 }}>{desc}</div>}
   </div>
 );
