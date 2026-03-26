@@ -88,11 +88,12 @@ docs(context): atualiza CONTEXT.md com novo schema
 ### Sequência obrigatória ao final de cada tarefa
 
 1. Atualizar `CONTEXT.md` (seções relevantes + histórico)
-2. **Executar os testes** (`pnpm test`) e garantir que todos passem
-3. Executar o commit e o push com **todos** os arquivos alterados:
+2. **Executar o build de produção** (`pnpm build`) — captura erros esbuild/Vite que o tsc não detecta
+3. **Executar os testes** (`pnpm test`) e garantir que todos passem
+4. Executar o commit e o push com **todos** os arquivos alterados:
 
 ```bash
-pnpm test && git add -A && git commit -m "tipo(escopo): descrição" && git push
+pnpm build && pnpm test && git add -A && git commit -m "tipo(escopo): descrição" && git push
 ```
 
 ---
@@ -107,13 +108,15 @@ pnpm test && git add -A && git commit -m "tipo(escopo): descrição" && git push
 - Usar **Vitest** como framework de testes e **@testing-library/react** para componentes
 - Funções de lógica pura devem estar em módulos utilitários (`src/lib/`) para facilitar testes
 - Ao criar nova lógica de negócio (cálculos, formatação, mapeamento, validação), **criar testes correspondentes**
+- Rodar `pnpm build` antes de commitar; se falhar, **corrigir antes de prosseguir**
 - Rodar `pnpm test` antes de commitar; se falhar, **corrigir antes de prosseguir**
-- **Nunca commitar com testes falhando**
+- **Nunca commitar com build ou testes falhando**
 
 ### Comandos
 
 | Comando | Uso |
 |---|---|
+| `pnpm build` | Executa o build de produção (esbuild/Vite) |
 | `pnpm test` | Executa todos os testes uma vez |
 | `pnpm test:watch` | Executa testes em modo watch |
 

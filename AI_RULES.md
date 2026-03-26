@@ -10,8 +10,9 @@
 1. **Ler o arquivo inteiro** antes de editar qualquer trecho (nunca editar com leitura parcial)
 2. **Checar props ignoradas** — buscar `_prefix` em todos os componentes modificados; se encontrar, verificar se é intencional ou bug de uso
 3. **Rodar `npx tsc --noEmit`** antes de declarar qualquer alteração como concluída
-4. **Rodar `pnpm test --run`** antes de commitar — nunca commitar com testes falhando
-5. **Commitar apenas após tsc + tests passando** — formato Conventional Commits
+4. **Rodar `pnpm build`** — o esbuild/Vite é mais estrito que o tsc e detecta erros de JSX/sintaxe que o compilador ignora
+5. **Rodar `pnpm test --run`** antes de commitar — nunca commitar com testes falhando
+6. **Commitar apenas após build + tsc + tests passando** — formato Conventional Commits
 
 ## Regras de Qualidade de Código
 
