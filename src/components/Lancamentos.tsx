@@ -6,8 +6,21 @@ import { hoje, fmt, fornCor, buildWhatsAppMessage } from "@/lib/format-utils";
 import type { WhatsAppTemplate } from "@/lib/format-utils";
 import type { TurnoConfig } from "@/lib/fechamento-utils";
 import { useI18n } from "@/hooks/use-i18n";
-import { Icon, Chip, Btn, Modal, Input, Select } from "@/components/atoms";
+import { Icon, Chip, Btn, Modal, Input, Select, BlockHeader } from "@/components/atoms";
 import { FormLancamento } from "@/components/FormLancamento";
+
+/** Retorna o registro existente que conflita com `r` em turno na mesma data. */
+const findConflitoDeTurno = (
+  r: Registro,
+  registros: Registro[],
+  editIds: Set<string>,
+): Registro | undefined =>
+  registros.find(e =>
+    !editIds.has(e.id) &&
+    e.nome.toLowerCase() === r.nome.toLowerCase() &&
+    e.data === r.data &&
+    e.turno.toLowerCase() !== r.turno.toLowerCase()
+  );
 
 interface Filtros { data: string; turno: string; fornecedor: string; unidade: string; busca: string; }
 
@@ -67,12 +80,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isA
     const editIds = new Set(Array.isArray(modal) ? (modal as Registro[]).map(r => r.id) : modal && modal !== "new" ? [(modal as Registro).id] : []);
     const conflitosNome: string[] = [];
     for (const r of semDup) {
-      const existente = registros.find(e =>
-        !editIds.has(e.id) &&
-        e.nome.toLowerCase() === r.nome.toLowerCase() &&
-        e.data === r.data &&
-        e.turno.toLowerCase() !== r.turno.toLowerCase()
-      );
+      const existente = findConflitoDeTurno(r, registros, editIds);
       if (existente) conflitosNome.push(`${r.nome} (já no ${existente.turno})`);
     }
 
@@ -145,10 +153,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isA
       )}
 
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
-        <div>
-          <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{t("lanc_section")}</div>
-          <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>{t("lanc_title")}</div>
-        </div>
+        <BlockHeader section={t("lanc_section")} title={t("lanc_title")} />
         <div style={{ display:"flex", gap:8 }}>
           <Btn variant="ghost" onClick={exportCSV} icon={<Icon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />}>{t("lanc_btn_export")}</Btn>
           <Btn onClick={() => setModal("new")} icon={<Icon d="M12 5v14M5 12h14" />}>{t("lanc_btn_new")}</Btn>

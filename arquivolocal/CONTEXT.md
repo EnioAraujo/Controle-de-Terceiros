@@ -38,7 +38,7 @@ Sistema web para **controle de presença e gestão de trabalhadores terceirizado
 | Framework | React 18 + TypeScript |
 | Build | Vite |
 | Roteamento | React Router v6 |
-| Estado/Query | TanStack React Query v5 |
+| Estado | useState/useEffect (hooks customizados: useStorage, useOpcoes) |
 | UI Components | shadcn/ui + Radix UI |
 | Estilo | Tailwind CSS + inline styles (páginas principais) |
 | Backend/DB | Supabase (PostgreSQL + Auth + RLS) |
@@ -52,47 +52,58 @@ Sistema web para **controle de presença e gestão de trabalhadores terceirizado
 
 ```
 src/
-├── App.tsx                  # Roteamento principal + controle de sessão + ErrorBoundary
+├── App.tsx                  # Roteamento principal + controle de sessão + ErrorBoundary (sem QueryClientProvider)
 ├── main.tsx                 # Entry point React
 ├── globals.css              # Estilos globais
 ├── components/
-│   ├── ErrorBoundary.tsx    # Error Boundary global (previne tela branca em crash)
-│   └── ui/                  # Todos os componentes shadcn/ui
+│   ├── atoms.tsx            # Átomos de UI: Icon, Chip, Input, Select, Btn, Modal, AutocompleteNome, G, LABEL_STYLE, BlockHeader
+│   ├── PrivacyNotice.tsx    # usePrivacyAccepted() + PrivacyNotice (LGPD)
+│   ├── FormLancamento.tsx   # Formulário de lançamento (PessoaRow, FormLancamento)
+│   ├── Lancamentos.tsx      # Tab de lançamentos (tabela, filtros, modais)
+│   ├── Dashboard.tsx        # Tab de dashboard (KPIs, gráfico por fornecedor)
+│   ├── Configuracoes.tsx    # Tab de configurações (opções, DPO, WhatsApp, admin)
+│   ├── FechamentoTab.tsx    # Tab de fechamento financeiro por fornecedor/período
+│   ├── ErrorBoundary.tsx    # Error Boundary global
+│   └── ui/                  # Todos os componentes shadcn/ui (não editar)
 ├── hooks/
+│   ├── useStorage.ts        # Hook persistência de registros no Supabase
+│   ├── useOpcoes.ts         # Hook persistência de opções + terceiros; helper syncList()
 │   ├── use-mobile.tsx
 │   ├── use-toast.ts
-│   └── use-i18n.ts            # Hook useI18n() para acesso ao contexto de idioma
+│   └── use-i18n.ts          # Hook useI18n() para acesso ao contexto de idioma
 ├── lib/
-│   ├── supabase.ts            # Client Supabase + authReady promise
-│   ├── format-utils.ts        # Funções puras: calcHoras, fmt, fmtMes, dbToRegistro, etc.
-│   ├── fechamento-utils.ts    # Lógica de fechamento financeiro
-│   ├── i18n-translations.ts   # Traduções pt-BR/en-US + mapSupabaseError()
-│   ├── i18n-context.ts        # React.createContext do sistema i18n
-│   ├── i18n.tsx               # I18nProvider (componente de contexto)
-│   └── utils.ts               # cn() helper
+│   ├── audit.ts             # uuid(), sanitize(), logAudit() — centralizados
+│   ├── supabase.ts          # Client Supabase + authReady promise
+│   ├── format-utils.ts      # Funções puras: calcHoras, fmt, fmtMes (Intl), dbToRegistro, etc.
+│   ├── fechamento-utils.ts  # Lógica de fechamento financeiro
+│   ├── i18n-translations.ts # Traduções pt-BR/en-US + mapSupabaseError()
+│   ├── i18n-context.ts      # React.createContext do sistema i18n
+│   ├── i18n.tsx             # I18nProvider (componente de contexto)
+│   └── utils.ts             # cn() helper
 ├── pages/
-│   ├── Index.tsx              # Página principal (lançamento + listagem)
-│   ├── MobileLancamentosPage.tsx # Versão mobile dos lançamentos (cards, FAB, bottom sheet)
-│   ├── ProjecaoPage.tsx       # Página dedicada de projeção/análise de demanda
-│   ├── LoginPage.tsx          # Autenticação email/senha + seleção de dispositivo (mobile/desktop)
-│   ├── AdminPage.tsx          # Gerenciamento de usuários + conta
-│   ├── ResetPasswordPage.tsx  # Redefinição de senha
+│   ├── Index.tsx            # Orquestrador (~197L): apenas imports + componente Index
+│   ├── MobileLancamentosPage.tsx # Versão mobile dos lançamentos
+│   ├── ProjecaoPage.tsx     # Página de projeção/análise de demanda
+│   ├── LoginPage.tsx        # Autenticação email/senha
+│   ├── AdminPage.tsx        # Gerenciamento de usuários
+│   ├── ResetPasswordPage.tsx
 │   └── NotFound.tsx
 ├── types/
-│   └── attendance.ts          # Interfaces: Registro, SelectOption
+│   └── attendance.ts        # Interfaces: Registro, Opcoes, OPCOES_DEFAULT, SelectOption
 supabase/
-├── schema.sql                 # Schema base completo
+├── schema.sql               # Schema base completo
 └── migrations/
-    ├── admin_setup.sql        # Tabela profiles + is_admin() + trigger
-    ├── audit_log.sql          # Tabela de auditoria
+    ├── admin_setup.sql
+    ├── audit_log.sql
+    ├── fechamento_tables.sql
     ├── fix_linter_warnings.sql
     ├── fix_rls_write_policies.sql
     ├── retention_policy.sql
-    ├── terceiros_table.sql    # Tabela de nomes de terceirizados
-    └── user_management.sql    # ON DELETE CASCADE + trigger sync email
+    ├── terceiros_table.sql
+    └── user_management.sql
 supabase/functions/
 └── admin-users/
-    └── index.ts               # Edge Function: criar, editar, excluir usuários
+    └── index.ts             # Edge Function: criar, editar, excluir usuários
 ```
 
 ---
@@ -485,3 +496,9 @@ Resultado da varredura de verbosidade e over-engineering realizada em 2026-03-26
 | 2026-03-25 | WhatsApp: (1) corrigido bug em que OBSERVAÇÃO nunca aparecia na mensagem — saveWaTemplate agora também chama setWaTemplate(payload); (2) reordenação drag-and-drop dos campos: campos habilitados exibidos primeiro com handle ⠿, arrastáveis entre si; ordem salva no template e refletida no corpo da mensagem |
 | 2026-03-25 | CONTEXT.md: adicionada regra obrigatória para o Copilot ler CONTEXT.md e arquivolocal/skill_tdd.md antes de qualquer alteração de código |
 | 2026-03-26 | Análise de verbosidade e over-engineering em Index.tsx: 9 achados catalogados na Seção 13 — monolith ~2700 linhas, QueryClientProvider sem uso, lógica duplicada em useOpcoes, double traversal em salvar(), estilos inline repetidos, G cols=1 desnecessário, BlockHeader duplicado 4×, Btn outline sem uso, fmtMes com array manual |
+| 2026-03-26 | Fix 1: Index.tsx reduzido de 2629 → 197 linhas; extraídos para módulos: useStorage (hooks/), useOpcoes (hooks/), PrivacyNotice (components/), atoms (components/), FormLancamento (components/), Lancamentos (components/), Dashboard (components/), Configuracoes (components/), FechamentoTab (components/); audit centralizado em lib/audit.ts; Opcoes + OPCOES_DEFAULT em types/attendance.ts; Fix setWaTemplate bug (agora prop explícita no Configuracoes) |
+| 2026-03-26 | Fix 2: helper syncList() em useOpcoes.ts elimina duplicação da lógica de diff (toAdd/toRemove/upsert/delete) usada para opcoes e terceiros |
+| 2026-03-26 | Fix 3: QueryClientProvider e queryClient removidos de App.tsx — dependência @tanstack/react-query estava instalada mas nunca usada |
+| 2026-03-26 | Fix 4: findConflitoDeTurno() extraída como helper de módulo em Lancamentos.tsx — substitui inline registros.find() repetido |
+| 2026-03-26 | Fix 6+7: LABEL_STYLE constant + BlockHeader component adicionados a atoms.tsx; Input/Select usam LABEL_STYLE; Dashboard, Lancamentos, FechamentoTab e Configuracoes usam BlockHeader |
+| 2026-03-26 | Fix 9: fmtMes() em format-utils.ts reescrita usando Intl.DateTimeFormat — elimina array manual de meses português; todos os 87 testes passando |

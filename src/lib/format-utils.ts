@@ -7,15 +7,14 @@ export const fmt = (d: string, locale = "pt-BR") =>
   d ? new Date(d + "T00:00:00").toLocaleDateString(locale) : "—";
 
 export const fmtMes = (ym: string, locale = "pt-BR") => {
-  const d = new Date(ym + "-01");
+  const d = new Date(ym + "-01T00:00:00");
+  const month = new Intl.DateTimeFormat(locale, { month: "short" }).format(d);
+  const year  = d.getFullYear();
+  // Normaliza: capitalize + remove ponto final (ex: "mar." → "Mar")
+  const m = month.charAt(0).toUpperCase() + month.slice(1).replace(/\.$/, "");
   if (locale === "en-US")
-    return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
-  const [y, m] = ym.split("-");
-  return (
-    ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"][+m - 1] +
-    "/" +
-    y
-  );
+    return new Intl.DateTimeFormat(locale, { month: "short", year: "numeric" }).format(d);
+  return `${m}/${year}`;
 };
 
 export const mesAtual = () => new Date().toISOString().slice(0, 7);

@@ -10,7 +10,7 @@ import { dbToTurnoConfig, dbToDiariaConfig } from "@/lib/fechamento-utils";
 import type { TurnoConfig, DiariaConfig } from "@/lib/fechamento-utils";
 import { useI18n } from "@/hooks/use-i18n";
 import { supabase, authReady } from "@/lib/supabase";
-import { Icon } from "@/components/atoms";
+import { Icon, BlockHeader } from "@/components/atoms";
 import { fmt } from "@/lib/format-utils";
 
 export const OPCOES_CONFIG: { key: keyof Omit<Opcoes, "nomes">; label: string; cor: string }[] = [
@@ -295,7 +295,7 @@ export const Configuracoes = ({
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
       <div>
-        <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{t("cfg_section")}</div>
+        <BlockHeader section={t("cfg_section")} title={t("cfg_title")} />
         <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>{t("cfg_title")}</div>
         <div style={{ fontSize:12, color:"#64748B", marginTop:4 }}>{t("cfg_desc")}</div>
       </div>

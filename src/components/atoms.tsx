@@ -15,7 +15,7 @@ export const Chip = ({ label, color = "#1A56DB", bg, size = "sm" }: ChipProps) =
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> { label?: string; }
 export const Input = ({ label, ...props }: InputProps) => (
   <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-    {label && <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{label}</label>}
+    {label && <label style={LABEL_STYLE}>{label}</label>}
     <input {...props} style={{ border:"1.5px solid #E2E6EC", borderRadius:8, padding:"8px 11px", fontSize:13, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", transition:"border .15s", ...props.style }} />
   </div>
 );
@@ -24,7 +24,7 @@ export const Input = ({ label, ...props }: InputProps) => (
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> { label?: string; children: ReactNode; }
 export const Select = ({ label, children, ...props }: SelectProps) => (
   <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-    {label && <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{label}</label>}
+    {label && <label style={LABEL_STYLE}>{label}</label>}
     <select {...props} style={{ border:"1.5px solid #E2E6EC", borderRadius:8, padding:"8px 11px", fontSize:13, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", ...props.style }}>
       {children}
     </select>
@@ -150,3 +150,20 @@ export const G = ({ children, cols = 2 }: { children: ReactNode; cols?: number }
   const cls = cols >= 4 ? "rsp-grid-4" : cols === 3 ? "rsp-grid-3" : "rsp-grid-2";
   return <div className={cls} style={{ display:"grid", gridTemplateColumns:`repeat(${cols},1fr)`, gap:14 }}>{children}</div>;
 };
+
+// ─── LABEL_STYLE ─────────────────────────────────────────────────
+/** Estilo padronizado para labels de campos. */
+export const LABEL_STYLE: CSSProperties = {
+  fontSize: 11, fontWeight: 600, color: "#64748B",
+  textTransform: "uppercase", letterSpacing: .7,
+};
+
+// ─── BLOCK HEADER ─────────────────────────────────────────────────
+/** Cabeçalho padronizado de seção (seção, título, descrição). */
+export const BlockHeader = ({ section, title, desc }: { section: string; title: string; desc?: string }) => (
+  <div>
+    <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{section}</div>
+    <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>{title}</div>
+    {desc && <div style={{ fontSize:12, color:"#64748B", marginTop:2 }}>{desc}</div>}
+  </div>
+);

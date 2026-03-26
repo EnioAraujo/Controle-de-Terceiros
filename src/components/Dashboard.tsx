@@ -3,7 +3,7 @@ import type { Registro } from "@/types/attendance";
 import type { Opcoes } from "@/types/attendance";
 import { fmtMes, hoje, mesAtual } from "@/lib/format-utils";
 import { useI18n } from "@/hooks/use-i18n";
-import { Icon } from "@/components/atoms";
+import { Icon, BlockHeader } from "@/components/atoms";
 
 interface KPIProps { label: string; value: string | number; sub?: string; color?: string; icon?: ReactNode; }
 const KPI = ({ label, value, sub, color = "#1A56DB", icon }: KPIProps) => (
@@ -39,10 +39,7 @@ export const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
-        <div>
-          <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{t("dash_section")}</div>
-          <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>{t("dash_title")}</div>
-        </div>
+        <BlockHeader section={t("dash_section")} title={t("dash_title")} />
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           <button onClick={() => { const d = new Date(periodo + "-01"); d.setMonth(d.getMonth() - 1); setPeriodo(d.toISOString().slice(0, 7)); }}
             style={{ background:"#F1F5F9", border:"none", borderRadius:8, padding:"8px 12px", cursor:"pointer", fontWeight:700 }}>‹</button>

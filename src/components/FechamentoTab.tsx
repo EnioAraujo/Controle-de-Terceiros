@@ -15,6 +15,7 @@ import {
   STATUS_COLORS, NEXT_STATUS,
 } from "@/lib/fechamento-utils";
 import { useI18n } from "@/hooks/use-i18n";
+import { BlockHeader } from "@/components/atoms";
 
 const STATUS_LABEL_KEY: Record<FechamentoStatus, string> = {
   rascunho: "fech_status_rascunho",
@@ -248,11 +249,7 @@ export const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; op
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div>
-        <div style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>{t("fech_section")}</div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: "#0F1C2E" }}>{t("fech_title")}</div>
-        <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>{t("fech_desc")}</div>
-      </div>
+      <BlockHeader section={t("fech_section")} title={t("fech_title")} desc={t("fech_desc")} />
 
       {/* ── Barra de Filtros ── */}
       <div style={{ background: "#fff", border: "1px solid #E2E6EC", borderRadius: 12, padding: 16, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>

@@ -2,6 +2,31 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { Opcoes, OPCOES_DEFAULT } from "@/types/attendance";
 import { supabase, authReady } from "@/lib/supabase";
 
+const CHUNK = 100;
+
+/** Aplica diff entre prevList e nextList usando upsert/remove fornecidos. */
+async function syncList(
+  prevList: string[],
+  nextList: string[],
+  upsert: (batch: string[]) => Promise<{ error: { message: string } | null }>,
+  remove: (items: string[]) => Promise<{ error: { message: string } | null }>,
+  label: string,
+): Promise<void> {
+  if (JSON.stringify(prevList) === JSON.stringify(nextList)) return;
+  const toAdd    = nextList.filter(v => !prevList.includes(v));
+  const toRemove = prevList.filter(v => !nextList.includes(v));
+  if (toAdd.length > 0) {
+    for (let i = 0; i < toAdd.length; i += CHUNK) {
+      const { error } = await upsert(toAdd.slice(i, i + CHUNK));
+      if (error) { console.error(`Erro ao inserir ${label}:`, error.message); break; }
+    }
+  }
+  if (toRemove.length > 0) {
+    const { error } = await remove(toRemove);
+    if (error) console.error(`Erro ao remover ${label}:`, error.message);
+  }
+}
+
 export const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
   const [data, setData]       = useState<Opcoes>(OPCOES_DEFAULT);
   const [loading, setLoading] = useState(true);
@@ -57,57 +82,23 @@ export const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
     // ── Salva opções (excepto nomes, que têm tabela própria) ──
     const KEYS = (Object.keys(newVal) as (keyof Opcoes)[]).filter(k => k !== "nomes");
     for (const key of KEYS) {
-      const prevList = prev[key] as string[];
-      const nextList = newVal[key] as string[];
-      if (JSON.stringify(prevList) === JSON.stringify(nextList)) continue;
-
-      const toAdd    = nextList.filter(v => !prevList.includes(v));
-      const toRemove = prevList.filter(v => !nextList.includes(v));
-
-      if (toAdd.length > 0) {
-        const CHUNK = 100;
-        (async () => {
-          for (let i = 0; i < toAdd.length; i += CHUNK) {
-            const batch = toAdd.slice(i, i + CHUNK);
-            const { error } = await supabase
-              .from("opcoes")
-              .upsert(batch.map(valor => ({ chave: key, valor })), { onConflict: "chave,valor", ignoreDuplicates: true });
-            if (error) { console.error(`Erro ao inserir opções [${key}]:`, error.message); break; }
-          }
-        })().catch((err: unknown) => console.error(`Erro ao inserir opções [${key}]:`, err));
-      }
-      if (toRemove.length > 0) {
-        supabase.from("opcoes").delete().eq("chave", key).in("valor", toRemove)
-          .then(({ error }) => { if (error) console.error(`Erro ao remover opções [${key}]:`, error.message); })
-          .catch((err: unknown) => console.error(`Erro ao remover opções [${key}]:`, err));
-      }
+      syncList(
+        prev[key] as string[],
+        newVal[key] as string[],
+        batch => supabase.from("opcoes").upsert(batch.map(valor => ({ chave: key, valor })), { onConflict: "chave,valor", ignoreDuplicates: true }),
+        items  => supabase.from("opcoes").delete().eq("chave", key).in("valor", items),
+        `opcoes[${key}]`,
+      ).catch((err: unknown) => console.error(`Erro ao sincronizar opcoes[${key}]:`, err));
     }
 
     // ── Salva nomes na tabela terceiros ──
-    const prevNomes = prev.nomes;
-    const nextNomes = newVal.nomes;
-    if (JSON.stringify(prevNomes) !== JSON.stringify(nextNomes)) {
-      const toAdd    = nextNomes.filter(v => !prevNomes.includes(v));
-      const toRemove = prevNomes.filter(v => !nextNomes.includes(v));
-
-      if (toAdd.length > 0) {
-        const CHUNK = 100;
-        (async () => {
-          for (let i = 0; i < toAdd.length; i += CHUNK) {
-            const batch = toAdd.slice(i, i + CHUNK);
-            const { error } = await supabase
-              .from("terceiros")
-              .upsert(batch.map(nome => ({ nome })), { onConflict: "nome", ignoreDuplicates: true });
-            if (error) { console.error("Erro ao inserir nomes:", error.message); break; }
-          }
-        })().catch((err: unknown) => console.error("Erro ao inserir nomes:", err));
-      }
-      if (toRemove.length > 0) {
-        supabase.from("terceiros").delete().in("nome", toRemove)
-          .then(({ error }) => { if (error) console.error("Erro ao remover nomes:", error.message); })
-          .catch((err: unknown) => console.error("Erro ao remover nomes:", err));
-      }
-    }
+    syncList(
+      prev.nomes,
+      newVal.nomes,
+      batch => supabase.from("terceiros").upsert(batch.map(nome => ({ nome })), { onConflict: "nome", ignoreDuplicates: true }),
+      items  => supabase.from("terceiros").delete().in("nome", items),
+      "nomes",
+    ).catch((err: unknown) => console.error("Erro ao sincronizar nomes:", err));
   }, []);
 
   return [data, save, loading];
