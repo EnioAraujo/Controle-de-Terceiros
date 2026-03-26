@@ -299,7 +299,6 @@ export const Configuracoes = ({
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
       <div>
         <BlockHeader section={t("cfg_section")} title={t("cfg_title")} />
-        <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>{t("cfg_title")}</div>
         <div style={{ fontSize:12, color:"#64748B", marginTop:4 }}>{t("cfg_desc")}</div>
       </div>
 
