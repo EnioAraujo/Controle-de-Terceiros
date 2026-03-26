@@ -12,8 +12,8 @@ import {
 import type { WhatsAppTemplate, WhatsAppField } from "@/lib/format-utils";
 import { dbToTurnoConfig } from "@/lib/fechamento-utils";
 import type { TurnoConfig } from "@/lib/fechamento-utils";
-import { FormLancamento } from "@/pages/Index";
-import type { Opcoes } from "@/pages/Index";
+import { FormLancamento } from "@/components/FormLancamento";
+import type { Opcoes } from "@/types/attendance";
 import { useI18n } from "@/hooks/use-i18n";
 import type { Lang } from "@/lib/i18n-translations";
 

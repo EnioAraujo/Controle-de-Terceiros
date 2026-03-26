@@ -20,3 +20,25 @@ export interface SelectOption {
   value: string;
   label: string;
 }
+
+export interface Opcoes {
+  turnos:       string[];
+  unidades:     string[];
+  fornecedores: string[];
+  motivos:      string[];
+  cargos:       string[];
+  ccList:       string[];
+  nomes:        string[];
+}
+
+// Sem defaults hardcoded — fonte de verdade é a tabela opcoes no Supabase.
+// Para popular um novo ambiente, execute supabase/migrations/seed_opcoes_default.sql
+export const OPCOES_DEFAULT: Opcoes = {
+  turnos:       [],
+  unidades:     [],
+  fornecedores: [],
+  motivos:      [],
+  cargos:       [],
+  ccList:       [],
+  nomes:        [],
+};
