@@ -28,6 +28,7 @@ interface ConfiguracoesProps {
   registros: Registro[];
   setRegistros: (val: Registro[]) => void;
   isAdmin: boolean;
+  isAdminOrMod: boolean;
   setWaTemplate: (t: WhatsAppTemplate) => void;
 }
 
@@ -37,6 +38,7 @@ export const Configuracoes = ({
   registros,
   setRegistros,
   isAdmin,
+  isAdminOrMod,
   setWaTemplate,
 }: ConfiguracoesProps) => {
   const { t, lang } = useI18n();
@@ -303,7 +305,7 @@ export const Configuracoes = ({
       </div>
 
       {/* Grade de listas de opções — CRUD completo */}
-      <div className="rsp-grid-autofill" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:14 }}>
+      {isAdminOrMod && <div className="rsp-grid-autofill" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:14 }}>
         {OPCOES_CONFIG.map(({ key, cor }) => {
           const items = opcoes[key];
           const search = cardSearch[key];
@@ -369,7 +371,7 @@ export const Configuracoes = ({
           </div>
           );
         })}
-      </div>
+      </div>}
 
       {/* Base de Nomes */}
       <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
@@ -380,7 +382,7 @@ export const Configuracoes = ({
           <div style={{ fontSize:12, color:"#94A3B8", marginLeft:4 }}>{t("cfg_nomes_desc")}</div>
         </div>
 
-        <div className="rsp-grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+        <div className="rsp-grid-2" style={{ display:"grid", gridTemplateColumns: isAdminOrMod ? "1fr 1fr" : "1fr", gap:20 }}>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             <div style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("cfg_nomes_list_label")}</div>
             <input value={nomeBusca} onChange={e => setNomeBusca(e.target.value)} placeholder={t("cfg_nomes_search")}
@@ -434,7 +436,7 @@ export const Configuracoes = ({
             </div>
           </div>
 
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          {isAdminOrMod && <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             <div style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{t("cfg_import_label")}</div>
             <select value={bulkCategory} onChange={e => { setBulkCategory(e.target.value as OpcKey); setNomesBulk(""); setBulkFeedback(""); }}
               style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", outline:"none", cursor:"pointer" }}>
@@ -456,12 +458,12 @@ export const Configuracoes = ({
               </div>
             )}
             <div style={{ fontSize:11, color:"#94A3B8" }}>{t("cfg_import_hint")}</div>
-          </div>
+          </div>}
         </div>
       </div>
 
       {/* ── Horas Padrão por Turno ── */}
-      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+      {isAdminOrMod && <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
           <div style={{ width:10, height:10, borderRadius:"50%", background:"#0891B2", flexShrink:0 }} />
           <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{t("cfg_turnos_horas_title")}</div>
@@ -504,10 +506,10 @@ export const Configuracoes = ({
           </button>
           {turnosConfigSaved && <span style={{ fontSize:12, color:"#0E9F6E", fontWeight:600 }}>{t("cfg_turnos_salvo")}</span>}
         </div>
-      </div>
+      </div>}
 
       {/* ── Valor das Diárias por Fornecedor + Turno ── */}
-      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+      {isAdminOrMod && <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
           <div style={{ width:10, height:10, borderRadius:"50%", background:"#D97706", flexShrink:0 }} />
           <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>{t("cfg_diarias_title")}</div>
@@ -572,10 +574,10 @@ export const Configuracoes = ({
             {t("cfg_diarias_add")}
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* ── WhatsApp: Template de Mensagem ── */}
-      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+      {isAdminOrMod && <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
           <div style={{ width:10, height:10, borderRadius:"50%", background:"#25D366", flexShrink:0 }} />
           <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E" }}>Template WhatsApp</div>
@@ -666,7 +668,7 @@ export const Configuracoes = ({
         <div style={{ fontSize:11, color:"#94A3B8", marginTop:10 }}>
           Configure quais campos aparecem na mensagem do WhatsApp ao compartilhar registros.
         </div>
-      </div>
+      </div>}
 
       {/* ── LGPD: DPO (Art. 41) — visível só para admins ── */}
       {isAdmin && <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>

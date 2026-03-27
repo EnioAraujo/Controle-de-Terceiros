@@ -39,6 +39,7 @@ const Index = () => {
   const [privacyAccepted, acceptPrivacy]          = usePrivacyAccepted();
   const [dpoCfg, setDpoCfg]                       = useState<{ nome: string; email: string }>({ nome: "", email: "" });
   const [isAdmin, setIsAdmin]                     = useState(false);
+  const [isModerator, setIsModerator]             = useState(false);
   const [turnosConfig, setTurnosConfig]           = useState<TurnoConfig[]>([]);
   const [waTemplate, setWaTemplate]               = useState<WhatsAppTemplate>(WA_DEFAULT_TEMPLATE);
 
@@ -80,8 +81,20 @@ const Index = () => {
       const { data: isAdminResult, error: adminErr } = await supabase.rpc('is_admin');
       if (adminErr) console.error("Erro ao verificar admin:", adminErr.message);
       else if (isAdminResult) setIsAdmin(true);
+      // Moderator check — via user_roles
+      const { data: roleData, error: roleErr } = await supabase
+        .from("user_roles").select("role").eq("user_id", session.user.id).maybeSingle();
+      if (roleErr) console.error("Erro ao verificar role:", roleErr.message);
+      else if (roleData?.role === "moderator") setIsModerator(true);
     }).catch((err: unknown) => console.error("authReady falhou:", err));
   }, []);
+
+  const isAdminOrMod = isAdmin || isModerator;
+
+  // Guard: se tab restrita e user sem permissão, volta para lancamentos
+  useEffect(() => {
+    if (!isAdminOrMod && (tab === "projecao" || tab === "fechamento")) setTab("lancamentos");
+  }, [isAdminOrMod, tab]);
 
   const wrap = (fn: (val: Parameters<typeof setRegistros>[0]) => void) => (val: Parameters<typeof setRegistros>[0]) => {
     fn(val); setSaved(true); setTimeout(() => setSaved(false), 2000);
@@ -93,8 +106,8 @@ const Index = () => {
   const NAV: NavItem[] = [
     { id: "dashboard",      label: t("nav_tab_dashboard"), icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" },
     { id: "lancamentos",    label: t("nav_tab_lanc"),      icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" },
-    { id: "projecao",       label: t("nav_tab_proj"),      icon: "M2 20h20M5 20V10l3-7 3 7v10M15 20V6l3-4 3 4v14" },
-    { id: "fechamento",     label: t("nav_tab_fech"),      icon: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" },
+    ...(isAdminOrMod ? [{ id: "projecao" as TabId,   label: t("nav_tab_proj"), icon: "M2 20h20M5 20V10l3-7 3 7v10M15 20V6l3-4 3 4v14" }] : []),
+    ...(isAdminOrMod ? [{ id: "fechamento" as TabId, label: t("nav_tab_fech"), icon: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" }] : []),
     { id: "configuracoes",  label: t("nav_tab_cfg"),       icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.94 11a8 8 0 0 0-15.88 0H2v2h2.06a8 8 0 0 0 15.88 0H22v-2h-2.06z" },
   ];
 
@@ -182,9 +195,9 @@ const Index = () => {
           <>
             {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} />}
             {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} turnosConfig={turnosConfig} isAdmin={isAdmin} waTemplate={waTemplate} />}
-            {tab === "projecao"      && <ProjecaoPage  registros={registros} opcoes={opcoes} />}
-            {tab === "fechamento"    && <FechamentoTab registros={registros} opcoes={opcoes} />}
-            {tab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} registros={registros} setRegistros={setRegistros} isAdmin={isAdmin} setWaTemplate={setWaTemplate} />}
+            {tab === "projecao"      && isAdminOrMod && <ProjecaoPage  registros={registros} opcoes={opcoes} />}
+            {tab === "fechamento"    && isAdminOrMod && <FechamentoTab registros={registros} opcoes={opcoes} />}
+            {tab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} registros={registros} setRegistros={setRegistros} isAdmin={isAdmin} isAdminOrMod={isAdminOrMod} setWaTemplate={setWaTemplate} />}
           </>
         )}
       </main>
