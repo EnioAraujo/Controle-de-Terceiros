@@ -155,13 +155,13 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isA
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
         <BlockHeader section={t("lanc_section")} title={t("lanc_title")} />
         <div style={{ display:"flex", gap:8 }}>
-          <Btn variant="ghost" onClick={exportCSV} icon={<Icon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />}>{t("lanc_btn_export")}</Btn>
+          <Btn variant="ghost" id="tour-btn-export" onClick={exportCSV} icon={<Icon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />}>{t("lanc_btn_export")}</Btn>
           {isAdmin && <Btn variant="danger" onClick={() => setConfirm('ALL')} icon={<Icon d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />}>Excluir Todos</Btn>}
-          <Btn onClick={() => setModal("new")} icon={<Icon d="M12 5v14M5 12h14" />}>{t("lanc_btn_new")}</Btn>
+          <Btn id="tour-btn-novo" onClick={() => setModal("new")} icon={<Icon d="M12 5v14M5 12h14" />}>{t("lanc_btn_new")}</Btn>
         </div>
       </div>
 
-      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:"14px 18px", display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
+      <div id="tour-filtros" style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:"14px 18px", display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
         <Input label={t("form_label_data")} type="date" value={filtros.data} onChange={e => set("data", e.target.value)} style={{ width:150 }} />
         <Select label={t("form_label_turno")} value={filtros.turno} onChange={e => set("turno", e.target.value)} style={{ width:150 }}>
           <option value="">{t("lanc_filter_all_m")}</option>{opcoes.turnos.map(opt => <option key={opt}>{opt}</option>)}
@@ -182,7 +182,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isA
         {t("lanc_showing").replace("{n}", String(filtered.length)).replace("{total}", String(registros.length))}
       </div>
 
-      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, overflow:"hidden" }}>
+      <div id="tour-tabela" style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, overflow:"hidden" }}>
         <div style={{ overflowX:"auto" }}>
           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
             <thead>

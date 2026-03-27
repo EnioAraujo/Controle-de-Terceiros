@@ -181,7 +181,7 @@ export const Dashboard = ({
       </div>
 
       {/* ── KPIs ── */}
-      <div style={{ display:"grid", gridTemplateColumns:`repeat(${1 + kpisTurnos.length}, 1fr)`, gap:12 }}>
+      <div id="tour-dashboard-kpis" style={{ display:"grid", gridTemplateColumns:`repeat(${1 + kpisTurnos.length}, 1fr)`, gap:12 }}>
         {/* Total no mês */}
         <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:"16px 18px", position:"relative", overflow:"hidden" }}>
           <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:"#F37E38", borderRadius:"12px 12px 0 0" }} />
@@ -207,7 +207,7 @@ export const Dashboard = ({
       </div>
 
       {/* ── Gráfico Dia a Dia ── */}
-      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+      <div id="tour-dashboard-chart" style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
         <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:16, flexWrap:"wrap", gap:8 }}>
           <div>
             <div style={{ fontWeight:700, fontSize:14, color:"#212B36" }}>{t("dash_presencas_dia")}</div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, authReady } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
@@ -8,9 +8,12 @@ import { dbToTurnoConfig, dbToDiariaConfig } from "@/lib/fechamento-utils";
 import type { TurnoConfig, DiariaConfig } from "@/lib/fechamento-utils";
 import { useStorage } from "@/hooks/useStorage";
 import { useOpcoes } from "@/hooks/useOpcoes";
+import { useTour } from "@/hooks/use-tour";
 import { usePrivacyAccepted, PrivacyNotice } from "@/components/PrivacyNotice";
 import { Icon } from "@/components/atoms";
 import { Dashboard } from "@/components/Dashboard";
+import GuidedTour from "@/components/GuidedTour";
+import type { TourStep } from "@/components/GuidedTour";
 import { Lancamentos } from "@/components/Lancamentos";
 import { Configuracoes } from "@/components/Configuracoes";
 import { FechamentoTab } from "@/components/FechamentoTab";
@@ -24,6 +27,22 @@ export type { PessoaRow, FormLancamentoProps } from "@/components/FormLancamento
 // ─── TIPOS ───────────────────────────────────────────────────────
 type TabId = "dashboard" | "lancamentos" | "projecao" | "fechamento" | "configuracoes";
 interface NavItem { id: TabId; label: string; icon: string; }
+
+// ─── TOUR STEPS ──────────────────────────────────────────────────
+const ALL_STEPS: (TourStep & { adminOnly?: boolean })[] = [
+  { target: "#tour-nav",              icon: "🧭", title: "Navegação principal",    desc: "Use estas abas para navegar entre as seções do sistema." },
+  { target: "#tour-nav-dashboard",    icon: "📊", title: "Dashboard",              desc: "Visão analítica com KPIs e gráficos de presenças por dia e por período.", tabBefore: "dashboard" },
+  { target: "#tour-dashboard-kpis",   icon: "📈", title: "Indicadores do mês",     desc: "Total de presenças e distribuição por turno. Cada card mostra % do total e média/dia." },
+  { target: "#tour-dashboard-chart",  icon: "📉", title: "Gráfico dia a dia",      desc: "Barras empilhadas por turno e linha de média diária. Navegue entre meses pelas setas." },
+  { target: "#tour-nav-lancamentos",  icon: "📋", title: "Lançamentos",            desc: "Registre, consulte e filtre as presenças de terceiros.", tabBefore: "lancamentos" },
+  { target: "#tour-btn-novo",         icon: "➕", title: "Novo Lançamento",        desc: "Abre o formulário para registrar uma presença individual ou em lote." },
+  { target: "#tour-filtros",          icon: "🔍", title: "Filtros",                desc: "Filtre por data, turno, fornecedor, unidade ou busque pelo nome do colaborador." },
+  { target: "#tour-tabela",           icon: "📄", title: "Tabela de registros",    desc: "Clique em uma linha para ver detalhes, editar ou compartilhar via WhatsApp." },
+  { target: "#tour-btn-export",       icon: "📥", title: "Exportar CSV",           desc: "Baixe os registros filtrados em formato CSV compatível com Excel." },
+  { target: "#tour-nav-projecao",     icon: "🔮", title: "Projeção",               desc: "Analise a demanda histórica e projete quantidades futuras por turno.", tabBefore: "projecao",  adminOnly: true },
+  { target: "#tour-nav-fechamento",   icon: "💰", title: "Fechamento Financeiro",  desc: "Calcule e aprove o fechamento mensal por fornecedor com exportação XLSX/PDF.", tabBefore: "fechamento", adminOnly: true },
+  { target: "#tour-nav-configuracoes",icon: "⚙️", title: "Configurações",          desc: "Gerencie turnos, fornecedores, unidades, valores de diárias e template WhatsApp.", tabBefore: "configuracoes" },
+];
 
 // ═══════════════════════════════════════════════════════════════
 // INDEX
@@ -97,6 +116,25 @@ const Index = () => {
 
   const isAdminOrMod = isAdmin || isModerator;
 
+  // ── Tour guiado ────────────────────────────────────────────────────────
+  const { active: tourActive, step: tourStep, start: tourStart, finish: tourFinish, next: tourNext, prev: tourPrev } = useTour("tour_done");
+
+  const tourSteps = useMemo<TourStep[]>(() =>
+    ALL_STEPS.filter(s => !s.adminOnly || isAdminOrMod),
+    [isAdminOrMod]
+  );
+
+  const handleTourNext = useCallback(() => {
+    const nextIndex = tourStep + 1;
+    const nextStep = tourSteps[nextIndex];
+    if (nextStep?.tabBefore) {
+      setTab(nextStep.tabBefore);
+      setTimeout(() => tourNext(tourSteps.length), 150);
+    } else {
+      tourNext(tourSteps.length);
+    }
+  }, [tourStep, tourSteps, tourNext]);
+
   // Guard: se tab restrita e user sem permissão, volta para lancamentos
   useEffect(() => {
     if (!isAdminOrMod && (tab === "projecao" || tab === "fechamento")) setTab("lancamentos");
@@ -136,9 +174,9 @@ const Index = () => {
           </div>
         </div>
 
-        <nav style={{ display:"flex", gap:2, flex:1 }}>
+        <nav id="tour-nav" style={{ display:"flex", gap:2, flex:1 }}>
           {NAV.map(n => (
-            <button key={n.id} onClick={() => setTab(n.id)} style={{
+            <button id={`tour-nav-${n.id}`} key={n.id} onClick={() => setTab(n.id)} style={{
               display:"flex", alignItems:"center", gap:7, padding:"7px 15px", borderRadius:8, border:"none", cursor:"pointer",
               fontFamily:"inherit", fontWeight:600, fontSize:13,
               background: tab === n.id ? "#F37E38" : "transparent",
@@ -208,6 +246,30 @@ const Index = () => {
         )}
       </main>
     </div>
+
+    {/* Botão FAB para abrir o tour */}
+    <button
+      onClick={tourStart}
+      title="Ver tutorial do sistema"
+      style={{
+        position:"fixed", bottom:24, right:24, zIndex:1000,
+        width:44, height:44, borderRadius:"50%",
+        background:"#212B36", border:"1px solid #334155",
+        color:"#9898B0", fontSize:20, fontWeight:700,
+        cursor:"pointer", boxShadow:"0 4px 16px rgba(0,0,0,0.35)",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        fontFamily:"inherit",
+      }}
+    >?</button>
+
+    <GuidedTour
+      steps={tourSteps}
+      active={tourActive}
+      step={tourStep}
+      onNext={handleTourNext}
+      onPrev={tourPrev}
+      onFinish={tourFinish}
+    />
     </>
   );
 };
