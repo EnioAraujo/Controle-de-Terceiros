@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Terceiros — Visão Analítica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --brand:       #F37E38;
+    --brand-light: #FEF0E6;
+    --brand-dim:   rgba(243,126,56,0.12);
+    --ink:         #212B36;
+    --ink-2:       #445566;
+    --ink-3:       #7B8FA0;
+    --ink-4:       #B0BEC9;
+    --surface:     #F5F6F8;
+    --card:        #FFFFFF;
+    --border:      rgba(33,43,54,0.08);
+    --border-md:   rgba(33,43,54,0.14);
+    --t1: #3B6FD4;  /* turno 1 */
+    --t2: #22A06B;  /* turno 2 */
+    --t3: #E07B39;  /* turno 3 */
+    --ti: #8657C7;  /* intermediário */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--surface);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ── NAV ── */
+  nav {
+    background: var(--ink);
+    height: 52px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: 32px;
+    text-decoration: none;
+  }
+  .nav-icon {
+    width: 30px; height: 30px;
+    background: var(--brand);
+    border-radius: 8px;
+    display: grid; place-items: center;
+  }
+  .nav-icon svg { width: 16px; height: 16px; fill: white; }
+  .nav-brand-text { line-height: 1; }
+  .nav-brand-text span:first-child {
+    display: block; font-size: 11px; font-weight: 600;
+    color: rgba(255,255,255,0.9); letter-spacing: 0.2px;
+  }
+  .nav-brand-text span:last-child {
+    display: block; font-size: 11px; font-weight: 400;
+    color: var(--brand); letter-spacing: 0.2px;
+  }
+  .nav-links { display: flex; gap: 2px; flex: 1; }
+  .nav-link {
+    padding: 6px 14px; border-radius: 6px;
+    font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.55);
+    cursor: pointer; transition: all 0.15s; border: none; background: none;
+    text-decoration: none;
+  }
+  .nav-link:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.07); }
+  .nav-link.active { color: white; background: var(--brand); }
+  .nav-right { display: flex; align-items: center; gap: 12px; }
+  .nav-meta { font-size: 12px; color: rgba(255,255,255,0.45); }
+  .nav-meta b { color: rgba(255,255,255,0.75); font-weight: 500; }
+  .nav-avatar {
+    width: 30px; height: 30px; background: var(--brand);
+    border-radius: 8px; display: grid; place-items: center;
+    font-size: 11px; font-weight: 700; color: white;
+  }
+
+  /* ── PAGE ── */
+  .page { padding: 28px 32px 48px; max-width: 1280px; margin: 0 auto; }
+
+  .page-header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .page-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 1.1px;
+    color: var(--ink-3); text-transform: uppercase; margin-bottom: 4px;
+  }
+  .page-title { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.4px; }
+
+  /* ── MONTH SELECTOR ── */
+  .month-nav {
+    display: flex; align-items: center; gap: 0;
+    background: var(--card); border: 1px solid var(--border-md);
+    border-radius: var(--radius-md); overflow: hidden;
+  }
+  .month-btn {
+    width: 36px; height: 36px; border: none; background: none;
+    cursor: pointer; color: var(--ink-3); font-size: 16px;
+    display: grid; place-items: center; transition: all 0.15s;
+  }
+  .month-btn:hover { background: var(--surface); color: var(--ink); }
+  .month-label {
+    padding: 0 16px; font-size: 13px; font-weight: 600;
+    color: var(--ink); min-width: 110px; text-align: center;
+    border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+  }
+
+  /* ── KPI ROW ── */
+  .kpi-row {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 14px; margin-bottom: 20px;
+  }
+  .kpi {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .kpi-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.9px;
+    text-transform: uppercase; color: var(--ink-3);
+  }
+  .kpi-value {
+    font-size: 28px; font-weight: 700; letter-spacing: -1px;
+    line-height: 1;
+  }
+  .kpi-sub { font-size: 11px; color: var(--ink-3); margin-top: 1px; }
+  .kpi-bar { height: 3px; border-radius: 99px; margin-top: 10px; background: var(--surface); }
+  .kpi-bar-fill { height: 100%; border-radius: 99px; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .card-sub { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+
+  /* ── LEGENDA TURNOS ── */
+  .turno-legend {
+    display: flex; gap: 16px; align-items: center;
+  }
+  .turno-dot {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 500; color: var(--ink-2);
+  }
+  .turno-dot::before {
+    content: '';
+    width: 10px; height: 10px; border-radius: 3px;
+    display: inline-block;
+  }
+  .turno-dot.t1::before { background: var(--t1); }
+  .turno-dot.t2::before { background: var(--t2); }
+  .turno-dot.t3::before { background: var(--t3); }
+  .turno-dot.ti::before { background: var(--ti); }
+
+  /* ── CHART AREA ── */
+  .chart-wrap { position: relative; }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: flex; gap: 0;
+    background: var(--surface); border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    margin-top: 16px; overflow: hidden;
+  }
+  .stat-item {
+    flex: 1; padding: 12px 16px; border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .stat-item:last-child { border-right: none; }
+  .stat-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.8px;
+    text-transform: uppercase; color: var(--ink-3);
+  }
+  .stat-val { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+  .stat-caption { font-size: 10px; color: var(--ink-4); }
+  .stat-bar { height: 2px; border-radius: 99px; background: var(--border-md); margin-top: 6px; }
+  .stat-bar-fill { height: 100%; border-radius: 99px; }
+
+  /* ── BOTTOM ROW ── */
+  .bottom-row {
+    display: grid; grid-template-columns: 1.4fr 1fr;
+    gap: 20px;
+  }
+
+  /* ── CHIP SELECTOR ── */
+  .chips { display: flex; gap: 6px; }
+  .chip {
+    padding: 4px 12px; border-radius: 99px; font-size: 11px;
+    font-weight: 600; border: 1px solid var(--border-md);
+    background: var(--surface); color: var(--ink-2);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .chip.active {
+    background: var(--ink); color: white; border-color: var(--ink);
+  }
+
+  /* ── PERIOD TABLE ── */
+  .period-rows { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .period-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: var(--radius-sm);
+    background: var(--surface);
+  }
+  .period-name { font-size: 11px; font-weight: 600; color: var(--ink-3); min-width: 48px; }
+  .period-track { flex: 1; height: 6px; background: var(--border-md); border-radius: 99px; overflow: hidden; }
+  .period-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
+  .period-count { font-size: 13px; font-weight: 700; min-width: 32px; text-align: right; }
+  .period-pct { font-size: 10px; color: var(--ink-3); min-width: 34px; text-align: right; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-brand" href="#">
+    <div class="nav-icon">
+      <svg viewBox="0 0 16 16"><circle cx="8" cy="5" r="3.2"/><path d="M2 14.5q0-6 6-6t6 6"/></svg>
+    </div>
+    <div class="nav-brand-text">
+      <span>Controle de</span>
+      <span>Terceiros</span>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a class="nav-link active" href="#">Dashboard</a>
+    <a class="nav-link" href="#">Lançamentos</a>
+    <a class="nav-link" href="#">Projeção</a>
+    <a class="nav-link" href="#">Fechamento</a>
+    <a class="nav-link" href="#">Configurações</a>
+  </div>
+  <div class="nav-right">
+    <span class="nav-meta">Hoje <b id="nav-hoje">0</b> &nbsp;·&nbsp; Mês <b id="nav-mes">0</b></span>
+    <div class="nav-avatar">A</div>
+  </div>
+</nav>
+
+<!-- PAGE -->
+<div class="page">
+
+  <div class="page-header">
+    <div>
+      <div class="page-label">Visão Analítica</div>
+      <div class="page-title">Presenças por Período</div>
+    </div>
+    <div class="month-nav">
+      <button class="month-btn" id="prev-month">&#8249;</button>
+      <div class="month-label" id="month-label">Jan/2026</div>
+      <button class="month-btn" id="next-month">&#8250;</button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-row" id="kpi-row"></div>
+
+  <!-- GRÁFICO DIÁRIO -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Presenças Dia a Dia</div>
+        <div class="card-sub" id="chart-period-label">Janeiro de 2026 · 31 dias registrados</div>
+      </div>
+      <div class="turno-legend">
+        <span class="turno-dot t1">1º Turno</span>
+        <span class="turno-dot t2">2º Turno</span>
+        <span class="turno-dot t3">3º Turno</span>
+        <span class="turno-dot ti">Intermediário</span>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:260px">
+      <canvas id="dailyChart"></canvas>
+    </div>
+
+    <!-- STATS BAR -->
+    <div class="stats-bar" id="stats-bar"></div>
+  </div>
+
+  <!-- BOTTOM ROW -->
+  <div class="bottom-row">
+
+    <!-- GRÁFICO POR PERÍODO DO MÊS -->
+    <div class="card" style="margin-bottom:0">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Presenças por Período do Mês</div>
+          <div class="card-sub">Dias 1–10, 11–20, 21–fim</div>
+        </div>
+        <div class="chips">
+          <span class="chip active" data-view="stacked" onclick="setBarView(this,'stacked')">Empilhado</span>
+          <span class="chip" data-view="grouped" onclick="setBarView(this,'grouped')">Agrupado</span>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="periodChart"></canvas>
+      </div>
+    </div>
+
+    <!-- BREAKDOWN POR PERÍODO (tabela) -->
+    <div class="card" style="margin-bottom:0">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Detalhamento por Período</div>
+          <div class="card-sub" id="breakdown-label">Totais do mês selecionado</div>
+        </div>
+      </div>
+      <div class="period-rows" id="period-rows"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── DADOS FICTÍCIOS ──────────────────────────────────────────────────────────
+const MONTHS = [
+  'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'
+];
+const MONTHS_SHORT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const COLORS = { t1:'#3B6FD4', t2:'#22A06B', t3:'#E07B39', ti:'#8657C7' };
+
+function seed(s) {
+  let x = Math.sin(s+1)*10000;
+  return x - Math.floor(x);
+}
+
+function genMonthData(month, year) {
+  const days = new Date(year, month+1, 0).getDate();
+  const rows = [];
+  for (let d = 1; d <= days; d++) {
+    const s = year * 1000 + month * 100 + d;
+    const isWeekend = new Date(year, month, d).getDay() % 6 === 0;
+    const base = isWeekend ? 8 : 22;
+    const r = (n) => Math.round(seed(s * n + n) * base * (isWeekend ? 0.6 : 1.0) + (isWeekend ? 2 : 4));
+    rows.push({
+      day: d,
+      t1: r(7),
+      t2: r(13),
+      t3: r(19),
+      ti: r(3),
+    });
+  }
+  return rows;
+}
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let curMonth = 0;
+let curYear = 2026;
+let dailyChart = null;
+let periodChart = null;
+let barViewMode = 'stacked';
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  const data = genMonthData(curMonth, curYear);
+  const totalMonth = data.reduce((a,r) => a + r.t1+r.t2+r.t3+r.ti, 0);
+  const today = data[data.length-1];
+  const todayTotal = today.t1+today.t2+today.t3+today.ti;
+
+  // Nav
+  document.getElementById('nav-hoje').textContent = todayTotal;
+  document.getElementById('nav-mes').textContent = totalMonth;
+  document.getElementById('month-label').textContent = MONTHS_SHORT[curMonth]+'/'+curYear;
+
+  // KPIs
+  const avgDay = (totalMonth / data.length).toFixed(1);
+  const t1Total = data.reduce((a,r)=>a+r.t1,0);
+  const t2Total = data.reduce((a,r)=>a+r.t2,0);
+  const t3Total = data.reduce((a,r)=>a+r.t3,0);
+  const tiTotal = data.reduce((a,r)=>a+r.ti,0);
+  const maxTurno = Math.max(t1Total,t2Total,t3Total,tiTotal);
+  const kpis = [
+    { label:'Total no Mês', value:totalMonth, sub:`${data.length} dias · ${avgDay} média/dia`, color:'#F37E38', pct:1 },
+    { label:'1º Turno', value:t1Total, sub:`${(t1Total/totalMonth*100).toFixed(1)}% do total`, color:COLORS.t1, pct:t1Total/maxTurno },
+    { label:'2º Turno', value:t2Total, sub:`${(t2Total/totalMonth*100).toFixed(1)}% do total`, color:COLORS.t2, pct:t2Total/maxTurno },
+    { label:'3º Turno + Interm.', value:t3Total+tiTotal, sub:`${((t3Total+tiTotal)/totalMonth*100).toFixed(1)}% do total`, color:COLORS.t3, pct:(t3Total+tiTotal)/maxTurno },
+  ];
+  document.getElementById('kpi-row').innerHTML = kpis.map(k => `
+    <div class="kpi">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value" style="color:${k.color}">${k.value}</div>
+      <div class="kpi-sub">${k.sub}</div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="background:${k.color};width:${Math.round(k.pct*100)}%"></div></div>
+    </div>
+  `).join('');
+
+  document.getElementById('chart-period-label').textContent =
+    `${MONTHS[curMonth]} de ${curYear} · ${data.length} dias com registros`;
+
+  // STATS BAR
+  const avgs = [
+    { label:'Média Geral/dia', val:(totalMonth/data.length).toFixed(1), color:'#F37E38', pct:1 },
+    { label:'Média 1º Turno', val:(t1Total/data.length).toFixed(1), color:COLORS.t1, pct:t1Total/totalMonth },
+    { label:'Média 2º Turno', val:(t2Total/data.length).toFixed(1), color:COLORS.t2, pct:t2Total/totalMonth },
+    { label:'Média 3º Turno', val:(t3Total/data.length).toFixed(1), color:COLORS.t3, pct:t3Total/totalMonth },
+    { label:'Média Interm.', val:(tiTotal/data.length).toFixed(1), color:COLORS.ti, pct:tiTotal/totalMonth },
+  ];
+  document.getElementById('stats-bar').innerHTML = avgs.map(s => `
+    <div class="stat-item">
+      <div class="stat-label">${s.label}</div>
+      <div class="stat-val" style="color:${s.color}">${s.val}</div>
+      <div class="stat-caption">presenças/dia</div>
+      <div class="stat-bar"><div class="stat-bar-fill" style="background:${s.color};width:${Math.round(s.pct*100)}%"></div></div>
+    </div>
+  `).join('');
+
+  // DAILY CHART
+  const labels = data.map(r => r.day);
+  const avgLine = Array(data.length).fill(parseFloat(avgDay));
+
+  const dailyCfg = {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'1º Turno', data: data.map(r=>r.t1), backgroundColor: COLORS.t1+'CC', stack:'s' },
+        { label:'2º Turno', data: data.map(r=>r.t2), backgroundColor: COLORS.t2+'CC', stack:'s' },
+        { label:'3º Turno', data: data.map(r=>r.t3), backgroundColor: COLORS.t3+'CC', stack:'s' },
+        { label:'Intermediário', data: data.map(r=>r.ti), backgroundColor: COLORS.ti+'CC', stack:'s' },
+        {
+          label:'Média Diária', data: avgLine, type:'line',
+          borderColor:'#F37E38', borderWidth:1.5, borderDash:[4,4],
+          pointRadius:0, pointHoverRadius:4, pointHoverBackgroundColor:'#F37E38',
+          fill:false, tension:0, order:0,
+        },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ display:false },
+        tooltip:{
+          backgroundColor:'#212B36', titleColor:'rgba(255,255,255,0.6)',
+          bodyColor:'#fff', padding:10, cornerRadius:8, titleFont:{size:11},
+          callbacks:{
+            title: ctx => `Dia ${ctx[0].label} de ${MONTHS_SHORT[curMonth]}`,
+            afterBody: items => {
+              const total = items.filter(i=>i.datasetIndex<4).reduce((a,i)=>a+i.parsed.y,0);
+              return `\nTotal: ${total}`;
+            }
+          }
+        }
+      },
+      scales:{
+        x:{ stacked:true, grid:{display:false}, border:{display:false},
+            ticks:{ color:'#7B8FA0', font:{size:10}, maxRotation:0 }},
+        y:{ stacked:true, grid:{ color:'rgba(0,0,0,0.05)', lineWidth:1 },
+            border:{display:false, dash:[4,4]},
+            ticks:{ color:'#7B8FA0', font:{size:10}, maxTicksLimit:6 }}
+      }
+    }
+  };
+
+  if (dailyChart) dailyChart.destroy();
+  dailyChart = new Chart(document.getElementById('dailyChart'), dailyCfg);
+
+  // PERIOD CHART (1-10, 11-20, 21-fim)
+  const p1 = data.filter(r=>r.day<=10);
+  const p2 = data.filter(r=>r.day>=11&&r.day<=20);
+  const p3 = data.filter(r=>r.day>=21);
+  const periodos = [
+    { label:'01–10', data:p1 },
+    { label:'11–20', data:p2 },
+    { label:'21–fim', data:p3 },
+  ];
+  const pSum = (arr,k) => arr.reduce((a,r)=>a+r[k],0);
+  const periodTotals = periodos.map(p => ({
+    label: p.label,
+    t1: pSum(p.data,'t1'),
+    t2: pSum(p.data,'t2'),
+    t3: pSum(p.data,'t3'),
+    ti: pSum(p.data,'ti'),
+    total: pSum(p.data,'t1')+pSum(p.data,'t2')+pSum(p.data,'t3')+pSum(p.data,'ti'),
+  }));
+  const isStacked = barViewMode === 'stacked';
+  const pCfg = {
+    type:'bar',
+    data:{
+      labels: periodos.map(p=>p.label),
+      datasets:[
+        { label:'1º Turno', data:periodTotals.map(p=>p.t1), backgroundColor:COLORS.t1, stack: isStacked?'s':undefined, borderRadius:isStacked?0:4 },
+        { label:'2º Turno', data:periodTotals.map(p=>p.t2), backgroundColor:COLORS.t2, stack: isStacked?'s':undefined, borderRadius:isStacked?0:4 },
+        { label:'3º Turno', data:periodTotals.map(p=>p.t3), backgroundColor:COLORS.t3, stack: isStacked?'s':undefined, borderRadius:isStacked?0:4 },
+        { label:'Intermediário', data:periodTotals.map(p=>p.ti), backgroundColor:COLORS.ti, stack: isStacked?'s':undefined, borderRadius:isStacked?0:4 },
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ display:false },
+        tooltip:{
+          backgroundColor:'#212B36', titleColor:'rgba(255,255,255,0.6)',
+          bodyColor:'#fff', padding:10, cornerRadius:8,
+          callbacks:{
+            title: ctx => `Período ${ctx[0].label}`,
+            afterBody: items => {
+              const total = items.reduce((a,i)=>a+i.parsed.y,0);
+              return `\nTotal: ${total}`;
+            }
+          }
+        }
+      },
+      scales:{
+        x:{ stacked:isStacked, grid:{display:false}, border:{display:false},
+            ticks:{ color:'#7B8FA0', font:{size:11} }},
+        y:{ stacked:isStacked, grid:{ color:'rgba(0,0,0,0.05)' },
+            border:{display:false, dash:[4,4]},
+            ticks:{ color:'#7B8FA0', font:{size:10}, maxTicksLimit:5 }}
+      }
+    }
+  };
+  if (periodChart) periodChart.destroy();
+  periodChart = new Chart(document.getElementById('periodChart'), pCfg);
+
+  // PERIOD BREAKDOWN
+  const maxPeriod = Math.max(...periodTotals.map(p=>p.total));
+  document.getElementById('breakdown-label').textContent =
+    `${MONTHS[curMonth]} ${curYear} · 3 períodos`;
+  document.getElementById('period-rows').innerHTML = periodTotals.map((p,i) => {
+    const colors = ['#3B6FD4','#22A06B','#E07B39'];
+    const pct = (p.total/totalMonth*100).toFixed(1);
+    return `
+      <div class="period-row">
+        <div class="period-name" style="color:${colors[i]}">Dias ${p.label}</div>
+        <div class="period-track"><div class="period-fill" style="background:${colors[i]};width:${(p.total/maxPeriod*100).toFixed(0)}%"></div></div>
+        <div class="period-count" style="color:${colors[i]}">${p.total}</div>
+        <div class="period-pct">${pct}%</div>
+      </div>
+    `;
+  }).join('') + `
+    <div class="period-row" style="background:transparent;border-top:1px solid rgba(0,0,0,0.06);border-radius:0;padding-top:14px;margin-top:4px">
+      <div class="period-name" style="color:var(--ink-3)">Total</div>
+      <div class="period-track"><div class="period-fill" style="background:#F37E38;width:100%"></div></div>
+      <div class="period-count" style="color:#F37E38">${totalMonth}</div>
+      <div class="period-pct" style="color:var(--ink-3)">100%</div>
+    </div>
+  `;
+}
+
+function setBarView(el, mode) {
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  barViewMode = mode;
+  render();
+}
+
+document.getElementById('prev-month').onclick = () => {
+  curMonth--; if(curMonth<0){curMonth=11;curYear--;}
+  render();
+};
+document.getElementById('next-month').onclick = () => {
+  curMonth++; if(curMonth>11){curMonth=0;curYear++;}
+  render();
+};
+
+render();
+</script>
+</body>
+</html>
