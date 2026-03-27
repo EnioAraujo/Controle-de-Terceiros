@@ -34,7 +34,23 @@ interface TooltipPos { top: number; left: number; placement: "top" | "bottom"; }
 export default function GuidedTour({ steps, active, step, onNext, onPrev, onFinish }: GuidedTourProps) {
   const [pos, setPos]               = useState<Pos>({ top: 0, left: 0, width: 0, height: 0 });
   const [tooltipPos, setTooltipPos] = useState<TooltipPos>({ top: 0, left: 0, placement: "bottom" });
+  const [dialogOpen, setDialogOpen] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // Oculta o overlay enquanto qualquer modal estiver aberto no DOM
+  useEffect(() => {
+    if (!active) { setDialogOpen(false); return; }
+    const check = () => setDialogOpen(!!document.querySelector('[role="dialog"]'));
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-state"],
+    });
+    return () => obs.disconnect();
+  }, [active]);
 
   useEffect(() => {
     if (!active || !steps[step]) return;
@@ -75,7 +91,7 @@ export default function GuidedTour({ steps, active, step, onNext, onPrev, onFini
     return () => window.removeEventListener("resize", update);
   }, [active, step, steps]);
 
-  if (!active || !steps[step]) return null;
+  if (!active || !steps[step] || dialogOpen) return null;
 
   const current = steps[step];
   const isLast  = step === steps.length - 1;
