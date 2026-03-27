@@ -162,9 +162,9 @@ export default function GuidedTour({ steps, active, step, onNext, onPrev, onFini
           </p>
 
           {/* Footer: dots + botões */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {/* Dots de progresso */}
-            <div style={{ display: "flex", gap: 5 }}>
+            <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
               {steps.map((_, i) => (
                 <div key={i} style={{
                   width:  i === step ? 18 : 6,
@@ -177,7 +177,7 @@ export default function GuidedTour({ steps, active, step, onNext, onPrev, onFini
             </div>
 
             {/* Botões */}
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               {!isFirst && (
                 <button
                   onClick={onPrev}
