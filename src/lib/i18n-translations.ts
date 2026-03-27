@@ -260,6 +260,7 @@ export const translations = {
     dash_stacked:       "Empilhado",
     dash_grouped:       "Agrupado",
     dash_presencas:     "presenças/dia",
+    dash_custo_forn:    "Custo por Fornecedor",
 
     // Análise de Demanda
     demand_section:       "Análise de Demanda",
@@ -709,6 +710,7 @@ export const translations = {
     dash_stacked:       "Stacked",
     dash_grouped:       "Grouped",
     dash_presencas:     "attendances/day",
+    dash_custo_forn:    "Cost by Supplier",
 
     // Demand Analysis
     demand_section:       "Demand Analysis",

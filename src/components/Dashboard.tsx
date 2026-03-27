@@ -4,6 +4,8 @@ import type { Opcoes } from "@/types/attendance";
 import { fmtMes, hoje, mesAtual } from "@/lib/format-utils";
 import { useI18n } from "@/hooks/use-i18n";
 import { BlockHeader } from "@/components/atoms";
+import { resolverDiaria } from "@/lib/fechamento-utils";
+import type { DiariaConfig } from "@/lib/fechamento-utils";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Legend,
@@ -15,7 +17,21 @@ const TURNO_CORES = ["#3B6FD4", "#22A06B", "#E07B39", "#8657C7", "#E02424", "#08
 // Paleta para os 3 períodos do mês
 const PERIODO_CORES = ["#3B6FD4", "#22A06B", "#E07B39"];
 
-export const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoes }) => {
+// Formata valor monetário em BRL (sem centavos)
+const fmtBRL = (v: number) =>
+  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+export const Dashboard = ({
+  registros,
+  opcoes,
+  diariasConfig,
+  isAdminOrMod,
+}: {
+  registros: Registro[];
+  opcoes: Opcoes;
+  diariasConfig: DiariaConfig[];
+  isAdminOrMod: boolean;
+}) => {
   const { t, lang } = useI18n();
   const [periodo, setPeriodo] = useState(mesAtual());
   const [barMode, setBarMode] = useState<"stacked" | "grouped">("stacked");
@@ -41,6 +57,27 @@ export const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes
       const avg = diasComReg > 0 ? (n / diasComReg).toFixed(1) : "0";
       return { label: tr, value: n, sub: `${pct}% do total`, avg, color: TURNO_CORES[i % TURNO_CORES.length] };
     }), [turnos, doMes, totalMes, diasComReg]);
+
+  // ── Custo por Fornecedor ──────────────────────────────────────────────────
+  const custosPorFornecedor = useMemo(() => {
+    const map = new Map<string, { presencas: number; totalCusto: number }>();
+    doMes.forEach(r => {
+      const forn = r.fornecedor || "—";
+      const custo = resolverDiaria(r.fornecedor, r.turno, diariasConfig);
+      const entry = map.get(forn) ?? { presencas: 0, totalCusto: 0 };
+      entry.presencas += 1;
+      entry.totalCusto += custo;
+      map.set(forn, entry);
+    });
+    return Array.from(map.entries())
+      .map(([fornecedor, { presencas, totalCusto }]) => ({
+        fornecedor,
+        presencas,
+        totalCusto,
+        avgCusto: presencas > 0 ? Math.round(totalCusto / presencas) : 0,
+      }))
+      .sort((a, b) => b.totalCusto - a.totalCusto);
+  }, [doMes, diariasConfig]);
 
   // ── Gráfico diário (barras por turno + linha de média) ────────────────────
   const [ano, mes] = periodo.split("-").map(Number);
@@ -71,9 +108,10 @@ export const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes
       const ponto: Record<string, number | string> = { periodo: periodLabels[idx] };
       turnos.forEach(tr => { ponto[tr] = regs.filter(r => r.turno === tr).length; });
       ponto._total = regs.length;
+      ponto._custo = regs.reduce((s, r) => s + resolverDiaria(r.fornecedor, r.turno, diariasConfig), 0);
       return ponto;
     });
-  }, [doMes, turnos, periodLabels]);
+  }, [doMes, turnos, periodLabels, diariasConfig]);
 
   // ── Helpers de navegação ──────────────────────────────────────────────────
   const navMes = (delta: number) => {
@@ -232,6 +270,39 @@ export const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes
         </div>
       </div>
 
+      {/* ── Custo por Fornecedor (admin/mod only) ── */}
+      {isAdminOrMod && custosPorFornecedor.length > 0 && (
+        <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+            <div>
+              <div style={{ fontWeight:700, fontSize:14, color:"#212B36" }}>{t("dash_custo_forn")}</div>
+              <div style={{ fontSize:12, color:"#94A3B8", marginTop:2 }}>
+                {fmtMes(periodo, lang)} &middot; {custosPorFornecedor.length} fornecedor{custosPorFornecedor.length !== 1 ? "es" : ""}
+              </div>
+            </div>
+            <div style={{ fontSize:15, fontWeight:800, color:"#22A06B" }}>
+              {fmtBRL(custosPorFornecedor.reduce((s, f) => s + f.totalCusto, 0))}
+            </div>
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {(() => {
+              const maxCusto = custosPorFornecedor[0]?.totalCusto ?? 1;
+              return custosPorFornecedor.map((f, idx) => (
+                <div key={f.fornecedor} style={{ display:"flex", alignItems:"center", gap:12, background:"#F8FAFC", borderRadius:8, padding:"10px 14px" }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", minWidth:20, textAlign:"center" }}>#{idx + 1}</div>
+                  <div style={{ fontSize:12, fontWeight:600, color:"#212B36", flex:"0 0 140px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.fornecedor}</div>
+                  <div style={{ flex:1, height:7, background:"#E2E6EC", borderRadius:99, overflow:"hidden" }}>
+                    <div style={{ height:"100%", background:"#22A06B", borderRadius:99, width:`${(f.totalCusto / maxCusto * 100).toFixed(0)}%`, transition:"width .5s" }} />
+                  </div>
+                  <div style={{ fontSize:13, fontWeight:800, color:"#22A06B", minWidth:90, textAlign:"right" }}>{fmtBRL(f.totalCusto)}</div>
+                  <div style={{ fontSize:11, color:"#94A3B8", minWidth:90, textAlign:"right" }}>{f.presencas} pres. &middot; {fmtBRL(f.avgCusto)}/pres.</div>
+                </div>
+              ));
+            })()}
+          </div>
+        </div>
+      )}
+
       {/* ── Bottom row: gráfico por período + detalhamento ── */}
       <div style={{ display:"grid", gridTemplateColumns:"1.4fr 1fr", gap:16 }}>
 
@@ -283,8 +354,8 @@ export const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {dadosPeriodo.map((p, idx) => {
               const tot = p._total as number;
+              const custo = p._custo as number;
               const maxTot = Math.max(...dadosPeriodo.map(x => x._total as number));
-              const pct = totalMes > 0 ? (tot / totalMes * 100).toFixed(1) : "0.0";
               const cor = PERIODO_CORES[idx];
               return (
                 <div key={idx} style={{ display:"flex", alignItems:"center", gap:10, background:"#F8FAFC", borderRadius:7, padding:"10px 14px" }}>
@@ -293,7 +364,7 @@ export const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes
                     <div style={{ height:"100%", background:cor, borderRadius:99, width: maxTot > 0 ? `${(tot / maxTot * 100).toFixed(0)}%` : "0%", transition:"width .5s" }} />
                   </div>
                   <div style={{ fontSize:13, fontWeight:800, color:cor, minWidth:32, textAlign:"right" }}>{tot}</div>
-                  <div style={{ fontSize:11, color:"#94A3B8", minWidth:38, textAlign:"right" }}>{pct}%</div>
+                  <div style={{ fontSize:11, color:"#94A3B8", minWidth:78, textAlign:"right" }}>{fmtBRL(custo)}</div>
                 </div>
               );
             })}
@@ -304,7 +375,7 @@ export const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes
                 <div style={{ height:"100%", background:"#F37E38", borderRadius:99, width:"100%" }} />
               </div>
               <div style={{ fontSize:13, fontWeight:800, color:"#F37E38", minWidth:32, textAlign:"right" }}>{totalMes}</div>
-              <div style={{ fontSize:11, color:"#94A3B8", minWidth:38, textAlign:"right" }}>100%</div>
+              <div style={{ fontSize:11, color:"#94A3B8", minWidth:78, textAlign:"right" }}>{fmtBRL(dadosPeriodo.reduce((s, p) => s + (p._custo as number), 0))}</div>
             </div>
           </div>
         </div>

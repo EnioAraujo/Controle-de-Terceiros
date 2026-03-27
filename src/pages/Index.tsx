@@ -4,8 +4,8 @@ import { supabase, authReady } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
 import { hoje, mesAtual, WA_DEFAULT_TEMPLATE } from "@/lib/format-utils";
 import type { WhatsAppTemplate, WhatsAppField } from "@/lib/format-utils";
-import { dbToTurnoConfig } from "@/lib/fechamento-utils";
-import type { TurnoConfig } from "@/lib/fechamento-utils";
+import { dbToTurnoConfig, dbToDiariaConfig } from "@/lib/fechamento-utils";
+import type { TurnoConfig, DiariaConfig } from "@/lib/fechamento-utils";
 import { useStorage } from "@/hooks/useStorage";
 import { useOpcoes } from "@/hooks/useOpcoes";
 import { usePrivacyAccepted, PrivacyNotice } from "@/components/PrivacyNotice";
@@ -41,14 +41,20 @@ const Index = () => {
   const [isAdmin, setIsAdmin]                     = useState(false);
   const [isModerator, setIsModerator]             = useState(false);
   const [turnosConfig, setTurnosConfig]           = useState<TurnoConfig[]>([]);
+  const [diariasConfig, setDiariasConfig]         = useState<DiariaConfig[]>([]);
   const [waTemplate, setWaTemplate]               = useState<WhatsAppTemplate>(WA_DEFAULT_TEMPLATE);
 
   useEffect(() => {
     authReady.then(async () => {
-      const { data: tcData, error } = await supabase.from("turnos_config").select("*").order("turno");
-      if (error) console.error("Erro ao carregar turnos_config:", error.message);
-      if (tcData) setTurnosConfig(tcData.map(dbToTurnoConfig));
-    }).catch((err: unknown) => console.error("Erro ao carregar turnos_config:", err));
+      const [tcResult, dcResult] = await Promise.all([
+        supabase.from("turnos_config").select("*").order("turno"),
+        supabase.from("diarias_config").select("*"),
+      ]);
+      if (tcResult.error) console.error("Erro ao carregar turnos_config:", tcResult.error.message);
+      if (tcResult.data) setTurnosConfig(tcResult.data.map(dbToTurnoConfig));
+      if (dcResult.error) console.error("Erro ao carregar diarias_config:", dcResult.error.message);
+      if (dcResult.data) setDiariasConfig(dcResult.data.map(dbToDiariaConfig));
+    }).catch((err: unknown) => console.error("Erro ao carregar configs:", err));
   }, []);
 
   useEffect(() => {
@@ -193,7 +199,7 @@ const Index = () => {
           </div>
         ) : (
           <>
-            {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} />}
+            {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} diariasConfig={diariasConfig} isAdminOrMod={isAdminOrMod} />}
             {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} turnosConfig={turnosConfig} isAdmin={isAdmin} waTemplate={waTemplate} />}
             {tab === "projecao"      && isAdminOrMod && <ProjecaoPage  registros={registros} opcoes={opcoes} />}
             {tab === "fechamento"    && isAdminOrMod && <FechamentoTab registros={registros} opcoes={opcoes} />}
