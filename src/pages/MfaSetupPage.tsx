@@ -173,62 +173,54 @@ export default function MfaSetupPage() {
           <div style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 20 }}>
 
             {step === "qr" && (
-              <>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, textAlign: "center" as const, width: "100%" }}>
                 {/* Passo 1 */}
-                <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  <div style={{ minWidth: 28, height: 28, background: "#FFF4EC", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#F37E38" }}>1</div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#212B36" }}>
-                      {t("Instale um app autenticador", "Install an authenticator app")}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#9898B0", marginTop: 4, lineHeight: 1.6 }}>
-                      {t(
-                        "Ex: Google Authenticator, Microsoft Authenticator ou Authy. Disponível gratuitamente.",
-                        "E.g.: Google Authenticator, Microsoft Authenticator or Authy. Free on the app stores."
-                      )}
-                    </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                  <div style={{ width: 28, height: 28, background: "#FFF4EC", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#F37E38" }}>1</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "#212B36" }}>
+                    {t("Instale um app autenticador", "Install an authenticator app")}
                   </div>
-                </div>
-
-                {/* Passo 2 */}
-                <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  <div style={{ minWidth: 28, height: 28, background: "#FFF4EC", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#F37E38" }}>2</div>
-                  <div style={{ width: "100%" }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#212B36", marginBottom: 12 }}>
-                      {t("Escaneie o QR Code", "Scan the QR Code")}
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "center" }}>
-                      <div style={{ background: "#fff", border: "2px solid #E8E8EA", borderRadius: 12, padding: 12, display: "inline-block" }}>
-                        <img src={qrUrl} alt="QR Code MFA" width={160} height={160} style={{ display: "block" }} />
-                      </div>
-                    </div>
-                    {secret && (
-                      <div style={{ marginTop: 12, background: "#F8FAFC", border: "1px dashed #CBD5E1", borderRadius: 8, padding: "10px 14px" }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: "#9898B0", textTransform: "uppercase", letterSpacing: .7, marginBottom: 4 }}>
-                          {t("Ou insira o codigo manualmente:", "Or enter the secret key manually:")}
-                        </div>
-                        <div style={{ fontFamily: "monospace", fontSize: 13, color: "#212B36", letterSpacing: 1, wordBreak: "break-all" }}>
-                          {secret}
-                        </div>
-                      </div>
+                  <div style={{ fontSize: 12, color: "#9898B0", lineHeight: 1.6, maxWidth: 300 }}>
+                    {t(
+                      "Ex: Google Authenticator, Microsoft Authenticator ou Authy. Disponível gratuitamente.",
+                      "E.g.: Google Authenticator, Microsoft Authenticator or Authy. Free on the app stores."
                     )}
                   </div>
                 </div>
 
-                {/* Passo 3 */}
-                <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  <div style={{ minWidth: 28, height: 28, background: "#FFF4EC", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#F37E38" }}>3</div>
-                  <div style={{ width: "100%" }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#212B36", marginBottom: 8 }}>
-                      {t("Confirme o código gerado", "Confirm the generated code")}
-                    </div>
-                    <button
-                      onClick={() => setStep("verify")}
-                      style={{ background: "#F37E38", border: "none", borderRadius: 10, padding: "12px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit", width: "100%" }}
-                    >
-                      {t("Já escaneei — inserir código", "I scanned it — enter code")}
-                    </button>
+                {/* Passo 2 */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, width: "100%" }}>
+                  <div style={{ width: 28, height: 28, background: "#FFF4EC", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#F37E38" }}>2</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "#212B36", marginBottom: 6 }}>
+                    {t("Escaneie o QR Code", "Scan the QR Code")}
                   </div>
+                  <div style={{ background: "#fff", border: "2px solid #E8E8EA", borderRadius: 12, padding: 12, display: "inline-block" }}>
+                    <img src={qrUrl} alt="QR Code MFA" width={160} height={160} style={{ display: "block" }} />
+                  </div>
+                  {secret && (
+                    <div style={{ marginTop: 8, background: "#F8FAFC", border: "1px dashed #CBD5E1", borderRadius: 8, padding: "10px 14px", width: "100%" }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#9898B0", textTransform: "uppercase", letterSpacing: .7, marginBottom: 4 }}>
+                        {t("Ou insira o codigo manualmente:", "Or enter the secret key manually:")}
+                      </div>
+                      <div style={{ fontFamily: "monospace", fontSize: 13, color: "#212B36", letterSpacing: 1, wordBreak: "break-all" }}>
+                        {secret}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Passo 3 */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, width: "100%" }}>
+                  <div style={{ width: 28, height: 28, background: "#FFF4EC", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#F37E38" }}>3</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "#212B36", marginBottom: 4 }}>
+                    {t("Confirme o código gerado", "Confirm the generated code")}
+                  </div>
+                  <button
+                    onClick={() => setStep("verify")}
+                    style={{ background: "#F37E38", border: "none", borderRadius: 10, padding: "12px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit", width: "100%" }}
+                  >
+                    {t("Já escaneei — inserir código", "I scanned it — enter code")}
+                  </button>
                 </div>
 
                 <button
@@ -238,11 +230,11 @@ export default function MfaSetupPage() {
                 >
                   {t("Configurar mais tarde (não recomendado)", "Set up later (not recommended)")}
                 </button>
-              </>
+              </div>
             )}
 
             {step === "verify" && (
-              <form onSubmit={handleVerify} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              <form onSubmit={handleVerify} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18, width: "100%" }}>
                 <div style={{ textAlign: "center", fontSize: 13, color: "#9898B0", lineHeight: 1.6 }}>
                   {t(
                     "Abra seu app autenticador e insira o código de 6 dígitos gerado para esta conta.",
@@ -250,8 +242,8 @@ export default function MfaSetupPage() {
                   )}
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label htmlFor="totp-code" style={{ fontSize: 12, fontWeight: 600, color: "#9898B0", textTransform: "uppercase", letterSpacing: .7 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
+                  <label htmlFor="totp-code" style={{ fontSize: 12, fontWeight: 600, color: "#9898B0", textTransform: "uppercase", letterSpacing: .7, textAlign: "center" }}>
                     {t("Código de 6 dígitos", "6-digit code")}
                   </label>
                   <input
@@ -278,7 +270,7 @@ export default function MfaSetupPage() {
                 </div>
 
                 {erro && (
-                  <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#E02424", fontWeight: 500 }}>
+                  <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#E02424", fontWeight: 500, width: "100%", textAlign: "center" }}>
                     {erro}
                   </div>
                 )}
@@ -291,6 +283,7 @@ export default function MfaSetupPage() {
                     border: "none", borderRadius: 10, padding: "13px",
                     cursor: (loading || code.length !== 6) ? "not-allowed" : "pointer",
                     color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit",
+                    width: "100%",
                   }}
                 >
                   {loading
