@@ -135,6 +135,11 @@ const Index = () => {
     }
   }, [tourStep, tourSteps, tourNext]);
 
+  const handleTourStart = useCallback(() => {
+    const idx = tourSteps.findIndex(s => s.tabBefore === tab);
+    tourStart(idx >= 0 ? idx : 0);
+  }, [tab, tourSteps, tourStart]);
+
   // Guard: se tab restrita e user sem permissão, volta para lancamentos
   useEffect(() => {
     if (!isAdminOrMod && (tab === "projecao" || tab === "fechamento")) setTab("lancamentos");
@@ -249,7 +254,7 @@ const Index = () => {
 
     {/* Botão FAB para abrir o tour */}
     <button
-      onClick={tourStart}
+      onClick={handleTourStart}
       title="Ver tutorial do sistema"
       style={{
         position:"fixed", bottom:24, right:24, zIndex:1000,

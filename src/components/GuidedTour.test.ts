@@ -21,6 +21,13 @@ describe("useTour", () => {
     expect(result.current.step).toBe(0);
   });
 
+  it("start(N) ativa o tour no step indicado", () => {
+    const { result } = renderHook(() => useTour(STORAGE_KEY));
+    act(() => result.current.start(5));
+    expect(result.current.active).toBe(true);
+    expect(result.current.step).toBe(5);
+  });
+
   it("next() avança o step", () => {
     const { result } = renderHook(() => useTour(STORAGE_KEY));
     act(() => result.current.start());

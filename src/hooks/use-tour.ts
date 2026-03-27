@@ -11,8 +11,8 @@ export function useTour(storageKey = "tour_done") {
     }
   }, [storageKey]);
 
-  const start = useCallback(() => {
-    setStep(0);
+  const start = useCallback((initialStep = 0) => {
+    setStep(initialStep);
     setActive(true);
   }, []);
 
