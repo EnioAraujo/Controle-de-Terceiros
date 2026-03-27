@@ -38,8 +38,9 @@ export const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes
     turnos.map((tr, i) => {
       const n   = doMes.filter(r => r.turno === tr).length;
       const pct = totalMes > 0 ? (n / totalMes * 100).toFixed(1) : "0.0";
-      return { label: tr, value: n, sub: `${pct}% do total`, color: TURNO_CORES[i % TURNO_CORES.length] };
-    }), [turnos, doMes, totalMes]);
+      const avg = diasComReg > 0 ? (n / diasComReg).toFixed(1) : "0";
+      return { label: tr, value: n, sub: `${pct}% do total`, avg, color: TURNO_CORES[i % TURNO_CORES.length] };
+    }), [turnos, doMes, totalMes, diasComReg]);
 
   // ── Gráfico diário (barras por turno + linha de média) ────────────────────
   const [ano, mes] = periodo.split("-").map(Number);
@@ -159,7 +160,7 @@ export const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes
             <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:kpi.color, borderRadius:"12px 12px 0 0" }} />
             <div style={{ fontSize:10, fontWeight:600, color:"#94A3B8", textTransform:"uppercase", letterSpacing:.8, marginBottom:6 }}>{kpi.label}</div>
             <div style={{ fontSize:28, fontWeight:800, color:kpi.color, letterSpacing:-1, lineHeight:1 }}>{kpi.value}</div>
-            <div style={{ fontSize:11, color:"#64748B", marginTop:4 }}>{kpi.sub}</div>
+            <div style={{ fontSize:11, color:"#64748B", marginTop:4 }}>{kpi.sub} · {kpi.avg} {t("dash_media_dia")}</div>
             <div style={{ height:3, background:"#F1F5F9", borderRadius:99, marginTop:10 }}>
               <div style={{ height:"100%", width: totalMes > 0 ? `${(kpi.value / totalMes * 100).toFixed(0)}%` : "0%", background:kpi.color, borderRadius:99, transition:"width .5s" }} />
             </div>
