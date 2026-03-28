@@ -139,24 +139,10 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isA
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-      <div style={{ fontSize: 15, color: "#64748B", fontWeight: 500, marginBottom: 8, marginTop: 8 }}>
-        Exibindo {filtered.length} de {registros.length} registros
-      </div>
-
-      {selectedIds.length > 0 && (
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"#FDE8E8", borderRadius:10, padding:"12px 18px", margin:"16px 0 12px 0", boxShadow:"0 1px 4px #FDE8E880" }}>
-          <Btn variant="danger" onClick={() => setConfirm(selectedIds)} style={{ fontWeight:700, fontSize:15, padding:"10px 22px", background:"#F87171", color:"#fff" }}>
-            Excluir selecionados
-          </Btn>
-          <span style={{ fontSize:14, color:"#B91C1C", fontWeight:600 }}>{selectedIds.length} selecionado{selectedIds.length > 1 ? 's' : ''}</span>
-        </div>
-      )}
-
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
         <BlockHeader section={t("lanc_section")} title={t("lanc_title")} />
         <div style={{ display:"flex", gap:8 }}>
           <Btn variant="ghost" id="tour-btn-export" onClick={exportCSV} icon={<Icon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />}>{t("lanc_btn_export")}</Btn>
-          {isAdmin && <Btn variant="danger" onClick={() => setConfirm('ALL')} icon={<Icon d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />}>Excluir Todos</Btn>}
           <Btn id="tour-btn-novo" onClick={() => setModal("new")} icon={<Icon d="M12 5v14M5 12h14" />}>{t("lanc_btn_new")}</Btn>
         </div>
       </div>
@@ -178,8 +164,22 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isA
         </div>
       </div>
 
-      <div style={{ fontSize:12, color:"#94A3B8", paddingLeft:2 }}>
-        {t("lanc_showing").replace("{n}", String(filtered.length)).replace("{total}", String(registros.length))}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", paddingLeft:2 }}>
+        <span style={{ fontSize:12, color:"#94A3B8" }}>
+          {t("lanc_showing").replace("{n}", String(filtered.length)).replace("{total}", String(registros.length))}
+        </span>
+        {selectedIds.length > 0 && (
+          <Btn
+            variant="danger"
+            small
+            onClick={() => selectedIds.length === registros.length ? setConfirm('ALL') : setConfirm(selectedIds)}
+            icon={<Icon d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />}
+          >
+            {selectedIds.length === registros.length
+              ? 'Excluir Todos'
+              : `Excluir selecionados (${selectedIds.length})`}
+          </Btn>
+        )}
       </div>
 
       <div id="tour-tabela" style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, overflow:"hidden" }}>
