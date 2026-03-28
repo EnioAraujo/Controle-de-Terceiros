@@ -165,11 +165,11 @@ export default function LoginPage() {
                 {/* Mobile Card */}
                 <button
                   onClick={() => chooseDevice("mobile")}
-                  className="flex-1 flex flex-col items-center gap-2 p-5.5 rounded-xl border-2 border-orange-200 bg-orange-50 cursor-pointer transition-all hover:border-orange-400 hover:shadow-md font-dm-sans"
+                  className="flex-1 flex flex-col items-center gap-2 p-6 rounded-xl border-2 border-orange-200 bg-orange-50 cursor-pointer transition-all hover:border-orange-400 hover:shadow-md font-dm-sans"
                 >
                   <span className="text-[34px] leading-none">📱</span>
                   <div className="font-black text-base text-orange-600">Mobile</div>
-                  <div className="text-[11px] text-gray-400 text-center leading-tight max-w-[140px]">
+                  <div className="text-[11px] text-gray-400 text-center leading-tight">
                     {lang === "pt-BR"
                       ? "Otimizado para celular — somente lançamentos"
                       : "Optimized for phone — entries only"}
@@ -179,11 +179,11 @@ export default function LoginPage() {
                 {/* Desktop Card */}
                 <button
                   onClick={() => chooseDevice("desktop")}
-                  className="flex-1 flex flex-col items-center gap-2 p-5.5 rounded-xl border-2 border-gray-200 bg-slate-50 cursor-pointer transition-all hover:border-slate-400 hover:shadow-md font-dm-sans"
+                  className="flex-1 flex flex-col items-center gap-2 p-6 rounded-xl border-2 border-gray-200 bg-slate-50 cursor-pointer transition-all hover:border-slate-400 hover:shadow-md font-dm-sans"
                 >
                   <span className="text-[34px] leading-none">💻</span>
                   <div className="font-black text-base text-slate-800">Desktop</div>
-                  <div className="text-[11px] text-gray-400 text-center leading-tight max-w-[140px]">
+                  <div className="text-[11px] text-gray-400 text-center leading-tight">
                     {lang === "pt-BR"
                       ? "Acesso completo — todas as telas"
                       : "Full access — all screens"}
@@ -218,7 +218,7 @@ export default function LoginPage() {
             </CardHeader>
 
             {step === "mfa" ? (
-              <form onSubmit={handleMfaVerify} className="p-7 flex flex-col gap-4.5">
+              <form onSubmit={handleMfaVerify} className="p-7 flex flex-col gap-4">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="mfa-code" className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider">
                     {lang === "pt-BR" ? "Código TOTP (6 dígitos)" : "TOTP Code (6 digits)"}
@@ -263,7 +263,7 @@ export default function LoginPage() {
                 </Button>
               </form>
             ) : (
-              <form onSubmit={handleLogin} className="p-7 flex flex-col gap-4.5">
+              <form onSubmit={handleLogin} className="p-7 flex flex-col gap-4">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="email" className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider">
                     {t("login_email")}
