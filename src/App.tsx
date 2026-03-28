@@ -28,10 +28,13 @@ const AppRoutes = () => {
     // antes de definir loading=false para evitar flash da página principal
     const isRecoveryUrl = window.location.hash.includes("type=recovery");
 
+    // OWASP A10:2025 - Fail closed: erro na getSession não libera acesso
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (!isRecoveryUrl) setLoading(false);
-    }).catch(() => {
+    }).catch((err) => {
+      // Fail closed: em caso de erro, mantém loading=true e não libera acesso
+      console.error("[AUTH_SESSION_ERROR]", err);
       setLoading(false);
     });
 

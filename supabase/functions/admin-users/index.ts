@@ -14,6 +14,40 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // Restringe CORS ao domínio da aplicação (evita CSRF)
 const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") || "";
 
+// Rate limiting: máximo de requisições por minuto por usuário
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minuto
+
+// Store simples em memória para rate limiting (em produção, usar Redis/Supabase)
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+/**
+ * Verifica rate limiting por userId
+ * OWASP A02:2025 - Security Misconfiguration / Rate Limiting
+ */
+function checkRateLimit(userId: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const record = rateLimitStore.get(userId);
+  
+  if (!record) {
+    rateLimitStore.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true };
+  }
+  
+  if (now > record.resetAt) {
+    // Janela expirou, resetar contador
+    rateLimitStore.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true };
+  }
+  
+  if (record.count >= RATE_LIMIT_MAX) {
+    return { allowed: false, retryAfter: Math.ceil((record.resetAt - now) / 1000) };
+  }
+  
+  record.count++;
+  return { allowed: true };
+}
+
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get("Origin") ?? "";
   // Se ALLOWED_ORIGIN está configurado, valida; senão aceita qualquer (dev local)
@@ -73,6 +107,17 @@ Deno.serve(async (req) => {
 
     if (!profile?.is_admin) return json({ error: "Forbidden" }, 403, corsHeaders);
 
+    // OWASP A02:2025 - Rate limiting por usuário
+    const rateLimit = checkRateLimit(user.id);
+    if (!rateLimit.allowed) {
+      console.warn("[RATE_LIMIT_EXCEEDED]", { userId: user.id, retryAfter: rateLimit.retryAfter });
+      return json(
+        { error: `Muitas requisições. Tente novamente em ${rateLimit.retryAfter} segundos.` },
+        429,
+        { ...corsHeaders, "Retry-After": String(rateLimit.retryAfter) }
+      );
+    }
+
     // ── Processar ação ─────────────────────────────────────────────
     const body = await req.json();
     const { action } = body;
@@ -110,7 +155,8 @@ Deno.serve(async (req) => {
     if (action === "update") {
       const { userId, email, password } = body;
       if (!userId) return json({ error: "userId é obrigatório." }, 400, corsHeaders);
-      if (password && password.length < 6) return json({ error: "A senha deve ter no mínimo 6 caracteres." }, 400, corsHeaders);
+      // OWASP A07:2025 - Política de senhas fortes (mínimo 8 caracteres)
+      if (password && password.length < 8) return json({ error: "A senha deve ter no mínimo 8 caracteres." }, 400, corsHeaders);
 
       const updateData: { email?: string; password?: string } = {};
       if (email) updateData.email = email;

@@ -38,46 +38,69 @@ export default function LoginPage() {
     setErro("");
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setLoading(false);
-      setErro(mapSupabaseError(error.message, lang));
-      return;
-    }
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        // OWASP A10:2025 - Fail closed: erro de autenticação bloqueia acesso
+        console.warn("[LOGIN_FAILURE]", { email, error: error.message });
+        setLoading(false);
+        setErro(mapSupabaseError(error.message, lang));
+        return;
+      }
 
-    // Verificar fatores MFA do usuário
-    const { data: factors, error: factErr } = await supabase.auth.mfa.listFactors();
-    if (factErr) { console.error("Erro ao listar fatores MFA:", factErr.message); setLoading(false); return; }
+      // Verificar fatores MFA do usuário
+      const { data: factors, error: factErr } = await supabase.auth.mfa.listFactors();
+      if (factErr) {
+        console.error("[MFA_LIST_ERROR]", factErr.message);
+        // Fail closed: erro ao listar MFA não libera acesso
+        setLoading(false);
+        setErro(lang === "pt-BR" ? "Erro ao verificar MFA." : "Error verifying MFA.");
+        return;
+      }
 
-    // Fator TOTP já verificado (enrollment completo)
-    const verifiedTotp = factors?.totp?.find(f => f.factor_type === "totp" && f.status === "verified");
+      // Fator TOTP já verificado (enrollment completo)
+      const verifiedTotp = factors?.totp?.find(f => f.factor_type === "totp" && f.status === "verified");
 
-    if (verifiedTotp) {
-      // Usuário tem MFA ativo — verificar se a sessão atual ainda é AAL1
-      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aal?.currentLevel !== "aal2") {
-        // Sessão AAL1: exigir código TOTP antes de prosseguir
-        const { data: challenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId: verifiedTotp.id });
-        if (chalErr || !challenge) {
-          setErro(lang === "pt-BR" ? "Erro ao iniciar verificação MFA." : "Error starting MFA challenge.");
+      if (verifiedTotp) {
+        // Usuário tem MFA ativo — verificar se a sessão atual ainda é AAL1
+        const { data: aal, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aalErr) {
+          console.error("[MFA_AAL_ERROR]", aalErr.message);
+          setLoading(false);
+          setErro(lang === "pt-BR" ? "Erro ao verificar nível de autenticação." : "Error checking authentication level.");
+          return;
+        }
+        
+        if (aal?.currentLevel !== "aal2") {
+          // Sessão AAL1: exigir código TOTP antes de prosseguir
+          const { data: challenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId: verifiedTotp.id });
+          if (chalErr || !challenge) {
+            console.error("[MFA_CHALLENGE_ERROR]", chalErr?.message);
+            setErro(lang === "pt-BR" ? "Erro ao iniciar verificação MFA." : "Error starting MFA challenge.");
+            setLoading(false);
+            return;
+          }
+          setFactorId(verifiedTotp.id);
+          setChallengeId(challenge.id);
+          setStep("mfa");
           setLoading(false);
           return;
         }
-        setFactorId(verifiedTotp.id);
-        setChallengeId(challenge.id);
-        setStep("mfa");
+      } else {
+        // Usuário sem TOTP verificado — redirecionar para setup
+        navigate("/mfa-setup", { replace: true });
         setLoading(false);
         return;
       }
-    } else {
-      // Usuário sem TOTP verificado — redirecionar para setup
-      navigate("/mfa-setup", { replace: true });
-      setLoading(false);
-      return;
-    }
 
-    // Sessão já é AAL2: App.tsx detecta via onAuthStateChange
-    setLoading(false);
+      // Sessão já é AAL2: App.tsx detecta via onAuthStateChange
+      setLoading(false);
+    } catch (err) {
+      // OWASP A10:2025 - Fail closed: qualquer erro não capturado bloqueia acesso
+      console.error("[LOGIN_UNEXPECTED_ERROR]", err);
+      setLoading(false);
+      setErro(lang === "pt-BR" ? "Erro interno. Tente novamente." : "Internal error. Please try again.");
+    }
   };
 
   const handleMfaVerify = async (e: React.FormEvent) => {
@@ -85,19 +108,30 @@ export default function LoginPage() {
     setErro("");
     setLoading(true);
 
-    const { error } = await supabase.auth.mfa.verify({
-      factorId,
-      challengeId,
-      code: mfaCode.replace(/\s/g, ""),
-    });
-    setLoading(false);
-
-    if (error) {
-      setErro(lang === "pt-BR" ? "Código inválido. Tente novamente." : "Invalid code. Please try again.");
+    try {
+      const { error } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId,
+        code: mfaCode.replace(/\s/g, ""),
+      });
+      
+      if (error) {
+        // OWASP A10:2025 - Fail closed: erro na verificação MFA bloqueia acesso
+        console.warn("[MFA_VERIFY_FAILURE]", { factorId, challengeId, error: error.message });
+        setErro(lang === "pt-BR" ? "Código inválido. Tente novamente." : "Invalid code. Please try again.");
+        setMfaCode("");
+        return;
+      }
+      
+      // Sucesso: App.tsx detecta o upgrade para AAL2 via onAuthStateChange
+    } catch (err) {
+      // OWASP A10:2025 - Fail closed: erro não capturado bloqueia acesso
+      console.error("[MFA_VERIFY_UNEXPECTED_ERROR]", err);
+      setErro(lang === "pt-BR" ? "Erro ao verificar código. Tente novamente." : "Error verifying code. Please try again.");
       setMfaCode("");
-      return;
+    } finally {
+      setLoading(false);
     }
-    // App.tsx detecta o upgrade para AAL2 via onAuthStateChange
   };
 
   return (

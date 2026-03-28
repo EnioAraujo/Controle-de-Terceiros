@@ -1,3 +1,4 @@
+| 2026-03-28 | Hardening de segurança (OWASP Top 10:2025): (1) index.html: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy via meta tags; (2) audit.ts: logAudit() agora inclui requestId, timestamp ISO, userAgent; (3) App.tsx/LoginPage: tratamento de erros fail closed com logging estruturado; (4) admin-users edge function: rate limiting (10 req/min por usuário) + política de senha mínima 8 chars consistente; (5) .env.example: ALLOWED_ORIGIN para CORS em produção; 107 testes passando. |
 | 2026-03-28 | Auditoria de segurança: (1) FechamentoTab.tsx sanitiza editObs com DOMPurify via lib/audit; (2) STATUS_LABEL_KEY tipado como TranslationKey (eliminados 2 `as any`); (3) MobileLancamentosPage.tsx remove uuid/logAudit/sanitize inline — importa de @/lib/audit; (4) admin-users edge function aumenta senha mínima de 6 para 8 caracteres; (5) deduplicarLote/diffRegistros extraídas para src/lib/storage-utils.ts com 10 testes; 107 testes passando. |
 | 2026-03-27 | GuidedTour: overlay ocultado automaticamente quando qualquer modal (role="dialog") está aberto, via MutationObserver; tour retoma no mesmo step ao fechar o modal. |
 | 2026-03-27 | GuidedTour: FAB "?" agora inicia o tour na aba ativa (handleTourStart usa findIndex por tabBefore); start() aceita initialStep opcional; dots do tooltip em coluna separada dos botões para evitar overflow; 97 testes passando. |
@@ -14,7 +15,7 @@
 | 2026-03-16 | Adicionado botão 'Excluir TODOS' (admin-only) na tela principal, com modal de confirmação, log de auditoria e exclusão em massa dos registros. |
 # Controle de Terceiros — Contexto do Projeto
 
-> **Última atualização:** 2026-03-25
+> **Última atualização:** 2026-03-28
 > **Branch:** Main-terceiros
 
 ---
