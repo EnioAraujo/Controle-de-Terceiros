@@ -3,6 +3,7 @@ import { Registro } from "@/types/attendance";
 import { supabase, authReady } from "@/lib/supabase";
 import { dataLimiteRetencao, dbToRegistro, registroToDb, type DbRegistro } from "@/lib/format-utils";
 import { logAudit } from "@/lib/audit";
+import { deduplicarLote, diffRegistros } from "@/lib/storage-utils";
 
 export const useStorage = (): [Registro[], (val: Registro[]) => void, boolean] => {
   const [data, setData]       = useState<Registro[]>([]);
@@ -53,30 +54,14 @@ export const useStorage = (): [Registro[], (val: Registro[]) => void, boolean] =
 
   const save = useCallback((newValRaw: Registro[]) => {
     // Última defesa: remove duplicatas intra-lote antes de persistir no Supabase
-    const loteVisto = new Map<string, Set<string>>();
-    const newVal = newValRaw.filter(r => {
-      if (!r.loteId) return true;
-      if (!loteVisto.has(r.loteId)) loteVisto.set(r.loteId, new Set());
-      const k = r.nome.trim().toLowerCase();
-      if (loteVisto.get(r.loteId)!.has(k)) return false;
-      loteVisto.get(r.loteId)!.add(k);
-      return true;
-    });
+    const newVal = deduplicarLote(newValRaw);
 
     const prev = prevRef.current;
     setData(newVal);
     prevRef.current = newVal;
 
-    // Detectar deletados: estavam antes e não estão agora
-    const newIds     = new Set(newVal.map(r => r.id));
-    const deletedIds = prev.filter(r => !newIds.has(r.id)).map(r => r.id);
-
-    // Detectar inseridos/alterados: novos ou com conteúdo diferente
-    const prevMap  = new Map(prev.map(r => [r.id, r]));
-    const toUpsert = newVal.filter(r => {
-      const p = prevMap.get(r.id);
-      return !p || JSON.stringify(p) !== JSON.stringify(r);
-    });
+    const prevMap = new Map(prev.map(r => [r.id, r]));
+    const { deletedIds, toUpsert } = diffRegistros(prev, newVal);
 
     if (deletedIds.length > 0) {
       supabase

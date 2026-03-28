@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
     if (action === "create") {
       const { email, password, is_admin = false } = body;
       if (!email || !password) return json({ error: "E-mail e senha são obrigatórios." }, 400, corsHeaders);
-      if (password.length < 6) return json({ error: "A senha deve ter no mínimo 6 caracteres." }, 400, corsHeaders);
+      if (password.length < 8) return json({ error: "A senha deve ter no mínimo 8 caracteres." }, 400, corsHeaders);
 
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,

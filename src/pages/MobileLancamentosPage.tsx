@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import DOMPurify from "dompurify";
 import { Registro } from "@/types/attendance";
 import { supabase, authReady } from "@/lib/supabase";
+import { uuid, sanitize, logAudit } from "@/lib/audit";
 import {
   hoje, fmt, dataLimiteRetencao,
   fornCor,
@@ -26,31 +26,6 @@ const LANGS: { value: Lang; label: string }[] = [
 const OPCOES_DEFAULT: Opcoes = {
   turnos: [], unidades: [], fornecedores: [], motivos: [], cargos: [], ccList: [], nomes: [],
 };
-
-// ─── UUID helper ─────────────────────────────────────────────────
-const uuid = () => crypto.randomUUID();
-
-// ─── AUDITORIA ──────────────────────────────────────────────────
-const logAudit = (
-  operacao: "INSERT" | "UPDATE" | "DELETE" | "PURGE",
-  tabela: string,
-  registroId?: string,
-  dados?: unknown
-) => {
-  authReady.then(() =>
-    supabase.from("audit_log").insert({
-      operacao,
-      tabela,
-      registro_id: registroId ?? null,
-      dados: dados ?? null,
-    }).then(({ error }) => {
-      if (error) console.warn("audit_log:", error.message);
-    })
-  ).catch((err: unknown) => console.warn("audit_log (authReady):", err));
-};
-
-// ─── SANITIZE ────────────────────────────────────────────────────
-const sanitize = (v: string) => DOMPurify.sanitize(v, { ALLOWED_TAGS: [] });
 
 // ─── CHIP ────────────────────────────────────────────────────────
 const Chip = ({ label, color = "#1A56DB", bg }: { label: string; color?: string; bg?: string }) => (

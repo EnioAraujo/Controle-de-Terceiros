@@ -2,7 +2,8 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import type { Registro } from "@/types/attendance";
 import type { Opcoes } from "@/types/attendance";
 import { supabase, authReady } from "@/lib/supabase";
-import { logAudit } from "@/lib/audit";
+import { logAudit, sanitize } from "@/lib/audit";
+import type { TranslationKey } from "@/lib/i18n-translations";
 import { fmt, mesAtual } from "@/lib/format-utils";
 import {
   type TurnoConfig, type DiariaConfig, type FechamentoItem, type Fechamento,
@@ -17,7 +18,7 @@ import {
 import { useI18n } from "@/hooks/use-i18n";
 import { BlockHeader } from "@/components/atoms";
 
-const STATUS_LABEL_KEY: Record<FechamentoStatus, string> = {
+const STATUS_LABEL_KEY: Record<FechamentoStatus, TranslationKey> = {
   rascunho: "fech_status_rascunho",
   enviado:  "fech_status_enviado",
   revisao:  "fech_status_revisao",
@@ -313,7 +314,7 @@ export const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; op
               <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 20px", flex: 1, minWidth: 120, textAlign: "center" }}>
                 <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: .6, marginBottom: 4 }}>{t("fech_status")}</div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: STATUS_COLORS[fechamento.status] }}>
-                  {t(STATUS_LABEL_KEY[fechamento.status] as any)}
+                  {t(STATUS_LABEL_KEY[fechamento.status])}
                 </div>
               </div>
             )}
@@ -348,7 +349,7 @@ export const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; op
                             </td>
                             <td></td>
                             <td style={{ padding: "4px 6px" }}>
-                              <input value={editObs} onChange={e => setEditObs(e.target.value)} placeholder={t("fech_col_obs")}
+                              <input value={editObs} onChange={e => setEditObs(sanitize(e.target.value))} placeholder={t("fech_col_obs")}
                                 style={{ width: 100, border: "1.5px solid #E2E6EC", borderRadius: 5, padding: "4px 6px", fontSize: 12, fontFamily: "inherit", outline: "none" }} />
                             </td>
                             <td style={{ padding: "4px 6px", whiteSpace: "nowrap" }}>
@@ -431,7 +432,7 @@ export const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; op
                   <span style={{ fontWeight: 700, color: "#0F1C2E" }}>{h.fornecedor}</span>
                   <span style={{ color: "#64748B", fontFamily: "monospace" }}>{fmt(h.dataInicio, lang)} → {fmt(h.dataFim, lang)}</span>
                   <span style={{ fontWeight: 700, color: STATUS_COLORS[h.status], fontSize: 11, background: `${STATUS_COLORS[h.status]}18`, borderRadius: 99, padding: "2px 8px" }}>
-                    {t(STATUS_LABEL_KEY[h.status] as any)}
+                    {t(STATUS_LABEL_KEY[h.status])}
                   </span>
                   <span style={{ fontWeight: 700, color: "#0E9F6E" }}>{fmtCurrency(h.valorTotal)}</span>
                 </div>
