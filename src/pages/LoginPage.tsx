@@ -4,6 +4,11 @@ import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
 import type { Lang } from "@/lib/i18n-translations";
 import { mapSupabaseError } from "@/lib/i18n-translations";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const LANGS: { value: Lang; label: string; code: string }[] = [
   { value: "pt-BR", label: "Português", code: "BR" },
@@ -41,28 +46,23 @@ export default function LoginPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        // OWASP A10:2025 - Fail closed: erro de autenticação bloqueia acesso
         console.warn("[LOGIN_FAILURE]", { email, error: error.message });
         setLoading(false);
         setErro(mapSupabaseError(error.message, lang));
         return;
       }
 
-      // Verificar fatores MFA do usuário
       const { data: factors, error: factErr } = await supabase.auth.mfa.listFactors();
       if (factErr) {
         console.error("[MFA_LIST_ERROR]", factErr.message);
-        // Fail closed: erro ao listar MFA não libera acesso
         setLoading(false);
         setErro(lang === "pt-BR" ? "Erro ao verificar MFA." : "Error verifying MFA.");
         return;
       }
 
-      // Fator TOTP já verificado (enrollment completo)
       const verifiedTotp = factors?.totp?.find(f => f.factor_type === "totp" && f.status === "verified");
 
       if (verifiedTotp) {
-        // Usuário tem MFA ativo — verificar se a sessão atual ainda é AAL1
         const { data: aal, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
         if (aalErr) {
           console.error("[MFA_AAL_ERROR]", aalErr.message);
@@ -70,9 +70,8 @@ export default function LoginPage() {
           setErro(lang === "pt-BR" ? "Erro ao verificar nível de autenticação." : "Error checking authentication level.");
           return;
         }
-        
+
         if (aal?.currentLevel !== "aal2") {
-          // Sessão AAL1: exigir código TOTP antes de prosseguir
           const { data: challenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId: verifiedTotp.id });
           if (chalErr || !challenge) {
             console.error("[MFA_CHALLENGE_ERROR]", chalErr?.message);
@@ -87,16 +86,13 @@ export default function LoginPage() {
           return;
         }
       } else {
-        // Usuário sem TOTP verificado — redirecionar para setup
         navigate("/mfa-setup", { replace: true });
         setLoading(false);
         return;
       }
 
-      // Sessão já é AAL2: App.tsx detecta via onAuthStateChange
       setLoading(false);
     } catch (err) {
-      // OWASP A10:2025 - Fail closed: qualquer erro não capturado bloqueia acesso
       console.error("[LOGIN_UNEXPECTED_ERROR]", err);
       setLoading(false);
       setErro(lang === "pt-BR" ? "Erro interno. Tente novamente." : "Internal error. Please try again.");
@@ -114,18 +110,14 @@ export default function LoginPage() {
         challengeId,
         code: mfaCode.replace(/\s/g, ""),
       });
-      
+
       if (error) {
-        // OWASP A10:2025 - Fail closed: erro na verificação MFA bloqueia acesso
         console.warn("[MFA_VERIFY_FAILURE]", { factorId, challengeId, error: error.message });
         setErro(lang === "pt-BR" ? "Código inválido. Tente novamente." : "Invalid code. Please try again.");
         setMfaCode("");
         return;
       }
-      
-      // Sucesso: App.tsx detecta o upgrade para AAL2 via onAuthStateChange
     } catch (err) {
-      // OWASP A10:2025 - Fail closed: erro não capturado bloqueia acesso
       console.error("[MFA_VERIFY_UNEXPECTED_ERROR]", err);
       setErro(lang === "pt-BR" ? "Erro ao verificar código. Tente novamente." : "Error verifying code. Please try again.");
       setMfaCode("");
@@ -135,233 +127,202 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#FAF9FB",
-      fontFamily: "'DM Sans',system-ui,sans-serif",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 24,
-    }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');`}</style>
+    <div className="min-h-screen bg-surface flex items-center justify-center p-6 font-dm-sans">
+      {/* Language selector */}
+      <div className="absolute top-4 right-4 flex gap-2">
+        {LANGS.map(l => (
+          <button
+            key={l.value}
+            onClick={() => setLang(l.value)}
+            className={`
+              flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+              ${lang === l.value
+                ? 'bg-orange-50 border-2 border-orange-500 text-orange-600'
+                : 'bg-white border-2 border-gray-200 text-gray-400 hover:border-orange-300'
+              }
+            `}
+          >
+            <span className="font-black text-[10px] tracking-wider">{l.code}</span>
+            <span>{l.label}</span>
+          </button>
+        ))}
+      </div>
 
-      <div style={{ width: "100%", maxWidth: 420 }}>
-
-        {/* ─── Seleção de Dispositivo ─── */}
+      <div className="w-full max-w-md">
+        {/* Device Selection */}
         {deviceChoice === null ? (
-          <>
-            {/* Seletor de idioma */}
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12, gap: 6 }}>
-              {LANGS.map(l => (
+          <Card className="overflow-hidden shadow-lg">
+            <CardHeader className="bg-gradient-to-br from-slate-800 to-slate-700 text-white">
+              <CardTitle className="text-lg font-bold">
+                {lang === "pt-BR" ? "Controle de Terceiros" : "Third-party Control"}
+              </CardTitle>
+              <CardDescription className="text-slate-300 text-sm mt-1">
+                {lang === "pt-BR" ? "Como você vai acessar hoje?" : "How will you access today?"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-7">
+              <div className="flex gap-3.5">
+                {/* Mobile Card */}
                 <button
-                  key={l.value}
-                  onClick={() => setLang(l.value)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 5,
-                    padding: "5px 11px", borderRadius: 8, cursor: "pointer",
-                    fontFamily: "inherit", fontWeight: 600, fontSize: 12,
-                    border: lang === l.value ? "1.5px solid #F37E38" : "1.5px solid #E8E8EA",
-                    background: lang === l.value ? "#FFF4EC" : "#fff",
-                    color: lang === l.value ? "#F37E38" : "#9898B0",
-                    transition: "all .15s",
-                  }}
+                  onClick={() => chooseDevice("mobile")}
+                  className="flex-1 flex flex-col items-center gap-2 p-5.5 rounded-xl border-2 border-orange-200 bg-orange-50 cursor-pointer transition-all hover:border-orange-400 hover:shadow-md font-dm-sans"
                 >
-                  <span style={{ fontWeight: 800, fontSize: 10, letterSpacing: .5 }}>{l.code}</span>
-                  <span>{l.label}</span>
+                  <span className="text-[34px] leading-none">📱</span>
+                  <div className="font-black text-base text-orange-600">Mobile</div>
+                  <div className="text-[11px] text-gray-400 text-center leading-tight max-w-[140px]">
+                    {lang === "pt-BR"
+                      ? "Otimizado para celular — somente lançamentos"
+                      : "Optimized for phone — entries only"}
+                  </div>
                 </button>
-              ))}
-            </div>
 
-            <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,.08)", overflow: "hidden" }}>
-              {/* Header */}
-              <div style={{ background: "linear-gradient(135deg,#212B36,#2E3B4A)", padding: "24px 28px" }}>
-                <div style={{ color: "#F8FAFC", fontWeight: 700, fontSize: 18 }}>
-                  {lang === "pt-BR" ? "Controle de Terceiros" : "Third-party Control"}
-                </div>
-                <div style={{ color: "#9898B0", fontSize: 13, marginTop: 4 }}>
-                  {lang === "pt-BR" ? "Como você vai acessar hoje?" : "How will you access today?"}
-                </div>
+                {/* Desktop Card */}
+                <button
+                  onClick={() => chooseDevice("desktop")}
+                  className="flex-1 flex flex-col items-center gap-2 p-5.5 rounded-xl border-2 border-gray-200 bg-slate-50 cursor-pointer transition-all hover:border-slate-400 hover:shadow-md font-dm-sans"
+                >
+                  <span className="text-[34px] leading-none">💻</span>
+                  <div className="font-black text-base text-slate-800">Desktop</div>
+                  <div className="text-[11px] text-gray-400 text-center leading-tight max-w-[140px]">
+                    {lang === "pt-BR"
+                      ? "Acesso completo — todas as telas"
+                      : "Full access — all screens"}
+                  </div>
+                </button>
               </div>
-
-              {/* Cards de escolha */}
-              <div style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 14 }}>
-                <div style={{ display: "flex", gap: 14 }}>
-
-                  {/* Card Mobile */}
-                  <button
-                    onClick={() => chooseDevice("mobile")}
-                    style={{
-                      flex: 1,
-                      display: "flex", flexDirection: "column", alignItems: "center",
-                      gap: 8, padding: "22px 12px",
-                      borderRadius: 12, border: "2px solid #FDD9B5",
-                      background: "#FFF4EC", cursor: "pointer",
-                      fontFamily: "inherit", transition: "all .15s",
-                    }}
-                  >
-                    <span style={{ fontSize: 34, lineHeight: 1 }}>📱</span>
-                    <div style={{ fontWeight: 800, fontSize: 15, color: "#F37E38" }}>Mobile</div>
-                    <div style={{
-                      fontSize: 11, color: "#9898B0", textAlign: "center",
-                      lineHeight: 1.5, maxWidth: 140,
-                    }}>
-                      {lang === "pt-BR"
-                        ? "Otimizado para celular — somente lançamentos"
-                        : "Optimized for phone — entries only"}
-                    </div>
-                  </button>
-
-                  {/* Card Desktop */}
-                  <button
-                    onClick={() => chooseDevice("desktop")}
-                    style={{
-                      flex: 1,
-                      display: "flex", flexDirection: "column", alignItems: "center",
-                      gap: 8, padding: "22px 12px",
-                      borderRadius: 12, border: "2px solid #E8E8EA",
-                      background: "#F8FAFC", cursor: "pointer",
-                      fontFamily: "inherit", transition: "all .15s",
-                    }}
-                  >
-                    <span style={{ fontSize: 34, lineHeight: 1 }}>💻</span>
-                    <div style={{ fontWeight: 800, fontSize: 15, color: "#212B36" }}>Desktop</div>
-                    <div style={{
-                      fontSize: 11, color: "#9898B0", textAlign: "center",
-                      lineHeight: 1.5, maxWidth: 140,
-                    }}>
-                      {lang === "pt-BR"
-                        ? "Acesso completo — todas as telas"
-                        : "Full access — all screens"}
-                    </div>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </>
+            </CardContent>
+          </Card>
         ) : (
-          <>
-            {/* Seletor de idioma */}
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12, gap: 6 }}>
-              {LANGS.map(l => (
-                <button
-                  key={l.value}
-                  onClick={() => setLang(l.value)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 5,
-                    padding: "5px 11px", borderRadius: 8, cursor: "pointer",
-                    fontFamily: "inherit", fontWeight: 600, fontSize: 12,
-                    border: lang === l.value ? "1.5px solid #F37E38" : "1.5px solid #E8E8EA",
-                    background: lang === l.value ? "#FFF4EC" : "#fff",
-                    color: lang === l.value ? "#F37E38" : "#9898B0",
-                    transition: "all .15s",
-                  }}
-                >
-                  <span style={{ fontWeight: 800, fontSize: 10, letterSpacing: .5 }}>{l.code}</span>
-                  <span>{l.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Card de login */}
-            <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,.08)", overflow: "hidden" }}>
-              <div style={{ background: "linear-gradient(135deg,#212B36,#2E3B4A)", padding: "24px 28px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div>
-                    <div style={{ color: "#F8FAFC", fontWeight: 700, fontSize: 18 }}>
-                      {step === "mfa"
-                        ? (lang === "pt-BR" ? "Verificação em duas etapas" : "Two-step verification")
-                        : t("login_title")}
-                    </div>
-                    <div style={{ color: "#9898B0", fontSize: 12, marginTop: 4 }}>
-                      {step === "mfa"
-                        ? (lang === "pt-BR" ? "Digite o código do seu aplicativo autenticador" : "Enter the code from your authenticator app")
-                        : t("login_subtitle")}
-                    </div>
-                  </div>
-                  {/* Badge do modo escolhido */}
-                  <span style={{
-                    background: deviceChoice === "mobile" ? "#F37E38" : "#212B36",
-                    color: "#fff", borderRadius: 8, padding: "4px 10px",
-                    fontSize: 11, fontWeight: 700, letterSpacing: .5, whiteSpace: "nowrap",
-                  }}>
-                    {deviceChoice === "mobile" ? "📱 Mobile" : "💻 Desktop"}
-                  </span>
+          <Card className="overflow-hidden shadow-lg">
+            <CardHeader className="bg-gradient-to-br from-slate-800 to-slate-700 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg font-bold">
+                    {step === "mfa"
+                      ? (lang === "pt-BR" ? "Verificação em duas etapas" : "Two-step verification")
+                      : t("login_title")}
+                  </CardTitle>
+                  <CardDescription className="text-slate-300 text-xs mt-1">
+                    {step === "mfa"
+                      ? (lang === "pt-BR" ? "Digite o código do seu aplicativo autenticador" : "Enter the code from your authenticator app")
+                      : t("login_subtitle")}
+                  </CardDescription>
                 </div>
+                <span className={`
+                  px-2.5 py-1 rounded-md text-[11px] font-black tracking-wide whitespace-nowrap
+                  ${deviceChoice === "mobile" ? 'bg-orange-500 text-white' : 'bg-slate-800 text-white'}
+                `}>
+                  {deviceChoice === "mobile" ? "📱 Mobile" : "💻 Desktop"}
+                </span>
               </div>
+            </CardHeader>
 
-              {step === "mfa" ? (
-                <form onSubmit={handleMfaVerify} style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 18 }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label htmlFor="mfa-code" style={{ fontSize: 12, fontWeight: 600, color: "#9898B0", textTransform: "uppercase", letterSpacing: .7 }}>
-                      {lang === "pt-BR" ? "Código TOTP (6 dígitos)" : "TOTP Code (6 digits)"}
-                    </label>
-                    <input
-                      id="mfa-code"
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      placeholder="000000"
-                      value={mfaCode}
-                      onChange={e => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      required
-                      autoFocus
-                      style={{ border: "1.5px solid #E8E8EA", borderRadius: 8, padding: "10px 14px", fontSize: 22, fontFamily: "monospace", letterSpacing: 6, textAlign: "center", background: "#FAFAFA" }}
-                    />
-                  </div>
-                  {erro && (
-                    <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#E02424", fontWeight: 500 }}>
+            {step === "mfa" ? (
+              <form onSubmit={handleMfaVerify} className="p-7 flex flex-col gap-4.5">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="mfa-code" className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider">
+                    {lang === "pt-BR" ? "Código TOTP (6 dígitos)" : "TOTP Code (6 digits)"}
+                  </Label>
+                  <Input
+                    id="mfa-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="000000"
+                    value={mfaCode}
+                    onChange={e => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    required
+                    autoFocus
+                    className="text-[22px] font-mono tracking-[6px] text-center bg-gray-50"
+                  />
+                </div>
+
+                {erro && (
+                  <Alert variant="destructive" className="bg-red-50 border-red-200">
+                    <AlertDescription className="text-[13px] font-medium text-red-600">
                       {erro}
-                    </div>
-                  )}
-                  <button type="submit" disabled={loading || mfaCode.length !== 6}
-                    style={{ background: (loading || mfaCode.length !== 6) ? "#F9C49A" : "#F37E38", border: "none", borderRadius: 10, padding: "13px", cursor: (loading || mfaCode.length !== 6) ? "not-allowed" : "pointer", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit", transition: "all .15s" }}>
-                    {loading ? (lang === "pt-BR" ? "Verificando…" : "Verifying…") : (lang === "pt-BR" ? "Verificar" : "Verify")}
-                  </button>
-                  <button type="button" onClick={() => { setStep("login"); setErro(""); setMfaCode(""); }}
-                    style={{ background: "none", border: "none", color: "#9898B0", fontSize: 12, cursor: "pointer", textDecoration: "underline", fontFamily: "inherit" }}>
-                    {lang === "pt-BR" ? "← Voltar ao login" : "← Back to login"}
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={handleLogin} className="rsp-auth-card" style={{ padding: "28px", display: "flex", flexDirection: "column", gap: 18 }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label htmlFor="email" style={{ fontSize: 12, fontWeight: 600, color: "#9898B0", textTransform: "uppercase", letterSpacing: .7 }}>
-                      {t("login_email")}
-                    </label>
-                    <input id="email" type="email" autoComplete="email" placeholder={t("login_placeholder_email")}
-                      value={email} onChange={e => setEmail(e.target.value)} required
-                      style={{ border: "1.5px solid #E8E8EA", borderRadius: 8, padding: "10px 14px", fontSize: 14, fontFamily: "inherit", background: "#FAFAFA" }} />
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label htmlFor="password" style={{ fontSize: 12, fontWeight: 600, color: "#9898B0", textTransform: "uppercase", letterSpacing: .7 }}>
-                      {t("login_password")}
-                    </label>
-                    <input id="password" type="password" autoComplete="current-password" placeholder={t("login_placeholder_pass")}
-                      value={password} onChange={e => setPassword(e.target.value)} required
-                      style={{ border: "1.5px solid #E8E8EA", borderRadius: 8, padding: "10px 14px", fontSize: 14, fontFamily: "inherit", background: "#FAFAFA" }} />
-                  </div>
-                  {erro && (
-                    <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#E02424", fontWeight: 500 }}>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <Button 
+                  type="submit" 
+                  disabled={loading || mfaCode.length !== 6}
+                  className="w-full font-bold"
+                >
+                  {loading ? (lang === "pt-BR" ? "Verificando…" : "Verifying…") : (lang === "pt-BR" ? "Verificar" : "Verify")}
+                </Button>
+
+                <Button 
+                  type="button" 
+                  variant="link" 
+                  onClick={() => { setStep("login"); setErro(""); setMfaCode(""); }}
+                  className="text-gray-400 text-xs"
+                >
+                  {lang === "pt-BR" ? "← Voltar ao login" : "← Back to login"}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleLogin} className="p-7 flex flex-col gap-4.5">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="email" className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider">
+                    {t("login_email")}
+                  </Label>
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    autoComplete="email" 
+                    placeholder={t("login_placeholder_email")}
+                    value={email} 
+                    onChange={e => setEmail(e.target.value)} 
+                    required
+                    className="bg-gray-50"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="password" className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider">
+                    {t("login_password")}
+                  </Label>
+                  <Input 
+                    id="password" 
+                    type="password" 
+                    autoComplete="current-password" 
+                    placeholder={t("login_placeholder_pass")}
+                    value={password} 
+                    onChange={e => setPassword(e.target.value)} 
+                    required
+                    className="bg-gray-50"
+                  />
+                </div>
+
+                {erro && (
+                  <Alert variant="destructive" className="bg-red-50 border-red-200">
+                    <AlertDescription className="text-[13px] font-medium text-red-600">
                       {erro}
-                    </div>
-                  )}
-                  <button type="submit" disabled={loading}
-                    style={{ background: loading ? "#F9C49A" : "#F37E38", border: "none", borderRadius: 10, padding: "13px", cursor: loading ? "not-allowed" : "pointer", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit", transition: "all .15s" }}>
-                    {loading ? t("login_btn_loading") : t("login_btn")}
-                  </button>
-                  <div style={{ textAlign: "center", fontSize: 12, color: "#9898B0", marginTop: -4 }}>
-                    {t("login_no_account")}
-                  </div>
-                  {/* Voltar para seleção de dispositivo */}
-                  <button type="button" onClick={() => { setDeviceChoice(null); sessionStorage.removeItem("deviceMode"); setErro(""); }}
-                    style={{ background: "none", border: "none", color: "#9898B0", fontSize: 11, cursor: "pointer", textDecoration: "underline", fontFamily: "inherit", marginTop: -8 }}>
-                    {lang === "pt-BR" ? "← Trocar tipo de acesso" : "← Change access type"}
-                  </button>
-                </form>
-              )}
-            </div>
-          </>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <Button type="submit" disabled={loading} className="w-full font-bold">
+                  {loading ? t("login_btn_loading") : t("login_btn")}
+                </Button>
+
+                <p className="text-center text-xs text-gray-400 -mt-1">
+                  {t("login_no_account")}
+                </p>
+
+                <Button 
+                  type="button" 
+                  variant="link" 
+                  onClick={() => { setDeviceChoice(null); sessionStorage.removeItem("deviceMode"); setErro(""); }}
+                  className="text-gray-400 text-[11px] -mt-2"
+                >
+                  {lang === "pt-BR" ? "← Trocar tipo de acesso" : "← Change access type"}
+                </Button>
+              </form>
+            )}
+          </Card>
         )}
       </div>
     </div>

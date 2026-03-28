@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase, authReady } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
+import { useAuthStatus } from "@/hooks/useAuthStatus";
 import { hoje, mesAtual, WA_DEFAULT_TEMPLATE } from "@/lib/format-utils";
 import type { WhatsAppTemplate, WhatsAppField } from "@/lib/format-utils";
 import { dbToTurnoConfig, dbToDiariaConfig } from "@/lib/fechamento-utils";
@@ -50,21 +51,23 @@ const ALL_STEPS: (TourStep & { adminOnly?: boolean })[] = [
 const Index = () => {
   const navigate = useNavigate();
   const { t, lang } = useI18n();
-  const [tab, setTab]                             = useState<TabId>("lancamentos");
-  const [registros, setRegistros, loadingRegs]    = useStorage();
-  const [opcoes, setOpcoes, loadingOpts]           = useOpcoes();
-  const [saved, setSaved]                         = useState(false);
-  const loading                                   = loadingRegs || loadingOpts;
-  const [privacyAccepted, acceptPrivacy]          = usePrivacyAccepted();
-  const [dpoCfg, setDpoCfg]                       = useState<{ nome: string; email: string }>({ nome: "", email: "" });
-  const [isAdmin, setIsAdmin]                     = useState(false);
-  const [isModerator, setIsModerator]             = useState(false);
-  const [turnosConfig, setTurnosConfig]           = useState<TurnoConfig[]>([]);
-  const [diariasConfig, setDiariasConfig]         = useState<DiariaConfig[]>([]);
-  const [waTemplate, setWaTemplate]               = useState<WhatsAppTemplate>(WA_DEFAULT_TEMPLATE);
+  const { session, user, isAuthenticated } = useAuthStatus();
+  const [tab, setTab]                                         = useState<TabId>("lancamentos");
+  const [registros, setRegistros, loadingRegs, isSyncing, syncError, pendingCount, isOnline, retryPending] = useStorage();
+  const [opcoes, setOpcoes, loadingOpts]                      = useOpcoes();
+  const [saved, setSaved]                                     = useState(false);
+  const loading                                               = loadingRegs || loadingOpts;
+  const [privacyAccepted, acceptPrivacy]                      = usePrivacyAccepted();
+  const [dpoCfg, setDpoCfg]                                   = useState<{ nome: string; email: string }>({ nome: "", email: "" });
+  const [isAdmin, setIsAdmin]                                 = useState(false);
+  const [isModerator, setIsModerator]                         = useState(false);
+  const [turnosConfig, setTurnosConfig]                       = useState<TurnoConfig[]>([]);
+  const [diariasConfig, setDiariasConfig]                     = useState<DiariaConfig[]>([]);
+  const [waTemplate, setWaTemplate]                           = useState<WhatsAppTemplate>(WA_DEFAULT_TEMPLATE);
 
+  // Carrega configs de turnos e diárias
   useEffect(() => {
-    authReady.then(async () => {
+    const loadConfigs = async () => {
       const [tcResult, dcResult] = await Promise.all([
         supabase.from("turnos_config").select("*").order("turno"),
         supabase.from("diarias_config").select("*"),
@@ -73,46 +76,50 @@ const Index = () => {
       if (tcResult.data) setTurnosConfig(tcResult.data.map(dbToTurnoConfig));
       if (dcResult.error) console.error("Erro ao carregar diarias_config:", dcResult.error.message);
       if (dcResult.data) setDiariasConfig(dcResult.data.map(dbToDiariaConfig));
-    }).catch((err: unknown) => console.error("Erro ao carregar configs:", err));
+    };
+
+    loadConfigs();
   }, []);
 
+  // Carrega DPO config, WhatsApp template e verifica admin/moderator
   useEffect(() => {
-    authReady.then(async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+    if (!session) return;
+
+    const loadUserConfig = async () => {
       // DPO config
-      supabase.from("opcoes").select("chave,valor")
-        .in("chave", ["dpo_nome", "dpo_email"])
-        .then(({ data }) => {
-          if (!data) return;
-          const m: Record<string, string> = {};
-          data.forEach((r: { chave: string; valor: string }) => { m[r.chave] = r.valor; });
-          setDpoCfg({ nome: m["dpo_nome"] ?? "", email: m["dpo_email"] ?? "" });
-        })
-        .catch((err: unknown) => console.error("Erro ao carregar DPO config:", err));
+      const { data: dpoData } = await supabase.from("opcoes").select("chave,valor")
+        .in("chave", ["dpo_nome", "dpo_email"]);
+      if (dpoData) {
+        const m: Record<string, string> = {};
+        dpoData.forEach((r: { chave: string; valor: string }) => { m[r.chave] = r.valor; });
+        setDpoCfg({ nome: m["dpo_nome"] ?? "", email: m["dpo_email"] ?? "" });
+      }
+
       // WhatsApp template
-      supabase.from("opcoes").select("valor").eq("chave", "whatsapp_template").maybeSingle()
-        .then(({ data }) => {
-          if (!data?.valor) return;
-          try {
-            const parsed = JSON.parse(data.valor) as { header?: string; campos?: WhatsAppField[] };
-            if (parsed.header && Array.isArray(parsed.campos) && parsed.campos.length > 0) {
-              setWaTemplate({ header: parsed.header, campos: parsed.campos });
-            }
-          } catch { /* ignore bad JSON */ }
-        })
-        .catch((err: unknown) => console.error("Erro ao carregar WA template:", err));
+      const { data: waData } = await supabase.from("opcoes").select("valor").eq("chave", "whatsapp_template").maybeSingle();
+      if (waData?.valor) {
+        try {
+          const parsed = JSON.parse(waData.valor) as { header?: string; campos?: WhatsAppField[] };
+          if (parsed.header && Array.isArray(parsed.campos) && parsed.campos.length > 0) {
+            setWaTemplate({ header: parsed.header, campos: parsed.campos });
+          }
+        } catch { /* ignore bad JSON */ }
+      }
+
       // Admin check — usa RPC is_admin() (SECURITY DEFINER)
       const { data: isAdminResult, error: adminErr } = await supabase.rpc('is_admin');
       if (adminErr) console.error("Erro ao verificar admin:", adminErr.message);
       else if (isAdminResult) setIsAdmin(true);
+
       // Moderator check — via user_roles
       const { data: roleData, error: roleErr } = await supabase
         .from("user_roles").select("role").eq("user_id", session.user.id).maybeSingle();
       if (roleErr) console.error("Erro ao verificar role:", roleErr.message);
       else if (roleData?.role === "moderator") setIsModerator(true);
-    }).catch((err: unknown) => console.error("authReady falhou:", err));
-  }, []);
+    };
+
+    loadUserConfig();
+  }, [session]);
 
   const isAdminOrMod = isAdmin || isModerator;
 
@@ -206,6 +213,34 @@ const Index = () => {
           {saved && !loading && (
             <div style={{ display:"flex", alignItems:"center", gap:5, background:"#0E9F6E22", border:"1px solid #0E9F6E44", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#0E9F6E", fontWeight:600 }}>
               <Icon d="M5 13l4 4L19 7" size={12} /> {t("nav_saved")}
+            </div>
+          )}
+          {!isOnline && (
+            <div style={{ display:"flex", alignItems:"center", gap:6, background:"#EF444422", border:"1px solid #EF444444", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#EF4444", fontWeight:600 }}>
+              <Icon d="M12 18v-6m0 0a3 3 0 11-6 0 3 3 0 016 0zm0 0c0-1.1.9-2 2-2h2a2 2 0 012 2m-6 6h6" size={12} />
+              {t("nav_offline")}
+            </div>
+          )}
+          {pendingCount > 0 && isOnline && (
+            <button
+              onClick={retryPending}
+              title={`${pendingCount} operação(ões) pendente(s) de sincronização`}
+              style={{ display:"flex", alignItems:"center", gap:6, background:"#F59E0B22", border:"1px solid #F59E0B44", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#F59E0B", fontWeight:600, cursor:"pointer" }}
+            >
+              <Icon d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" size={12} />
+              {t("nav_pending").replace("{n}", pendingCount.toString())}
+            </button>
+          )}
+          {isSyncing && (
+            <div style={{ display:"flex", alignItems:"center", gap:6, background:"#3B82F622", border:"1px solid #3B82F644", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#3B82F6", fontWeight:600 }}>
+              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} style={{ animation:"spin 1s linear infinite" }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              {t("nav_syncing")}
+            </div>
+          )}
+          {syncError && (
+            <div style={{ display:"flex", alignItems:"center", gap:6, background:"#EF444422", border:"1px solid #EF444444", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#EF4444", fontWeight:600 }} title={syncError}>
+              <Icon d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" size={12} />
+              {t("nav_sync_error")}
             </div>
           )}
           <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"#9898B0", fontFamily:"'DM Mono',monospace" }}>

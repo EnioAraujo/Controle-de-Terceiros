@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect, useRef, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,61 +7,66 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { I18nProvider } from "@/lib/i18n";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import Index from "./pages/Index";
-import LoginPage from "./pages/LoginPage";
-import AdminPage from "./pages/AdminPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import MobileLancamentosPage from "./pages/MobileLancamentosPage";
-import MfaSetupPage from "./pages/MfaSetupPage";
-import NotFound from "./pages/NotFound";
+import { useAuthStatus } from "@/hooks/useAuthStatus";
 
-// Componente interno que fica dentro do BrowserRouter para poder usar useNavigate
+// Lazy load pages para code splitting
+const Index = lazy(() => import("./pages/Index"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const MobileLancamentosPage = lazy(() => import("./pages/MobileLancamentosPage"));
+const MfaSetupPage = lazy(() => import("./pages/MfaSetupPage"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+// Loading fallback component
+const PageLoading = () => (
+  <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+    <div className="text-center">
+      <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-sm text-gray-500 font-semibold">Carregando…</p>
+    </div>
+  </div>
+);
+
+// ═══════════════════════════════════════════════════════════════
+// APP ROUTES
+// ═══════════════════════════════════════════════════════════════
+
 const AppRoutes = () => {
   const navigate = useNavigate();
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { session, loading, isAuthenticated, tokenExpired } = useAuthStatus();
   const prevSessionRef = useRef<Session | null>(null);
 
   useEffect(() => {
     // Se a URL contém token de recuperação, aguarda o evento PASSWORD_RECOVERY
-    // antes de definir loading=false para evitar flash da página principal
     const isRecoveryUrl = window.location.hash.includes("type=recovery");
 
-    // OWASP A10:2025 - Fail closed: erro na getSession não libera acesso
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (!isRecoveryUrl) setLoading(false);
-    }).catch((err) => {
-      // Fail closed: em caso de erro, mantém loading=true e não libera acesso
-      console.error("[AUTH_SESSION_ERROR]", err);
-      setLoading(false);
-    });
+    // Se já temos sessão do useAuthStatus, não precisa carregar novamente
+    if (session && !isRecoveryUrl) {
+      return;
+    }
 
+    // Handler de auth state change para casos especiais
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
-        setSession(session);
         navigate("/reset-password", { replace: true });
-        setLoading(false);
         return;
       }
-      // Ao fazer login (null → sessão válida), verificar MFA pendente antes de redirecionar
+
+      // Ao fazer login (null → sessão válida), verificar MFA pendente
       if (!prevSessionRef.current && session) {
-        // Se a sessão é AAL1 e o usuário tem fator TOTP verificado, o challenge ainda não
-        // foi completado. Não chamar setSession() para que LoginPage fique montado e exiba
-        // o step de verificação TOTP sem ser desmontado pelo redirect do Route.
-        // NÃO atualizar prevSessionRef aqui — permite que o evento SIGNED_IN do AAL2
-        // (pós-verify) entre normalmente pelo mesmo bloco e libere o app.
         const hasVerifiedFactor = session.user.factors?.some(
           (f: { status: string }) => f.status === "verified"
         );
+
         if (hasVerifiedFactor) {
           try {
             const jwtPayload = JSON.parse(
               atob(session.access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
             ) as { aal?: string };
+
             if (jwtPayload.aal === "aal1") {
-              // MFA pendente: apenas libera o loading, sem redirecionar
-              setLoading(false);
+              // MFA pendente: não redireciona
               return;
             }
           } catch { /* ignora erro de decode */ }
@@ -70,8 +74,6 @@ const AppRoutes = () => {
 
         const mode = sessionStorage.getItem("deviceMode");
         if (mode === "mobile") {
-          setSession(session);
-          setLoading(false);
           navigate("/mobile", { replace: true });
           prevSessionRef.current = session;
           return;
@@ -82,14 +84,14 @@ const AppRoutes = () => {
       if (prevSessionRef.current && !session) {
         sessionStorage.removeItem("deviceMode");
       }
+
       prevSessionRef.current = session;
-      setSession(session);
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, session]);
 
+  // Loading state
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif" }}>
@@ -98,35 +100,73 @@ const AppRoutes = () => {
     );
   }
 
+  // Token expirado - exibe mensagem
+  if (tokenExpired && !session) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif", flexDirection: "column", gap: 16 }}>
+        <div style={{ fontSize: 16, color: "#EF4444", fontWeight: 700 }}>Sessão expirada</div>
+        <div style={{ fontSize: 14, color: "#64748B" }}>Redirecionando para login…</div>
+      </div>
+    );
+  }
+
   return (
     <Routes>
-      <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />
-      <Route path="/" element={session ? <Index /> : <Navigate to="/login" replace />} />
-      <Route path="/admin" element={session ? <AdminPage /> : <Navigate to="/login" replace />} />
-      <Route path="/mobile" element={session ? <MobileLancamentosPage /> : <Navigate to="/login" replace />} />
-      <Route path="/mfa-setup" element={session ? <MfaSetupPage /> : <Navigate to="/login" replace />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="*" element={<NotFound />} />
+      <Route path="/login" element={
+        <Suspense fallback={<PageLoading />}>
+          {session ? <Navigate to="/" replace /> : <LoginPage />}
+        </Suspense>
+      } />
+      <Route path="/" element={
+        <Suspense fallback={<PageLoading />}>
+          {session ? <Index /> : <Navigate to="/login" replace />}
+        </Suspense>
+      } />
+      <Route path="/admin" element={
+        <Suspense fallback={<PageLoading />}>
+          {session ? <AdminPage /> : <Navigate to="/login" replace />}
+        </Suspense>
+      } />
+      <Route path="/mobile" element={
+        <Suspense fallback={<PageLoading />}>
+          {session ? <MobileLancamentosPage /> : <Navigate to="/login" replace />}
+        </Suspense>
+      } />
+      <Route path="/mfa-setup" element={
+        <Suspense fallback={<PageLoading />}>
+          {session ? <MfaSetupPage /> : <Navigate to="/login" replace />}
+        </Suspense>
+      } />
+      <Route path="/reset-password" element={
+        <Suspense fallback={<PageLoading />}>
+          <ResetPasswordPage />
+        </Suspense>
+      } />
+      <Route path="*" element={
+        <Suspense fallback={<PageLoading />}>
+          <NotFound />
+        </Suspense>
+      } />
     </Routes>
   );
 };
 
-const queryClient = new QueryClient();
+// ═══════════════════════════════════════════════════════════════
+// APP
+// ═══════════════════════════════════════════════════════════════
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ErrorBoundary>
-      <I18nProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </TooltipProvider>
-      </I18nProvider>
-    </ErrorBoundary>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <I18nProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </TooltipProvider>
+    </I18nProvider>
+  </ErrorBoundary>
 );
 
 export default App;
