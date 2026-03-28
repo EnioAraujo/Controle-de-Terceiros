@@ -53,31 +53,6 @@ export const useAuthStatus = (): AuthStatus => {
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
-   * Carrega a sessão inicial
-   */
-  const loadSession = useCallback(async () => {
-    try {
-      const { data, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        throw sessionError;
-      }
-
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      setError(null);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      console.error("[AUTH] Erro ao carregar sessão:", errorMessage);
-      setError(errorMessage);
-      setSession(null);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  /**
    * Handler para mudanças de estado de autenticação
    */
   const handleAuthChange = useCallback(async (newSession: Session | null) => {
@@ -106,6 +81,30 @@ export const useAuthStatus = (): AuthStatus => {
   }, []);
 
   /**
+   * Carrega a sessão inicial
+   */
+  const loadSession = useCallback(async () => {
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        throw sessionError;
+      }
+
+      await handleAuthChange(data.session);
+      setError(null);
+    } catch (err: unknown) {
+      const errorMessage = (err as { message?: string })?.message ?? String(err);
+      console.error("[AUTH] Erro ao carregar sessão:", errorMessage);
+      setError(errorMessage);
+      setSession(null);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [handleAuthChange]);
+
+  /**
    * Refresh manual da sessão
    */
   const refreshSession = useCallback(async () => {
@@ -121,9 +120,9 @@ export const useAuthStatus = (): AuthStatus => {
       setUser(data.session?.user ?? null);
       setTokenExpired(false);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
+      const errorMessage = (err as { message?: string })?.message ?? String(err);
       console.error("[AUTH] Falha no refresh do token:", errorMessage);
-      setError(`Refresh failed: ${errorMessage}`);
+      setError(errorMessage);
       setTokenExpired(false);
 
       // Fail closed: se refresh falhar, limpa sessão

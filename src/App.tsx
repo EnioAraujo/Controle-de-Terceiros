@@ -1,4 +1,5 @@
 import { useEffect, useRef, lazy, Suspense } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +9,8 @@ import { supabase } from "@/lib/supabase";
 import { I18nProvider } from "@/lib/i18n";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuthStatus } from "@/hooks/useAuthStatus";
+
+const queryClient = new QueryClient();
 
 // Lazy load pages para code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -157,15 +160,17 @@ const AppRoutes = () => {
 
 const App = () => (
   <ErrorBoundary>
-    <I18nProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </TooltipProvider>
-    </I18nProvider>
+    <QueryClientProvider client={queryClient}>
+      <I18nProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </TooltipProvider>
+      </I18nProvider>
+    </QueryClientProvider>
   </ErrorBoundary>
 );
 

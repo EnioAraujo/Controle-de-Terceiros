@@ -99,10 +99,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res
           .status(400)
           .json({ error: "Formato de e-mail inválido." });
-      if (password.length < 6)
+      if (password.length < 8)
         return res
           .status(400)
-          .json({ error: "A senha deve ter no mínimo 6 caracteres." });
+          .json({ error: "A senha deve ter no mínimo 8 caracteres." });
 
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -133,10 +133,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { userId, email, password } = body;
       if (!userId)
         return res.status(400).json({ error: "userId é obrigatório." });
-      if (password && password.length < 6)
+      if (password && password.length < 8)
         return res
           .status(400)
-          .json({ error: "A senha deve ter no mínimo 6 caracteres." });
+          .json({ error: "A senha deve ter no mínimo 8 caracteres." });
 
       const updateData: { email?: string; password?: string } = {};
       if (email) updateData.email = email;

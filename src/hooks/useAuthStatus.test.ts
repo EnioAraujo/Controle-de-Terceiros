@@ -223,7 +223,7 @@ describe("useAuthStatus", () => {
       const mockSession = createMockSession();
       mockGetSession.mockResolvedValue({ data: { session: mockSession }, error: null });
 
-      const { unmount } = renderHook(() => useAuthStatus());
+      const { result, unmount } = renderHook(() => useAuthStatus());
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 

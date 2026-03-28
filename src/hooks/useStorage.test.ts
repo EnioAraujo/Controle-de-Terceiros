@@ -10,6 +10,8 @@ vi.mock("@/lib/supabase", () => ({
     from: vi.fn(),
   },
   authReady: Promise.resolve(),
+  // executeWithAuthRetry: delega diretamente para a função passada (sem retry real nos testes)
+  executeWithAuthRetry: vi.fn((fn: () => unknown) => fn()),
 }));
 
 // Mock do logAudit
@@ -68,13 +70,16 @@ describe("useStorage", () => {
       ];
 
       mockSupabaseFrom.mockReturnValue({
-        select: vi.fn().mockResolvedValue({
-          data: mockRegistros,
-          error: null,
+        select: vi.fn().mockReturnValue({
+          order: vi.fn().mockResolvedValue({
+            data: mockRegistros,
+            error: null,
+          }),
         }),
-        order: vi.fn().mockResolvedValue({
-          data: mockRegistros,
-          error: null,
+        delete: vi.fn().mockReturnValue({
+          lt: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
         }),
       } as unknown as ReturnType<typeof supabase.from>);
 
@@ -144,8 +149,8 @@ describe("useStorage", () => {
         result.current[1](newRegistros);
       });
 
-      // Verificar que delete foi chamado
-      expect(mockDelete).toHaveBeenCalledWith(["1"]);
+      // Verificar que delete foi chamado com coluna + ids
+      expect(mockDelete).toHaveBeenCalledWith("id", ["1"]);
     });
 
     it("deve fazer retry quando delete falhar (backoff exponencial)", async () => {
