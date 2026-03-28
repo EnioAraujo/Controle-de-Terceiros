@@ -32,6 +32,41 @@ const PageLoading = () => (
 );
 
 // ═══════════════════════════════════════════════════════════════
+// MFA HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+/** Decodifica o campo `aal` do JWT sem verificar assinatura. Retorna null em caso de falha. */
+function decodeSessionAal(session: Session | null): string | null {
+  if (!session?.access_token) return null;
+  try {
+    const payload = JSON.parse(
+      atob(session.access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
+    ) as { aal?: string };
+    return payload.aal ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Retorna true quando a sessão existe mas o MFA ainda não foi completado:
+ * - JWT com aal="aal1" (só senha, sem TOTP)
+ * - E o usuário tem pelo menos um factor verificado (MFA configurado)
+ */
+function hasMfaPending(session: Session | null): boolean {
+  if (!session) return false;
+  if (decodeSessionAal(session) !== "aal1") return false;
+  return !!session.user.factors?.some(
+    (f: { status: string }) => f.status === "verified"
+  );
+}
+
+/** Rota pós-login baseada na preferência de dispositivo gravada no sessionStorage. */
+function getPostLoginRoute(): string {
+  return sessionStorage.getItem("deviceMode") === "mobile" ? "/mobile" : "/";
+}
+
+// ═══════════════════════════════════════════════════════════════
 // APP ROUTES
 // ═══════════════════════════════════════════════════════════════
 
@@ -117,22 +152,24 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/login" element={
         <Suspense fallback={<PageLoading />}>
-          {session ? <Navigate to="/" replace /> : <LoginPage />}
+          {session && !hasMfaPending(session)
+            ? <Navigate to={getPostLoginRoute()} replace />
+            : <LoginPage />}
         </Suspense>
       } />
       <Route path="/" element={
         <Suspense fallback={<PageLoading />}>
-          {session ? <Index /> : <Navigate to="/login" replace />}
+          {session && !hasMfaPending(session) ? <Index /> : <Navigate to="/login" replace />}
         </Suspense>
       } />
       <Route path="/admin" element={
         <Suspense fallback={<PageLoading />}>
-          {session ? <AdminPage /> : <Navigate to="/login" replace />}
+          {session && !hasMfaPending(session) ? <AdminPage /> : <Navigate to="/login" replace />}
         </Suspense>
       } />
       <Route path="/mobile" element={
         <Suspense fallback={<PageLoading />}>
-          {session ? <MobileLancamentosPage /> : <Navigate to="/login" replace />}
+          {session && !hasMfaPending(session) ? <MobileLancamentosPage /> : <Navigate to="/login" replace />}
         </Suspense>
       } />
       <Route path="/mfa-setup" element={
