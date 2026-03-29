@@ -113,8 +113,17 @@ export default function LoginPage() {
 
       if (error) {
         console.warn("[MFA_VERIFY_FAILURE]", { factorId, challengeId, error: error.message });
-        setErro(lang === "pt-BR" ? "Código inválido. Tente novamente." : "Invalid code. Please try again.");
         setMfaCode("");
+
+        // Renova o challenge para que a próxima tentativa não falhe por challengeId stale
+        const { data: newChallenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId });
+        if (newChallenge && !chalErr) {
+          setChallengeId(newChallenge.id);
+        } else {
+          console.warn("[MFA_CHALLENGE_RENEW_FAILURE]", chalErr?.message);
+        }
+
+        setErro(lang === "pt-BR" ? "Código inválido. Tente novamente." : "Invalid code. Please try again.");
         return;
       }
     } catch (err) {
