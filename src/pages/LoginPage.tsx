@@ -74,7 +74,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (loginCancelledRef.current) { setLoading(false); return; }
       if (error) {
-        console.warn("[LOGIN_FAILURE]", { email, error: error.message });
+        console.warn("[LOGIN_FAILURE]", { error: error.message });
         setLoading(false);
         setErro(mapSupabaseError(error.message, lang));
         return;

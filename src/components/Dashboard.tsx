@@ -100,9 +100,9 @@ export const Dashboard = ({
   const periodLabels = [t("dash_period_1"), t("dash_period_2"), t("dash_period_3")];
   const dadosPeriodo = useMemo(() => {
     const grupos = [
-      doMes.filter(r => { const d = parseInt(r.data.slice(8)); return d <= 10; }),
-      doMes.filter(r => { const d = parseInt(r.data.slice(8)); return d >= 11 && d <= 20; }),
-      doMes.filter(r => { const d = parseInt(r.data.slice(8)); return d >= 21; }),
+      doMes.filter(r => { const d = parseInt(r.data.slice(8), 10); return d <= 10; }),
+      doMes.filter(r => { const d = parseInt(r.data.slice(8), 10); return d >= 11 && d <= 20; }),
+      doMes.filter(r => { const d = parseInt(r.data.slice(8), 10); return d >= 21; }),
     ];
     return grupos.map((regs, idx) => {
       const ponto: Record<string, number | string> = { periodo: periodLabels[idx] };

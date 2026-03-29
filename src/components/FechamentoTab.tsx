@@ -56,17 +56,20 @@ export const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; op
   const [editObs, setEditObs] = useState("");
 
   useEffect(() => {
+    let isMounted = true;
     authReady.then(async () => {
       const { data: tData, error: tErr } = await supabase.from("turnos_config").select("*").order("turno");
       if (tErr) console.error("Erro ao carregar turnos_config:", tErr.message);
-      if (tData) setTurnosConfig(tData.map(dbToTurnoConfig));
       const { data: dData, error: dErr } = await supabase.from("diarias_config").select("*").order("fornecedor");
       if (dErr) console.error("Erro ao carregar diarias_config:", dErr.message);
-      if (dData) setDiariasConfig(dData.map(dbToDiariaConfig));
       const { data: hData, error: hErr } = await supabase.from("fechamentos").select("*").order("created_at", { ascending: false }).limit(50);
       if (hErr) console.error("Erro ao carregar histórico:", hErr.message);
+      if (!isMounted) return;
+      if (tData) setTurnosConfig(tData.map(dbToTurnoConfig));
+      if (dData) setDiariasConfig(dData.map(dbToDiariaConfig));
       if (hData) setHistorico(hData.map(dbToFechamento));
     }).catch((err: unknown) => console.error("Erro ao carregar configs do fechamento:", err));
+    return () => { isMounted = false; };
   }, []);
 
   const periodos = useMemo(() => periodosPadrao(mes), [mes]);

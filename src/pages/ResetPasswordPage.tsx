@@ -40,7 +40,7 @@ export default function ResetPasswordPage() {
     } else {
       setMsg({ ok: true, text: t("reset_success") });
       await supabase.auth.signOut().catch((err: unknown) => console.error("Erro ao encerrar sessão:", err));
-      setTimeout(() => navigate("/login", { replace: true }), 2000);
+      timerRef.current = setTimeout(() => navigate("/login", { replace: true }), 2000);
     }
   };
 
