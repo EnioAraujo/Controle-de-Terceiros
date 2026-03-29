@@ -126,6 +126,15 @@ export default function LoginPage() {
     }
   };
 
+  const handleBackToLogin = async () => {
+    await supabase.auth.signOut();
+    setStep("login");
+    setErro("");
+    setMfaCode("");
+    setFactorId("");
+    setChallengeId("");
+  };
+
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center p-6 font-dm-sans">
       {/* Language selector */}
@@ -256,7 +265,7 @@ export default function LoginPage() {
                 <Button 
                   type="button" 
                   variant="link" 
-                  onClick={() => { setStep("login"); setErro(""); setMfaCode(""); }}
+                  onClick={handleBackToLogin}
                   className="text-gray-400 text-xs"
                 >
                   {lang === "pt-BR" ? "← Voltar ao login" : "← Back to login"}
