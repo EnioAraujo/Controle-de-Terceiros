@@ -17,22 +17,25 @@ import { createClient } from "@supabase/supabase-js";
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? "";
 
 function getCorsOrigin(origin: string): string {
-  if (!ALLOWED_ORIGIN) return origin || "*";
-  return origin === ALLOWED_ORIGIN ? origin : ALLOWED_ORIGIN;
+  if (!ALLOWED_ORIGIN) return ""; // fail closed — ALLOWED_ORIGIN obrigatória
+  return origin === ALLOWED_ORIGIN ? origin : "";
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const origin = (req.headers["origin"] as string | undefined) ?? "";
   const corsOrigin = getCorsOrigin(origin);
 
-  res.setHeader("Access-Control-Allow-Origin", corsOrigin);
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "authorization, content-type, x-client-info, apikey"
-  );
-  res.setHeader("Vary", "Origin");
+  if (corsOrigin) {
+    res.setHeader("Access-Control-Allow-Origin", corsOrigin);
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "authorization, content-type, x-client-info, apikey"
+    );
+    res.setHeader("Vary", "Origin");
+  }
 
   if (req.method === "OPTIONS") {
+    if (!corsOrigin) return res.status(403).end();
     return res.status(200).end();
   }
 
@@ -75,6 +78,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .single();
 
   if (!profile?.is_admin) return res.status(403).json({ error: "Forbidden" });
+
+  // ── Verificação AAL2: MFA obrigatório para operações admin (SEV-001) ──
+  try {
+    const jwtParts = token.split(".");
+    const jwtPayload = JSON.parse(
+      Buffer.from(jwtParts[1], "base64url").toString()
+    ) as { aal?: string };
+    if (jwtPayload.aal !== "aal2") {
+      return res.status(403).json({ error: "MFA obrigatório para esta operação." });
+    }
+  } catch {
+    return res.status(401).json({ error: "Token inválido." });
+  }
 
   // ── Processar ação ───────────────────────────────────────────────
   const body = req.body as {
@@ -178,7 +194,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(400).json({ error: "Ação desconhecida." });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return res.status(500).json({ error: msg });
+    console.error("[ADMIN_API_ERROR]", err);
+    return res.status(500).json({ error: "Erro interno. Tente novamente." });
   }
 }

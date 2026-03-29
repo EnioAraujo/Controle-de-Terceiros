@@ -29,7 +29,7 @@ export default function ResetPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPass !== confirmPass) { setMsg({ ok: false, text: t("reset_err_mismatch") }); return; }
-    if (newPass.length < 6)     { setMsg({ ok: false, text: t("reset_err_short") }); return; }
+    if (newPass.length < 8)     { setMsg({ ok: false, text: t("reset_err_short") }); return; }
 
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password: newPass });

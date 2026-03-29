@@ -92,10 +92,10 @@ export default function MfaSetupPage() {
     setTimeout(() => navigate("/", { replace: true }), 2000);
   };
 
-  const handleSkip = async () => {
-    // Cancela fator incompleto (nao verificado) para nao deixar registro pendente
-    if (factorId) {
-      await supabase.auth.mfa.unenroll({ factorId }).catch(() => undefined);
+  const handleSkip = () => {
+    // Só faz unenroll em fator recém-criado (passo "qr") — nunca em fator já verificado (SEV-005)
+    if (factorId && step === "qr") {
+      supabase.auth.mfa.unenroll({ factorId }).catch(() => undefined);
     }
     navigate("/", { replace: true });
   };

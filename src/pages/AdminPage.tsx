@@ -410,7 +410,7 @@ export default function AdminPage() {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPass !== confirmPass) { setPassMsg({ ok: false, text: t("admin_pass_mismatch") }); return; }
-    if (newPass.length < 6)     { setPassMsg({ ok: false, text: t("admin_pass_short") });    return; }
+    if (newPass.length < 8)     { setPassMsg({ ok: false, text: t("admin_pass_short") });    return; }
     setPassLoading(true);
     const { error } = await supabase.auth.updateUser({ password: newPass });
     setPassLoading(false);

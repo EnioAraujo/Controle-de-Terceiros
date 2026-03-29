@@ -39,7 +39,8 @@ const getSecurityMetadata = () => {
  * @param dados - Dados adicionais da operação
  */
 export const logAudit = (
-  operacao: "INSERT" | "UPDATE" | "DELETE" | "PURGE" | "EXCLUSAO_TITULAR",
+  operacao: "INSERT" | "UPDATE" | "DELETE" | "PURGE" | "EXCLUSAO_TITULAR"
+          | "DELETE_ERROR" | "UPSERT_ERROR" | "PURGE_ERROR" | "INSERT_ERROR" | "UPDATE_ERROR",
   tabela: string,
   registroId?: string,
   dados?: unknown
