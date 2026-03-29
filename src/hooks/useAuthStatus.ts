@@ -180,6 +180,12 @@ export const useAuthStatus = (): AuthStatus => {
             handleAuthChange(newSession);
             break;
 
+          case "MFA_CHALLENGE_VERIFIED":
+            // Sessão elevada para aal2 — atualiza estado para que o route guard redirecione
+            handleAuthChange(newSession);
+            setLoading(false);
+            break;
+
           default:
             break;
         }
