@@ -2,6 +2,14 @@
 
 ## Regra de Clarificação (OBRIGATÓRIA)
 
+** Leia CONTEXT.md antes de qualquer implementação. Ele contém o contexto completo do projeto, incluindo estrutura, banco de dados, autenticação, lógica de negócio, LGPD, admin, variáveis de ambiente, comandos e convenções.
+
+** Leia skill_tdd.md para entender o processo recomendado de desenvolvimento orientado a testes (TDD) e como ele se encaixa no fluxo de trabalho.
+
+** leia skill_seguranca-webapp.md para entender as melhores práticas de segurança específicas para aplicações web, incluindo autenticação, autorização, proteção contra ataques comuns e conformidade com LGPD.
+
+** leia DESIGN.md para entender as diretrizes de design do projeto, incluindo padrões de interface, componentes reutilizáveis e consistência visual.
+
 **Antes de iniciar qualquer tarefa**, sempre pergunte ao usuário o que pode ajudar a entender melhor o que está sendo pedido. Exemplos de perguntas úteis:
 
 - "Essa ação foi feita pelo formulário ou por importação de arquivo?"

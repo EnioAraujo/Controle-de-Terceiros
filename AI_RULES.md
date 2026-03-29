@@ -4,6 +4,9 @@
 
 1. **Ler `CONTEXT.md` completo** — visão geral, schema, convenções e histórico
 2. **Ler `AI_RULES.md` completo** — regras de processo, stack e armadilhas
+3. **Ler `DESIGN.md` completo**  — contém regras de design
+4. **Ler `skill_tdd.md` completo** - contém regras de TDD
+5. **Ler `skill_seguranca-webapp` completo** - contém regras de segurança
 
 ## Processo a cada alteração
 

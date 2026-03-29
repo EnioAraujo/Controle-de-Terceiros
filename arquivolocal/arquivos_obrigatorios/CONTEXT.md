@@ -20,6 +20,7 @@
 > 1. Este arquivo `arquivolocal/CONTEXT.md` — visão geral, schema, convenções e histórico
 > 2. `arquivolocal/skill_tdd.md` — diretrizes de TDD obrigatórias para este projeto
 
+
 ---
 
 ## 1. Visão Geral
