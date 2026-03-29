@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
@@ -32,6 +32,8 @@ export default function LoginPage() {
   const [mfaCode, setMfaCode]       = useState("");
   const [factorId, setFactorId]     = useState("");
   const [challengeId, setChallengeId] = useState("");
+  // Cancela handleLogin em progresso quando usuário clica "Voltar"
+  const loginCancelledRef = useRef(false);
 
   const chooseDevice = (choice: "mobile" | "desktop") => {
     sessionStorage.setItem("deviceMode", choice);
@@ -40,11 +42,13 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    loginCancelledRef.current = false;
     setErro("");
     setLoading(true);
 
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (loginCancelledRef.current) { setLoading(false); return; }
       if (error) {
         console.warn("[LOGIN_FAILURE]", { email, error: error.message });
         setLoading(false);
@@ -53,6 +57,7 @@ export default function LoginPage() {
       }
 
       const { data: factors, error: factErr } = await supabase.auth.mfa.listFactors();
+      if (loginCancelledRef.current) { setLoading(false); return; }
       if (factErr) {
         console.error("[MFA_LIST_ERROR]", factErr.message);
         setLoading(false);
@@ -64,6 +69,7 @@ export default function LoginPage() {
 
       if (verifiedTotp) {
         const { data: aal, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (loginCancelledRef.current) { setLoading(false); return; }
         if (aalErr) {
           console.error("[MFA_AAL_ERROR]", aalErr.message);
           setLoading(false);
@@ -72,15 +78,8 @@ export default function LoginPage() {
         }
 
         if (aal?.currentLevel !== "aal2") {
-          const { data: challenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId: verifiedTotp.id });
-          if (chalErr || !challenge) {
-            console.error("[MFA_CHALLENGE_ERROR]", chalErr?.message);
-            setErro(lang === "pt-BR" ? "Erro ao iniciar verificação MFA." : "Error starting MFA challenge.");
-            setLoading(false);
-            return;
-          }
+          if (loginCancelledRef.current) { setLoading(false); return; }
           setFactorId(verifiedTotp.id);
-          setChallengeId(challenge.id);
           setStep("mfa");
           setLoading(false);
           return;
@@ -105,22 +104,38 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // Pre-check: SDK pode já ter elevado para aal2 automaticamente (MFA_CHALLENGE_VERIFIED)
+      const { data: aalPre } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aalPre?.currentLevel === "aal2") {
+        const dest = sessionStorage.getItem("deviceMode") === "mobile" ? "/mobile" : "/";
+        navigate(dest, { replace: true });
+        return;
+      }
+
+      // Challenge fresco a cada submit — evita 422 por challengeId stale
+      const { data: challenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId });
+      if (chalErr || !challenge) {
+        console.error("[MFA_CHALLENGE_ERROR]", chalErr?.message);
+        setErro(lang === "pt-BR" ? "Erro ao iniciar verificação. Tente novamente." : "Error starting verification. Please try again.");
+        return;
+      }
+
       const { error } = await supabase.auth.mfa.verify({
         factorId,
-        challengeId,
+        challengeId: challenge.id,
         code: mfaCode.replace(/\s/g, ""),
       });
 
       if (error) {
-        console.warn("[MFA_VERIFY_FAILURE]", { factorId, challengeId, error: error.message });
+        console.warn("[MFA_VERIFY_FAILURE]", { factorId, error: error.message });
         setMfaCode("");
 
-        // Renova o challenge para que a próxima tentativa não falhe por challengeId stale
-        const { data: newChallenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId });
-        if (newChallenge && !chalErr) {
-          setChallengeId(newChallenge.id);
-        } else {
-          console.warn("[MFA_CHALLENGE_RENEW_FAILURE]", chalErr?.message);
+        // Post-check: mesmo com erro na API, SDK pode ter elevado para aal2
+        const { data: aalPost } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aalPost?.currentLevel === "aal2") {
+          const dest = sessionStorage.getItem("deviceMode") === "mobile" ? "/mobile" : "/";
+          navigate(dest, { replace: true });
+          return;
         }
 
         setErro(lang === "pt-BR" ? "Código inválido. Tente novamente." : "Invalid code. Please try again.");
@@ -135,8 +150,8 @@ export default function LoginPage() {
     }
   };
 
-  const handleBackToLogin = async () => {
-    await supabase.auth.signOut();
+  const handleBackToLogin = () => {
+    loginCancelledRef.current = true;
     setStep("login");
     setErro("");
     setMfaCode("");
