@@ -70,7 +70,7 @@ export async function executeWithAuthRetry<T>(
           throw new Error(`Falha de autenticação: ${refreshError.message}`);
         }
 
-        console.log("[AUTH_RETRY] Token refreshado, tentando novamente...");
+        console.debug("[AUTH_RETRY] Token refreshado, tentando novamente...");
         // Aguarda breve delay antes de retry
         await new Promise((resolve) => setTimeout(resolve, 500));
         continue;
@@ -95,7 +95,7 @@ export async function executeWithAuthRetry<T>(
           throw new Error(`Falha de autenticação: ${refreshError.message}`);
         }
 
-        console.log("[AUTH_RETRY] Token refreshado, tentando novamente...");
+        console.debug("[AUTH_RETRY] Token refreshado, tentando novamente...");
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }

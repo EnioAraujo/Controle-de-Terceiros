@@ -173,7 +173,7 @@ export const useStorage = (): [
       return;
     }
 
-    console.log(`[OFFLINE_QUEUE] Processando ${queue.operations.length} operações pendentes`);
+    console.debug(`[OFFLINE_QUEUE] Processando ${queue.operations.length} operações pendentes`);
 
     setIsSyncing(true);
     setSyncError(null);
@@ -248,14 +248,14 @@ export const useStorage = (): [
     if (remainingOperations.length > 0) {
       setSyncError(`${remainingOperations.length} operação(ões) falharam. Tentando novamente...`);
     } else {
-      console.log("[OFFLINE_QUEUE] Todas as operações pendentes sincronizadas");
+      console.debug("[OFFLINE_QUEUE] Todas as operações pendentes sincronizadas");
     }
   }, [isSyncing]);
 
   // Listeners de online/offline e processamento da fila
   useEffect(() => {
     const handleOnline = () => {
-      console.log("[OFFLINE_QUEUE] Conexão restaurada");
+      console.debug("[OFFLINE_QUEUE] Conexão restaurada");
       queueRef.current.isOnline = true;
       setPendingQueue((prev) => ({ ...prev, isOnline: true }));
       // Tenta processar fila quando conexão volta
@@ -263,7 +263,7 @@ export const useStorage = (): [
     };
 
     const handleOffline = () => {
-      console.log("[OFFLINE_QUEUE] Conexão perdida");
+      console.debug("[OFFLINE_QUEUE] Conexão perdida");
       queueRef.current.isOnline = false;
       setPendingQueue((prev) => ({ ...prev, isOnline: false }));
     };
@@ -376,7 +376,7 @@ export const useStorage = (): [
 
     // Se offline, adiciona operações à fila e retorna
     if (!isOnline) {
-      console.log("[OFFLINE_QUEUE] Offline - adicionando operações à fila");
+      console.debug("[OFFLINE_QUEUE] Offline - adicionando operações à fila");
 
       const newOperations: SyncOperation[] = [];
 
@@ -502,11 +502,11 @@ export const useStorage = (): [
    */
   const retryPending = useCallback(async () => {
     if (queueRef.current.operations.length === 0) {
-      console.log("[OFFLINE_QUEUE] Nenhuma operação pendente");
+      console.debug("[OFFLINE_QUEUE] Nenhuma operação pendente");
       return;
     }
 
-    console.log(`[OFFLINE_QUEUE] Tentando sincronizar ${queueRef.current.operations.length} operações`);
+    console.debug(`[OFFLINE_QUEUE] Tentando sincronizar ${queueRef.current.operations.length} operações`);
     await processPendingQueue();
   }, [processPendingQueue]);
 

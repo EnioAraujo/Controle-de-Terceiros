@@ -74,7 +74,7 @@ export const useAuthStatus = (): AuthStatus => {
     if (timeUntilExpiry < 300) {
       // Token expirando em breve - dispara refresh preventivo
       setTokenExpired(true);
-      console.log("[AUTH] Token expirando em breve, refresh preventivo");
+      console.debug("[AUTH] Token expirando em breve, refresh preventivo");
     } else {
       setTokenExpired(false);
     }
@@ -157,7 +157,7 @@ export const useAuthStatus = (): AuthStatus => {
     // Subscribe a mudanças de auth state
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        console.log("[AUTH] Evento:", event);
+        console.debug("[AUTH] Evento:", event);
 
         switch (event) {
           case "INITIAL_SESSION":
