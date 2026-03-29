@@ -229,6 +229,7 @@ const MobileModal = ({ title, onClose, children }: { title: string; onClose: () 
       corretamente pois o modal também está na viewport.
     */}
     <style>{`
+      /* Fundo do modal fullscreen alinhado ao design system */
       /* Remove minWidth do container para não causar scroll horizontal no modal */
       .mobile-form-worker-outer {
         min-width: unset !important;
@@ -293,15 +294,16 @@ const MobileModal = ({ title, onClose, children }: { title: string; onClose: () 
         width: auto !important;
       }
     `}</style>
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.5)" }} />
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(10,18,35,0.6)", backdropFilter: "blur(2px)" }} />
     <div style={{
       position: "fixed", inset: 0, zIndex: 401,
-      background: "#F1F5F9", overflowY: "auto",
+      background: "#FAF9FB", overflowY: "auto",
       display: "flex", flexDirection: "column",
     }}>
       {/* Header do modal */}
       <div style={{
-        background: "#0B1628", padding: "16px 20px",
+        background: "#212B36", borderBottom: "1px solid #2E3B4A",
+        padding: "16px 20px",
         display: "flex", alignItems: "center", gap: 14, position: "sticky", top: 0, zIndex: 1,
       }}>
         <button onClick={onClose} style={{
@@ -549,26 +551,31 @@ const MobileLancamentosPage = () => {
   };
 
   return (
-    <div style={{ minHeight: "100dvh", background: "#F1F5F9", fontFamily: "inherit" }}>
+    <div style={{ minHeight: "100dvh", background: "#FAF9FB", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
 
       {/* ═══ HEADER FIXO ═══ */}
       <div style={{
         position: "sticky", top: 0, zIndex: 100,
-        background: "#0B1628",
+        background: "#212B36",
+        borderBottom: "1px solid #2E3B4A",
         padding: "14px 16px 12px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: "#fff", fontWeight: 800, fontSize: 16, lineHeight: 1 }}>
-              Controle de Terceiros
+            <div style={{ fontWeight: 800, fontSize: 16, lineHeight: 1 }}>
+              <span style={{ color: "#F8FAFC" }}>Controle de </span>
+              <span style={{ color: "#F37E38" }}>Terceiros</span>
             </div>
             <div style={{
               display: "inline-flex", alignItems: "center", gap: 4,
-              marginTop: 4, background: "#1A56DB", borderRadius: 99,
-              padding: "2px 8px", fontSize: 10, fontWeight: 700, color: "#fff",
+              marginTop: 4, background: "#F37E3818",
+              border: "1px solid #F37E3844",
+              borderRadius: 99, padding: "2px 8px",
+              fontSize: 10, fontWeight: 700, color: "#F37E38",
             }}>
-              <span>📱</span> Mobile
+              <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><rect x="5" y="2" width="14" height="20" rx="2" /><line x1="12" y1="18" x2="12" y2="18" strokeWidth={3} strokeLinecap="round" /></svg>
+              Mobile
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
@@ -578,10 +585,10 @@ const MobileLancamentosPage = () => {
                 key={l.value}
                 onClick={() => setLang(l.value)}
                 style={{
-                  border: lang === l.value ? "1.5px solid #60A5FA" : "1px solid rgba(255,255,255,0.2)",
-                  background: lang === l.value ? "rgba(96,165,250,0.2)" : "rgba(255,255,255,0.05)",
+                  border: lang === l.value ? "1.5px solid #F37E38" : "1px solid #2E3B4A",
+                  background: lang === l.value ? "#F37E3818" : "rgba(255,255,255,0.04)",
                   borderRadius: 6, padding: "5px 9px",
-                  color: lang === l.value ? "#BFDBFE" : "#94A3B8",
+                  color: lang === l.value ? "#F37E38" : "#9898B0",
                   fontSize: 11, fontWeight: 700,
                   fontFamily: "inherit", cursor: "pointer",
                   letterSpacing: 0.5,
@@ -594,15 +601,16 @@ const MobileLancamentosPage = () => {
             <button
               onClick={irParaDesktop}
               style={{
-                border: "1px solid rgba(255,255,255,0.2)",
-                background: "rgba(255,255,255,0.08)",
+                border: "1px solid #2E3B4A",
+                background: "rgba(255,255,255,0.04)",
                 borderRadius: 8, padding: "8px 12px",
-                color: "#CBD5E1", fontSize: 12, fontWeight: 600,
+                color: "#9898B0", fontSize: 12, fontWeight: 600,
                 fontFamily: "inherit", cursor: "pointer",
                 display: "flex", alignItems: "center", gap: 6,
               }}
             >
-              <span>💻</span> Desktop
+              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="2" y="3" width="20" height="14" rx="2" /><polyline points="8 21 12 17 16 21" /></svg>
+              Desktop
             </button>
           </div>
         </div>
@@ -642,9 +650,9 @@ const MobileLancamentosPage = () => {
                 value={filtros.data}
                 onChange={e => setFiltros(f => ({ ...f, data: e.target.value }))}
                 style={{
-                  border: "1px solid #E2E6EC", borderRadius: 8,
+                  border: "1.5px solid #E8E8EA", borderRadius: 8,
                   padding: "10px 12px", fontSize: 14, fontFamily: "inherit",
-                  color: "#0F1C2E", background: "#F8FAFC", width: "100%", boxSizing: "border-box",
+                  color: "#0F1C2E", background: "#FAFAFA", width: "100%", boxSizing: "border-box",
                 }}
               />
             </label>
@@ -656,9 +664,9 @@ const MobileLancamentosPage = () => {
                 value={filtros.turno}
                 onChange={e => setFiltros(f => ({ ...f, turno: e.target.value }))}
                 style={{
-                  border: "1px solid #E2E6EC", borderRadius: 8,
+                  border: "1.5px solid #E8E8EA", borderRadius: 8,
                   padding: "10px 12px", fontSize: 14, fontFamily: "inherit",
-                  color: "#0F1C2E", background: "#F8FAFC", width: "100%",
+                  color: "#0F1C2E", background: "#FAFAFA", width: "100%",
                 }}
               >
                 <option value="">Todos os turnos</option>
@@ -673,9 +681,9 @@ const MobileLancamentosPage = () => {
                 value={filtros.fornecedor}
                 onChange={e => setFiltros(f => ({ ...f, fornecedor: e.target.value }))}
                 style={{
-                  border: "1px solid #E2E6EC", borderRadius: 8,
+                  border: "1.5px solid #E8E8EA", borderRadius: 8,
                   padding: "10px 12px", fontSize: 14, fontFamily: "inherit",
-                  color: "#0F1C2E", background: "#F8FAFC", width: "100%",
+                  color: "#0F1C2E", background: "#FAFAFA", width: "100%",
                 }}
               >
                 <option value="">Todos os fornecedores</option>
@@ -739,7 +747,14 @@ const MobileLancamentosPage = () => {
                 border: "1px solid #E2E6EC",
                 color: "#94A3B8", fontSize: 14, lineHeight: 1.6,
               }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+                  <svg width={40} height={40} viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="8" y="2" width="8" height="4" rx="1" />
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                    <line x1="9" y1="12" x2="15" y2="12" />
+                    <line x1="9" y1="16" x2="13" y2="16" />
+                  </svg>
+                </div>
                 Nenhum registro encontrado.
               </div>
             ) : (
@@ -765,8 +780,8 @@ const MobileLancamentosPage = () => {
         style={{
           position: "fixed", bottom: 24, right: 20, zIndex: 150,
           width: 56, height: 56, borderRadius: 99,
-          background: "#1A56DB", border: "none",
-          boxShadow: "0 4px 16px rgba(26,86,219,0.45)",
+          background: "#F37E38", border: "none",
+          boxShadow: "0 4px 16px rgba(243,126,56,0.45)",
           cursor: "pointer", display: "flex",
           alignItems: "center", justifyContent: "center",
           color: "#fff",
