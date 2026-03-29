@@ -15,6 +15,30 @@ const LANGS: { value: Lang; label: string; code: string }[] = [
   { value: "en-US", label: "English",   code: "US" },
 ];
 
+// ─── MFA REPLAY GUARD ────────────────────────────────────────────────────────
+const MFA_REPLAY_KEY = "mfa_replay_guard";
+const MFA_REPLAY_TTL_MS = 35_000;
+
+async function computeMfaCodeHash(code: string, factorId: string): Promise<string> {
+  const data = new TextEncoder().encode(`${code}|${factorId}`);
+  const buffer = await crypto.subtle.digest("SHA-256", data);
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+}
+
+function getReplayGuard(): { hash: string; ts: number } | null {
+  try {
+    const raw = localStorage.getItem(MFA_REPLAY_KEY);
+    return raw ? (JSON.parse(raw) as { hash: string; ts: number }) : null;
+  } catch { return null; }
+}
+
+function setReplayGuard(hash: string): void {
+  try {
+    localStorage.setItem(MFA_REPLAY_KEY, JSON.stringify({ hash, ts: Date.now() }));
+  } catch { /* fail open */ }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 type Step = "login" | "mfa";
 type DeviceChoice = "mobile" | "desktop" | null;
 
@@ -112,6 +136,19 @@ export default function LoginPage() {
         return;
       }
 
+      // Replay guard: rejeita o mesmo código TOTP dentro da janela de 35s
+      const cleanCode = mfaCode.replace(/\s/g, "");
+      const codeHash = await computeMfaCodeHash(cleanCode, factorId);
+      const lastGuard = getReplayGuard();
+      if (lastGuard && lastGuard.hash === codeHash && Date.now() - lastGuard.ts < MFA_REPLAY_TTL_MS) {
+        setErro(
+          lang === "pt-BR"
+            ? "Este código já foi utilizado. Aguarde a atualização no app autenticador."
+            : "This code was already used. Wait for your authenticator app to generate a new one."
+        );
+        return;
+      }
+
       // Challenge fresco a cada submit — evita 422 por challengeId stale
       const { data: challenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId });
       if (chalErr || !challenge) {
@@ -123,7 +160,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.mfa.verify({
         factorId,
         challengeId: challenge.id,
-        code: mfaCode.replace(/\s/g, ""),
+        code: cleanCode,
       });
 
       if (error) {
@@ -133,6 +170,7 @@ export default function LoginPage() {
         // Post-check: mesmo com erro na API, SDK pode ter elevado para aal2
         const { data: aalPost } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
         if (aalPost?.currentLevel === "aal2") {
+          setReplayGuard(codeHash);
           const dest = sessionStorage.getItem("deviceMode") === "mobile" ? "/mobile" : "/";
           navigate(dest, { replace: true });
           return;
@@ -141,6 +179,8 @@ export default function LoginPage() {
         setErro(lang === "pt-BR" ? "Código inválido. Tente novamente." : "Invalid code. Please try again.");
         return;
       }
+
+      setReplayGuard(codeHash);
     } catch (err) {
       console.error("[MFA_VERIFY_UNEXPECTED_ERROR]", err);
       setErro(lang === "pt-BR" ? "Erro ao verificar código. Tente novamente." : "Error verifying code. Please try again.");
