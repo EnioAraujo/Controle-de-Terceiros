@@ -208,6 +208,10 @@ describe("gerarItensFechamento", () => {
     expect(itens[0].ajusteManual).toBe(false);
     expect(itens[0].registroId).toBe("r1");
   });
+
+  it("lista vazia retorna lista vazia", () => {
+    expect(gerarItensFechamento([], diarias, turnos)).toHaveLength(0);
+  });
 });
 
 // ─── calcularTotal ──────────────────────────────────────────
@@ -222,6 +226,13 @@ describe("calcularTotal", () => {
   });
   it("retorna 0 para lista vazia", () => {
     expect(calcularTotal([])).toBe(0);
+  });
+
+  it("item único retorna o valor exato desse item", () => {
+    const itens = [
+      { nome: "A", data: "", turno: "", horas: "", valorDiaria: 0, valorHora: 0, valorCalculado: 175, ajusteManual: false, obs: "" },
+    ];
+    expect(calcularTotal(itens)).toBe(175);
   });
 });
 
@@ -254,6 +265,21 @@ describe("agruparPorPessoa", () => {
     const grupos = agruparPorPessoa(itens);
     expect(grupos[0].nome).toBe("Ana");
     expect(grupos[1].nome).toBe("Zé");
+  });
+
+  it("lista vazia retorna lista vazia", () => {
+    expect(agruparPorPessoa([])).toEqual([]);
+  });
+
+  it("registro único forma grupo com 1 dia", () => {
+    const itens = [
+      { nome: "Carlos", data: "2026-03-01", turno: "1ª", horas: "08:20", valorDiaria: 200, valorHora: 24, valorCalculado: 200, ajusteManual: false, obs: "" },
+    ];
+    const grupos = agruparPorPessoa(itens);
+    expect(grupos).toHaveLength(1);
+    expect(grupos[0].nome).toBe("Carlos");
+    expect(grupos[0].dias).toBe(1);
+    expect(grupos[0].valorTotal).toBe(200);
   });
 });
 

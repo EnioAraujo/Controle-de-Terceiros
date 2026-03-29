@@ -280,5 +280,119 @@ describe("useAuthStatus", () => {
       expect(result.current.isAuthenticated).toBe(false);
       expect(result.current.user).toBeNull();
     });
+
+    it("deve restaurar sessão quando INITIAL_SESSION", async () => {
+      const mockSession = createMockSession();
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
+
+      let authChangeCallback: ((event: string, session: unknown) => Promise<void>) | null = null;
+      mockOnAuthStateChange.mockImplementation((callback) => {
+        authChangeCallback = callback as typeof authChangeCallback;
+        return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
+      });
+
+      const { result } = renderHook(() => useAuthStatus());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      await act(async () => {
+        await authChangeCallback?.("INITIAL_SESSION", mockSession);
+      });
+
+      expect(result.current.isAuthenticated).toBe(true);
+      expect(result.current.user).toEqual(mockSession.user);
+      expect(result.current.loading).toBe(false);
+    });
+
+    it("deve atualizar sessão quando TOKEN_REFRESHED", async () => {
+      const mockSession = createMockSession();
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
+
+      let authChangeCallback: ((event: string, session: unknown) => Promise<void>) | null = null;
+      mockOnAuthStateChange.mockImplementation((callback) => {
+        authChangeCallback = callback as typeof authChangeCallback;
+        return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
+      });
+
+      const { result } = renderHook(() => useAuthStatus());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      await act(async () => {
+        await authChangeCallback?.("TOKEN_REFRESHED", mockSession);
+      });
+
+      expect(result.current.isAuthenticated).toBe(true);
+      expect(result.current.session).toEqual(mockSession);
+      expect(result.current.loading).toBe(false);
+    });
+
+    it("deve atualizar usuário quando USER_UPDATED", async () => {
+      const initialSession = createMockSession({ email: "old@example.com" });
+      const updatedSession = createMockSession({ email: "new@example.com" });
+      mockGetSession.mockResolvedValue({ data: { session: initialSession }, error: null });
+
+      let authChangeCallback: ((event: string, session: unknown) => Promise<void>) | null = null;
+      mockOnAuthStateChange.mockImplementation((callback) => {
+        authChangeCallback = callback as typeof authChangeCallback;
+        return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
+      });
+
+      const { result } = renderHook(() => useAuthStatus());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      await act(async () => {
+        await authChangeCallback?.("USER_UPDATED", updatedSession);
+      });
+
+      expect(result.current.user?.email).toBe("new@example.com");
+    });
+
+    // Teste de regressão — bug cc99a58: MFA_CHALLENGE_VERIFIED não estava no switch,
+    // fazendo com que a sessão nunca fosse atualizada para aal2 após verificação MFA.
+    it("deve atualizar estado quando MFA_CHALLENGE_VERIFIED (regressão cc99a58)", async () => {
+      const aal1Session = createMockSession();
+      const aal2Session = createMockSession({ amr: [{ method: "totp" }] });
+      mockGetSession.mockResolvedValue({ data: { session: aal1Session }, error: null });
+
+      let authChangeCallback: ((event: string, session: unknown) => Promise<void>) | null = null;
+      mockOnAuthStateChange.mockImplementation((callback) => {
+        authChangeCallback = callback as typeof authChangeCallback;
+        return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
+      });
+
+      const { result } = renderHook(() => useAuthStatus());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      await act(async () => {
+        await authChangeCallback?.("MFA_CHALLENGE_VERIFIED", aal2Session);
+      });
+
+      expect(result.current.isAuthenticated).toBe(true);
+      expect(result.current.session).toEqual(aal2Session);
+      expect(result.current.loading).toBe(false);
+    });
+
+    it("SIGNED_OUT limpa tokenExpired além de isAuthenticated", async () => {
+      const expiringSession = createMockSession({
+        expires_at: Math.floor(Date.now() / 1000) + 60, // expira em 1 minuto
+      });
+      mockGetSession.mockResolvedValue({ data: { session: expiringSession }, error: null });
+
+      let authChangeCallback: ((event: string, session: unknown) => Promise<void>) | null = null;
+      mockOnAuthStateChange.mockImplementation((callback) => {
+        authChangeCallback = callback as typeof authChangeCallback;
+        return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
+      });
+
+      const { result } = renderHook(() => useAuthStatus());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.tokenExpired).toBe(true); // token quase expirado
+
+      await act(async () => {
+        await authChangeCallback?.("SIGNED_OUT", null);
+      });
+
+      expect(result.current.isAuthenticated).toBe(false);
+      expect(result.current.tokenExpired).toBe(false);
+    });
   });
 });

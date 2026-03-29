@@ -354,4 +354,115 @@ describe("useStorage", () => {
       // expect(result.current[3]).toBe(false); // isSyncing após completar
     });
   });
+
+  describe("estado inicial da fila offline", () => {
+    beforeEach(() => {
+      mockSupabaseFrom.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          order: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+        delete: vi.fn().mockReturnValue({
+          lt: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      } as unknown as ReturnType<typeof supabase.from>);
+    });
+
+    it("pendingCount inicial é 0", async () => {
+      const { result } = renderHook(() => useStorage());
+      await waitFor(() => expect(result.current[2]).toBe(false));
+      expect(result.current[5]).toBe(0);
+    });
+
+    it("isOnline inicial é true", async () => {
+      const { result } = renderHook(() => useStorage());
+      await waitFor(() => expect(result.current[2]).toBe(false));
+      expect(result.current[6]).toBe(true);
+    });
+
+    it("retryPending é uma função chamável sem erros", async () => {
+      const { result } = renderHook(() => useStorage());
+      await waitFor(() => expect(result.current[2]).toBe(false));
+      expect(typeof result.current[7]).toBe("function");
+      await act(async () => { await result.current[7](); });
+    });
+  });
+
+  describe("LGPD purge", () => {
+    it("purge bem-sucedido remove registros antigos do estado", async () => {
+      const recente = createMockRegistro("1", "João", "2025-01-01");
+      const antigo = createMockRegistro("2", "Antigo", "2018-01-01");
+
+      mockSupabaseFrom.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          order: vi.fn().mockResolvedValue({ data: [recente, antigo], error: null }),
+        }),
+        delete: vi.fn().mockReturnValue({
+          lt: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ data: [{ id: "2" }], error: null }),
+          }),
+        }),
+      } as unknown as ReturnType<typeof supabase.from>);
+
+      const { result } = renderHook(() => useStorage());
+      await waitFor(() => expect(result.current[2]).toBe(false));
+
+      // dataLimiteRetencao mockado retorna "2021-01-01"
+      // antigo.data = "2018-01-01" < "2021-01-01" → filtrado do estado
+      await waitFor(() => expect(result.current[0]).toHaveLength(1));
+      expect(result.current[0][0].id).toBe("1");
+    });
+
+    it("erro no purge não interrompe o carregamento", async () => {
+      const recente = createMockRegistro("1", "João", "2025-01-01");
+
+      mockSupabaseFrom.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          order: vi.fn().mockResolvedValue({ data: [recente], error: null }),
+        }),
+        delete: vi.fn().mockReturnValue({
+          lt: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ data: null, error: { message: "permission denied" } }),
+          }),
+        }),
+      } as unknown as ReturnType<typeof supabase.from>);
+
+      const { result } = renderHook(() => useStorage());
+      await waitFor(() => expect(result.current[2]).toBe(false));
+
+      expect(result.current[0]).toHaveLength(1);
+      expect(result.current[0][0].id).toBe("1");
+    });
+  });
+
+  describe("save sem mudanças", () => {
+    it("diff vazio não gera chamadas adicionais ao banco", async () => {
+      const registro = createMockRegistro("1", "João", "2024-03-15");
+
+      mockSupabaseFrom.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          order: vi.fn().mockResolvedValue({ data: [registro], error: null }),
+        }),
+        delete: vi.fn().mockReturnValue({
+          lt: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      } as unknown as ReturnType<typeof supabase.from>);
+
+      const { result } = renderHook(() => useStorage());
+      await waitFor(() => expect(result.current[2]).toBe(false));
+
+      const { diffRegistros } = await import("@/lib/storage-utils");
+      vi.mocked(diffRegistros).mockReturnValue({ deletedIds: [], toUpsert: [] });
+
+      // Limpa histórico de chamadas após o carregamento inicial
+      mockSupabaseFrom.mockClear();
+
+      await act(async () => { result.current[1]([registro]); });
+
+      expect(mockSupabaseFrom).not.toHaveBeenCalled();
+    });
+  });
 });

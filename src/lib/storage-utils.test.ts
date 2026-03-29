@@ -71,6 +71,18 @@ describe("deduplicarLote", () => {
     const result = deduplicarLote(registros);
     expect(result.map(r => r.id)).toEqual(["A", "C"]);
   });
+
+  it("lista vazia retorna lista vazia", () => {
+    expect(deduplicarLote([])).toEqual([]);
+  });
+
+  it("elemento único sem loteId passa sem alteração", () => {
+    const registros = [makeRegistro({ id: "1", nome: "João Silva" })];
+    const result = deduplicarLote(registros);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("1");
+    expect(result[0].nome).toBe("João Silva");
+  });
 });
 
 // ─── diffRegistros ──────────────────────────────────────────────
@@ -122,5 +134,11 @@ describe("diffRegistros", () => {
     const { deletedIds, toUpsert } = diffRegistros(prev, next);
     expect(deletedIds).toEqual(["del"]);
     expect(toUpsert.map(r => r.id).sort()).toEqual(["edit", "new"]);
+  });
+
+  it("ambas as listas vazias retornam sem mudanças", () => {
+    const { deletedIds, toUpsert } = diffRegistros([], []);
+    expect(deletedIds).toHaveLength(0);
+    expect(toUpsert).toHaveLength(0);
   });
 });

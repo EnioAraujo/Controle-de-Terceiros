@@ -43,6 +43,23 @@ describe("mapSupabaseError", () => {
     expect(r).not.toBe("Password should be at least 6 characters");
   });
 
+  it("retorna string vazia para mensagem vazia", () => {
+    expect(mapSupabaseError("", "pt-BR")).toBe("");
+  });
+
+  it("mapeia o mesmo erro para strings diferentes em pt-BR e en-US", () => {
+    const ptBR = mapSupabaseError("Invalid login credentials", "pt-BR");
+    const enUS = mapSupabaseError("Invalid login credentials", "en-US");
+    expect(ptBR).not.toBe(enUS);
+    expect(ptBR).not.toBe("Invalid login credentials");
+    expect(enUS).not.toBe("Invalid login credentials");
+  });
+
+  it("mapeia erro de senha 'at least 8 characters' (Supabase futuro)", () => {
+    const r = mapSupabaseError("Password should be at least 8 characters", "pt-BR");
+    expect(r).not.toBe("Password should be at least 8 characters");
+  });
+
   it("retorna mensagem original se não mapeada", () => {
     const msg = "Unknown error XYZ-123";
     expect(mapSupabaseError(msg, "pt-BR")).toBe(msg);

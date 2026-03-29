@@ -933,7 +933,7 @@ export const mapSupabaseError = (message: string, lang: Lang): string => {
       "pt-BR": translations["pt-BR"].reset_err_same,
       "en-US": translations["en-US"].reset_err_same,
     },
-    "Password should be at least 6 characters": {
+    "Password should be at least": {
       "pt-BR": translations["pt-BR"].reset_err_short,
       "en-US": translations["en-US"].reset_err_short,
     },
