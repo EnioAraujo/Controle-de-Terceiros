@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
 import { useToast } from "@/hooks/use-toast";
 import { mapSupabaseError } from "@/lib/i18n-translations";
+import adminIcon from "../../arquivolocal/admin.png";
 
 // shadcn/ui
 import { Button } from "@/components/ui/button";
@@ -441,19 +442,19 @@ export default function AdminPage() {
   // ── Loading / Guard ───────────────────────────────────────────────
   if (!authReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#FAF9FB" }}>
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color:"#F37E38" }} />
       </div>
     );
   }
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+      <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#FAF9FB", padding:24 }}>
         <div className="text-center">
           <ShieldOff className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-2">{t("admin_access_denied")}</h1>
-          <p className="text-slate-500 mb-6">{t("admin_access_denied_desc")}</p>
+          <h1 style={{ fontSize:22, fontWeight:800, color:"#212B36", marginBottom:8 }}>{t("admin_access_denied")}</h1>
+          <p style={{ color:"#9898B0", marginBottom:24 }}>{t("admin_access_denied_desc")}</p>
           <Button onClick={() => navigate("/")}>{t("admin_back_home")}</Button>
         </div>
       </div>
@@ -464,49 +465,46 @@ export default function AdminPage() {
   const totalCommon = users.length - totalAdmins;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
-          <div className="flex items-center gap-2 pr-4 border-r border-slate-700">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-400 rounded-lg flex items-center justify-center">
-              <Shield className="h-4 w-4 text-white" />
-            </div>
-            <div>
-              <div className="text-white font-bold text-xs leading-tight">Controle de</div>
-              <div className="text-blue-400 font-bold text-xs leading-tight">Terceiros</div>
-            </div>
+    <div style={{ minHeight:"100vh", background:"#FAF9FB", fontFamily:"'DM Sans',system-ui,sans-serif", display:"flex", flexDirection:"column" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');`}</style>
+      {/* Header — mesmas cores do app principal */}
+      <header style={{ background:"#212B36", borderBottom:"1px solid #2E3B4A", height:58, display:"flex", alignItems:"center", padding:"0 24px", gap:0, position:"sticky", top:0, zIndex:200 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, paddingRight:28, borderRight:"1px solid #2E3B4A", marginRight:20 }}>
+          <img src={adminIcon} alt="Administração" style={{ width:34, height:34, borderRadius:9, objectFit:"cover" }} />
+          <div>
+            <div style={{ color:"#F8FAFC", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Controle de</div>
+            <div style={{ color:"#F37E38", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Terceiros</div>
           </div>
-          <Badge variant="outline" className="text-slate-300 border-slate-700 text-xs">
-            <Shield className="h-3 w-3 mr-1" />{t("admin_header_badge")}
-          </Badge>
-          <div className="flex-1" />
-          <span className="text-slate-400 text-xs hidden sm:block">{myEmail}</span>
-          <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white" onClick={() => navigate("/")}>
-            <ChevronLeft className="h-4 w-4 mr-1" />{t("admin_back_app")}
-          </Button>
-          <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white" onClick={() => supabase.auth.signOut()}>
-            <LogOut className="h-4 w-4" />
-          </Button>
         </div>
+        <div style={{ display:"flex", alignItems:"center", gap:5, background:"#F37E3818", border:"1px solid #F37E3833", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#F37E38", fontWeight:600 }}>
+          <Shield className="h-3 w-3" style={{ marginRight:4 }} />{t("admin_header_badge")}
+        </div>
+        <div style={{ flex:1 }} />
+        <span className="hidden sm:block" style={{ color:"#9898B0", fontSize:11, marginRight:8 }}>{myEmail}</span>
+        <button onClick={() => navigate("/")} style={{ display:"flex", alignItems:"center", gap:4, background:"transparent", border:"none", cursor:"pointer", color:"#9898B0", fontSize:13, fontFamily:"inherit", fontWeight:600, padding:"6px 10px", borderRadius:7 }}>
+          <ChevronLeft className="h-4 w-4" />{t("admin_back_app")}
+        </button>
+        <button onClick={() => supabase.auth.signOut()} style={{ display:"flex", alignItems:"center", background:"transparent", border:"none", cursor:"pointer", color:"#9898B0", padding:"6px 8px", borderRadius:7 }}>
+          <LogOut className="h-4 w-4" />
+        </button>
       </header>
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8">
         <div className="mb-6">
-          <p className="text-xs text-slate-400 uppercase tracking-widest">{t("admin_section_sys")}</p>
-          <h1 className="text-2xl font-bold text-slate-900">{t("admin_panel_title")}</h1>
-          <p className="text-sm text-slate-500 mt-1">{t("admin_panel_desc")}</p>
+          <p style={{ fontSize:11, color:"#9898B0", textTransform:"uppercase", letterSpacing:"0.1em", fontWeight:600, marginBottom:4 }}>{t("admin_section_sys")}</p>
+          <h1 style={{ fontSize:24, fontWeight:800, color:"#212B36", letterSpacing:-.5, lineHeight:1.2 }}>{t("admin_panel_title")}</h1>
+          <p style={{ fontSize:13, color:"#9898B0", marginTop:4 }}>{t("admin_panel_desc")}</p>
         </div>
 
         <Tabs defaultValue="usuarios" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="usuarios" className="gap-2">
+          <TabsList style={{ background:"#F4F3F5", borderRadius:10, padding:4 }}>
+            <TabsTrigger value="usuarios" className="gap-2" style={{ fontFamily:"inherit", fontWeight:600 }}>
               <Users className="h-4 w-4" />{t("admin_tab_users")}
             </TabsTrigger>
-            <TabsTrigger value="permissoes" className="gap-2">
+            <TabsTrigger value="permissoes" className="gap-2" style={{ fontFamily:"inherit", fontWeight:600 }}>
               <Settings className="h-4 w-4" />Permissões
             </TabsTrigger>
-            <TabsTrigger value="conta" className="gap-2">
+            <TabsTrigger value="conta" className="gap-2" style={{ fontFamily:"inherit", fontWeight:600 }}>
               <User className="h-4 w-4" />{t("admin_tab_account")}
             </TabsTrigger>
           </TabsList>
@@ -516,26 +514,24 @@ export default function AdminPage() {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
               {[
-                { label: t("admin_stat_total"),  val: users.length, color: "text-blue-600",   bg: "bg-blue-50",   icon: <Users  className="h-5 w-5" /> },
-                { label: t("admin_stat_admins"), val: totalAdmins,  color: "text-purple-600", bg: "bg-purple-50", icon: <Shield className="h-5 w-5" /> },
-                { label: t("admin_stat_common"), val: totalCommon,  color: "text-emerald-600",bg: "bg-emerald-50",icon: <User   className="h-5 w-5" /> },
+                { label: t("admin_stat_total"),  val: users.length, iconBg: "#3B82F615", iconColor: "#3B82F6",  icon: <Users  className="h-5 w-5" /> },
+                { label: t("admin_stat_admins"), val: totalAdmins,  iconBg: "#F37E3815", iconColor: "#F37E38",  icon: <Shield className="h-5 w-5" /> },
+                { label: t("admin_stat_common"), val: totalCommon,  iconBg: "#0E9F6E15", iconColor: "#0E9F6E",  icon: <User   className="h-5 w-5" /> },
               ].map(s => (
-                <Card key={s.label}>
-                  <CardContent className="flex items-center gap-3 p-4">
-                    <div className={`w-10 h-10 rounded-lg ${s.bg} ${s.color} flex items-center justify-center`}>{s.icon}</div>
-                    <div>
-                      <div className="text-2xl font-bold text-slate-900">{s.val}</div>
-                      <div className="text-xs text-slate-500">{s.label}</div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div key={s.label} style={{ background:"#FFFFFF", borderRadius:12, boxShadow:"0 20px 40px rgba(26,28,29,0.06)", padding:16, display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ width:40, height:40, borderRadius:10, background:s.iconBg, color:s.iconColor, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{s.icon}</div>
+                  <div>
+                    <div style={{ fontSize:24, fontWeight:800, color:"#212B36", lineHeight:1.1 }}>{s.val}</div>
+                    <div style={{ fontSize:11, color:"#9898B0", marginTop:2 }}>{s.label}</div>
+                  </div>
+                </div>
               ))}
             </div>
 
             {/* Toolbar */}
             <div className="flex items-center gap-3 flex-wrap">
               <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color:"#9898B0" }} />
                 <Input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("admin_search_ph")} className="pl-9" />
               </div>
               <div className="flex items-center rounded-md border overflow-hidden">
@@ -552,19 +548,19 @@ export default function AdminPage() {
             </div>
 
             {isLoadingUsers ? (
-              <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>
+              <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" style={{ color:"#F37E38" }} /></div>
             ) : filtered.length === 0 ? (
-              <div className="text-center py-20 text-slate-400">
+              <div className="text-center py-20" style={{ color:"#9898B0" }}>
                 <User className="h-12 w-12 mx-auto mb-4 opacity-30" />
                 <p>{t("admin_no_users")}</p>
               </div>
             ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filtered.map(user => (
-                  <Card key={user.id} className="hover:shadow-md transition-shadow">
+                  <div key={user.id} style={{ background:"#FFFFFF", borderRadius:12, boxShadow:"0 20px 40px rgba(26,28,29,0.06)", overflow:"hidden" }}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-semibold flex items-center gap-2 truncate">
-                        <User className="h-4 w-4 text-slate-400 shrink-0" />
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2 truncate" style={{ color:"#212B36" }}>
+                        <User className="h-4 w-4 shrink-0" style={{ color:"#9898B0" }} />
                         <span className="truncate">{user.email}</span>
                       </CardTitle>
                       {user.is_approved ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" /> : <XCircle className="h-4 w-4 text-red-500 shrink-0" />}
@@ -573,9 +569,9 @@ export default function AdminPage() {
                       <div className="flex items-center gap-2">
                         {getRoleIcon(user.role)}
                         <Badge variant={getRoleBadgeVariant(user.role)}>{getRoleLabel(user.role)}</Badge>
-                        {user.id === myId && <span className="text-xs text-blue-600 font-bold">{t("admin_you")}</span>}
+                        {user.id === myId && <span className="text-xs font-bold" style={{ color:"#F37E38" }}>{t("admin_you")}</span>}
                       </div>
-                      <div className="space-y-2 border-t pt-2">
+                      <div className="space-y-2" style={{ borderTop:"1px solid rgba(26,28,29,0.08)", paddingTop:8, marginTop:8 }}>
                         <div className="flex items-center justify-between">
                           <Label className="text-xs">Aprovado</Label>
                           <Switch checked={user.is_approved} onCheckedChange={v => approvalMutation.mutate({ userId: user.id, isApproved: v })} disabled={approvalMutation.isPending} />
@@ -590,12 +586,12 @@ export default function AdminPage() {
                               <SelectItem value="user">Usuário</SelectItem>
                             </SelectContent>
                           </Select>
-                          {user.id === myId && <p className="text-xs text-slate-400">Você não pode alterar seu próprio papel</p>}
+                        {user.id === myId && <p style={{ fontSize:11, color:"#9898B0" }}>Você não pode alterar seu próprio papel</p>}
                         </div>
                       </div>
-                      <div className="text-xs text-slate-400">Criado em: {new Date(user.created_at).toLocaleDateString(lang)}</div>
+                      <div style={{ fontSize:11, color:"#9898B0" }}>Criado em: {new Date(user.created_at).toLocaleDateString(lang)}</div>
                       {user.id !== myId && (
-                        <div className="flex gap-2 border-t pt-2">
+                        <div className="flex gap-2" style={{ borderTop:"1px solid rgba(26,28,29,0.08)", paddingTop:8, marginTop:4 }}>
                           <Button variant="ghost" size="sm" className="h-8 text-orange-600 hover:text-orange-600 hover:bg-orange-50 flex-1" onClick={() => handleResetPassword(user.email, user.id)} title={t("admin_tooltip_reset")}>
                             <KeyRound className="h-4 w-4 mr-1" />{t("admin_reset_pwd_btn")}
                           </Button>
@@ -608,12 +604,12 @@ export default function AdminPage() {
                         <p className={`text-xs font-semibold ${resetFeedback[user.id].ok ? "text-emerald-600" : "text-red-600"}`}>{resetFeedback[user.id].text}</p>
                       )}
                     </CardContent>
-                  </Card>
+                  </div>
                 ))}
               </div>
             ) : (
-              <div className="border rounded-md overflow-hidden bg-white">
-                <div className="grid grid-cols-6 gap-2 px-4 py-2 text-xs font-semibold bg-slate-50 text-slate-500 uppercase tracking-wide">
+              <div style={{ background:"#FFFFFF", borderRadius:12, boxShadow:"0 20px 40px rgba(26,28,29,0.06)", overflow:"hidden" }}>
+                <div className="grid grid-cols-6 gap-2 px-4 py-2 text-xs font-semibold uppercase tracking-wide" style={{ background:"#F4F3F5", color:"#9898B0" }}>
                   <div className="col-span-2">{t("admin_col_email")}</div>
                   <div>{t("admin_col_profile")}</div>
                   <div>Aprovado</div>
@@ -621,11 +617,11 @@ export default function AdminPage() {
                   <div>{t("admin_col_actions")}</div>
                 </div>
                 {filtered.map(user => (
-                  <div key={user.id} className={`grid grid-cols-6 gap-2 px-4 py-2 border-t text-sm items-center ${user.id === myId ? "bg-blue-50" : "hover:bg-slate-50"}`}>
+                  <div key={user.id} className={`grid grid-cols-6 gap-2 px-4 py-2 text-sm items-center ${user.id === myId ? "" : ""}`} style={{ borderTop:"1px solid rgba(26,28,29,0.08)", background: user.id === myId ? "#F37E3808" : undefined }}>
                     <div className="col-span-2 flex items-center gap-2 truncate">
-                      <User className="h-4 w-4 text-slate-400 shrink-0" />
+                      <User className="h-4 w-4 shrink-0" style={{ color:"#9898B0" }} />
                       <span className="truncate">{user.email}</span>
-                      {user.id === myId && <span className="text-xs text-blue-600 font-bold shrink-0">{t("admin_you")}</span>}
+                      {user.id === myId && <span className="text-xs font-bold shrink-0" style={{ color:"#F37E38" }}>{t("admin_you")}</span>}
                     </div>
                     <div>
                       <Select value={user.role} onValueChange={(v: AppRole) => roleMutation.mutate({ userId: user.id, role: v })} disabled={roleMutation.isPending || user.id === myId}>
@@ -638,7 +634,7 @@ export default function AdminPage() {
                       </Select>
                     </div>
                     <div><Switch checked={user.is_approved} onCheckedChange={v => approvalMutation.mutate({ userId: user.id, isApproved: v })} disabled={approvalMutation.isPending} /></div>
-                    <div className="text-slate-400 text-xs">{new Date(user.created_at).toLocaleDateString(lang)}</div>
+                    <div style={{ fontSize:11, color:"#9898B0" }}>{new Date(user.created_at).toLocaleDateString(lang)}</div>
                     <div className="flex items-center gap-1">
                       {user.id !== myId ? (
                         <>
@@ -667,11 +663,11 @@ export default function AdminPage() {
                 <CardHeader><CardTitle className="text-sm">Selecionar Usuário</CardTitle></CardHeader>
                 <CardContent className="space-y-1 max-h-[500px] overflow-y-auto">
                   {users.map(user => (
-                    <div key={user.id} onClick={() => handleSelectUserPerms(user)} className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedUserPerms?.id === user.id ? "bg-primary/10 border-primary" : "hover:bg-slate-50"}`}>
+                    <div key={user.id} onClick={() => handleSelectUserPerms(user)} className="p-3 rounded-lg border cursor-pointer transition-colors" style={selectedUserPerms?.id === user.id ? { background:"#F37E3815", borderColor:"#F37E38" } : { background:"transparent", borderColor:"rgba(26,28,29,0.1)" }}>
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0">
                           <div className="text-sm font-medium truncate">{user.email}</div>
-                          <div className="flex items-center gap-1 mt-0.5">{getRoleIcon(user.role)}<span className="text-xs text-slate-400">{getRoleLabel(user.role)}</span></div>
+                          <div className="flex items-center gap-1 mt-0.5">{getRoleIcon(user.role)}<span style={{ fontSize:11, color:"#9898B0" }}>{getRoleLabel(user.role)}</span></div>
                         </div>
                         <Badge variant={getRoleBadgeVariant(user.role)} className="shrink-0 text-xs">{getRoleLabel(user.role)}</Badge>
                       </div>
@@ -707,11 +703,11 @@ export default function AdminPage() {
                             <AccordionTrigger className="text-sm">{cat.category}</AccordionTrigger>
                             <AccordionContent className="space-y-2 pt-2">
                               {cat.permissions.map(perm => (
-                                <div key={perm.key} className="flex items-start gap-3 p-2 rounded hover:bg-slate-50">
+                                <div key={perm.key} className="flex items-start gap-3 p-2 rounded" style={{ cursor:"default" }}>
                                   <Checkbox id={perm.key} checked={customPerms.has(perm.key)} onCheckedChange={() => { setCustomPerms(prev => { const n = new Set(prev); n.has(perm.key) ? n.delete(perm.key) : n.add(perm.key); return n; }); }} />
                                   <div>
                                     <label htmlFor={perm.key} className="text-sm font-medium cursor-pointer">{perm.label}</label>
-                                    <p className="text-xs text-slate-400">{perm.description}</p>
+                                    <p style={{ fontSize:11, color:"#9898B0" }}>{perm.description}</p>
                                   </div>
                                 </div>
                               ))}
@@ -719,8 +715,8 @@ export default function AdminPage() {
                           </AccordionItem>
                         ))}
                       </Accordion>
-                      <div className="flex items-center justify-between pt-4 border-t">
-                        <span className="text-xs text-slate-400">{customPerms.size} permissões selecionadas</span>
+                      <div className="flex items-center justify-between pt-4" style={{ borderTop:"1px solid rgba(26,28,29,0.08)", marginTop:4 }}>
+                        <span style={{ fontSize:11, color:"#9898B0" }}>{customPerms.size} permissões selecionadas</span>
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm" onClick={() => { const src = (selectedUserPerms.custom_permissions && selectedUserPerms.custom_permissions.length > 0) ? selectedUserPerms.custom_permissions : rolePresets[selectedUserPerms.role] ?? []; setCustomPerms(new Set(src)); }}>Resetar</Button>
                           <Button size="sm" disabled={permsMutation.isPending} onClick={() => permsMutation.mutate({ userId: selectedUserPerms.id, perms: Array.from(customPerms) })}>
@@ -730,9 +726,11 @@ export default function AdminPage() {
                       </div>
                     </>
                   ) : (
-                    <div className="text-center py-16 text-slate-400">
+                    <div className="text-center py-16" style={{ color:"#9898B0" }}>
                       <Settings className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                      <p>Selecione um usuário para gerenciar permissões</p>
+                      <p style={{ fontSize:11, color:"#9898B0" }}>
+                          Selecione um usuário para gerenciar permissões
+                        </p>
                     </div>
                   )}
                 </CardContent>
@@ -744,7 +742,7 @@ export default function AdminPage() {
           <TabsContent value="conta">
             <div className="max-w-md">
               <Card>
-                <div className="bg-gradient-to-r from-slate-900 to-slate-700 p-5 flex items-center gap-3 rounded-t-lg">
+                <div className="bg-gradient-to-r from-slate-900 to-slate-700 p-5 flex items-center gap-3 rounded-t-lg" style={{ background:"linear-gradient(135deg, #212B36, #2E3B4A)" }}>
                   <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
                     <User className="h-5 w-5 text-white" />
                   </div>
@@ -757,7 +755,7 @@ export default function AdminPage() {
                 </div>
                 <CardContent className="pt-6">
                   <form onSubmit={handleChangePassword} className="space-y-4">
-                    <div className="font-semibold text-slate-900 mb-2">{t("admin_change_pwd")}</div>
+                    <div className="font-semibold mb-2" style={{ color:"#212B36" }}>{t("admin_change_pwd")}</div>
                     <div className="space-y-1.5">
                       <Label className="text-xs uppercase tracking-wide">{t("admin_new_pwd_label")}</Label>
                       <Input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder={t("admin_pwd_ph_min6")} required />
@@ -776,10 +774,10 @@ export default function AdminPage() {
                   </form>
 
                   {/* ── Seção MFA ── */}
-                  <div className="mt-8 pt-6 border-t border-slate-100 space-y-4">
+                  <div className="mt-8 pt-6 space-y-4" style={{ borderTop:"1px solid rgba(26,28,29,0.08)" }}>
                     <div className="flex items-center gap-2">
-                      <KeyRound className="h-4 w-4 text-slate-500" />
-                      <span className="font-semibold text-slate-900 text-sm">
+                      <KeyRound className="h-4 w-4" style={{ color:"#9898B0" }} />
+                      <span className="font-semibold text-sm" style={{ color:"#212B36" }}>
                         {lang === "pt-BR" ? "Autenticação em duas etapas (TOTP)" : "Two-factor authentication (TOTP)"}
                       </span>
                       {mfaFactors.length > 0 && (
@@ -797,7 +795,7 @@ export default function AdminPage() {
 
                     {mfaFactors.length > 0 ? (
                       <div className="space-y-3">
-                        <p className="text-xs text-slate-500">
+                        <p style={{ fontSize:11, color:"#9898B0" }}>
                           {lang === "pt-BR"
                             ? "Seu aplicativo autenticador está configurado. Cada login exigirá um código TOTP."
                             : "Your authenticator app is configured. Each login will require a TOTP code."}
@@ -818,7 +816,7 @@ export default function AdminPage() {
                       </div>
                     ) : mfaEnrollStep === "idle" ? (
                       <div className="space-y-3">
-                        <p className="text-xs text-slate-500">
+                        <p style={{ fontSize:11, color:"#9898B0" }}>
                           {lang === "pt-BR"
                             ? "Use um aplicativo como Google Authenticator ou Authy para proteger sua conta."
                             : "Use an app like Google Authenticator or Authy to protect your account."}
@@ -830,19 +828,19 @@ export default function AdminPage() {
                       </div>
                     ) : mfaEnrollStep === "qr" ? (
                       <div className="space-y-4">
-                        <p className="text-xs text-slate-500">
+                        <p style={{ fontSize:11, color:"#9898B0" }}>
                           {lang === "pt-BR"
                             ? "1. Escaneie o QR code com seu aplicativo autenticador."
                             : "1. Scan the QR code with your authenticator app."}
                         </p>
                         <div className="flex justify-center">
-                          <img src={mfaQrCode} alt="QR Code MFA" className="w-48 h-48 border border-slate-200 rounded-lg p-1" />
+                        <img src={mfaQrCode} alt="QR Code MFA" className="w-48 h-48 rounded-lg p-1" style={{ border:"1px solid #E8E8EA" }} />
                         </div>
-                        <details className="text-xs text-slate-400">
+                        <details style={{ fontSize:11, color:"#9898B0" }}>
                           <summary className="cursor-pointer">{lang === "pt-BR" ? "Não consegue escanear? Ver chave manual" : "Can't scan? Show manual key"}</summary>
-                          <code className="block mt-1 break-all bg-slate-50 p-2 rounded text-slate-600 select-all">{mfaSecret}</code>
+                          <code className="block mt-1 break-all p-2 rounded select-all" style={{ background:"#F4F3F5", color:"#212B36", fontSize:11 }}>{mfaSecret}</code>
                         </details>
-                        <p className="text-xs text-slate-500">
+                        <p style={{ fontSize:11, color:"#9898B0" }}>
                           {lang === "pt-BR"
                             ? "2. Digite o código de 6 dígitos gerado pelo app para confirmar:"
                             : "2. Enter the 6-digit code from your app to confirm:"}

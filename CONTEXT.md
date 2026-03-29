@@ -1,3 +1,4 @@
+| 2026-03-29 | Reestilização completa da AdminPage seguindo DESIGN.md: header com #212B36 + admin.png (ícone 34px), DM Sans, outer div #FAF9FB; stat cards com ambient shadow sem border; list mode table com wrapper shadow e #F4F3F5 header row; tabs com #F4F3F5 background e activeTabOrange; permissões selecionadas com #F37E3815; section MFA sem border, usando spacing; account card gradient #212B36→#2E3B4A; textos secundários #9898B0; spine de loading #F37E38. 148 testes passando. |
 | 2026-03-29 | Varredura completa de segurança e qualidade (23 arquivos): remove email de console.warn em LOGIN_FAILURE (OWASP A09); parseInt radix explícito no Dashboard; isMounted guard no useEffect do FechamentoTab (evita setState após unmount); timerRef cobre setTimeout de sucesso no ResetPasswordPage. 148 testes passando. |
 | 2026-03-29 | Fix MFA race condition: remove signOut do handleBackToLogin (causava auto-aal2 no re-login); loginCancelledRef previne bounce-back async; handleMfaVerify usa challenge fresco por submit + AAL pre/post-check para detectar MFA_CHALLENGE_VERIFIED automático do SDK. |
 | 2026-03-29 | Fix MFA: renova challengeId após código inválido em handleMfaVerify — evita stale challenge que causava falha permanente a partir da 2ª tentativa mesmo com código correto. |
@@ -20,7 +21,7 @@
 | 2026-03-16 | Adicionado botão 'Excluir TODOS' (admin-only) na tela principal, com modal de confirmação, log de auditoria e exclusão em massa dos registros. |
 # Controle de Terceiros — Contexto do Projeto
 
-> **Última atualização:** 2026-03-28
+> **Última atualização:** 2026-03-29
 > **Branch:** Main-terceiros
 
 ---
