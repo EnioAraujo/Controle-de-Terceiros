@@ -239,26 +239,27 @@ const MobileModal = ({ title, onClose, children }: { title: string; onClose: () 
       .mobile-form-worker-header {
         display: none !important;
       }
-      /* Cada linha de colaborador vira layout vertical empilhado */
+      /* Grid 3 colunas: número/cargo/nome ocupam linha cheia; entrada|saída|total ficam lado a lado */
       .mobile-form-worker-grid {
-        display: flex !important;
-        flex-direction: column !important;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr 1fr !important;
         gap: 8px !important;
         padding: 10px 12px !important;
         border-radius: 0 !important;
         width: 100% !important;
         box-sizing: border-box !important;
       }
-      /* Número do colaborador (primeiro filho div) */
+      /* Número do colaborador — linha cheia */
       .mobile-form-worker-grid > div:first-child {
+        grid-column: 1 / -1 !important;
         font-size: 11px !important;
         color: #94A3B8 !important;
         text-align: left !important;
         font-weight: 700 !important;
-        width: auto !important;
       }
-      /* Cargo select (segundo filho — select direto) */
+      /* Cargo select — linha cheia */
       .mobile-form-worker-grid > select {
+        grid-column: 1 / -1 !important;
         width: 100% !important;
         font-size: 15px !important;
         padding: 10px 12px !important;
@@ -267,9 +268,11 @@ const MobileModal = ({ title, onClose, children }: { title: string; onClose: () 
         background: #FAFBFC !important;
         box-sizing: border-box !important;
       }
-      /* Autocomplete de nome (segundo filho div) */
+      /* Autocomplete de nome — linha cheia */
       .mobile-form-worker-grid > div:not(:first-child):not(:last-child) {
+        grid-column: 1 / -1 !important;
         width: 100% !important;
+        min-width: 0 !important;
       }
       .mobile-form-worker-grid > div:not(:first-child):not(:last-child) > div {
         width: 100% !important;
@@ -279,19 +282,21 @@ const MobileModal = ({ title, onClose, children }: { title: string; onClose: () 
         font-size: 15px !important;
         padding: 11px 12px !important;
       }
-      /* Inputs de hora (filhos diretos input) */
+      /* Inputs de hora (entrada e saída) — col 1 e col 2, auto-placement */
       .mobile-form-worker-grid > input[type="time"] {
         width: 100% !important;
-        font-size: 15px !important;
-        padding: 11px 12px !important;
+        font-size: 14px !important;
+        padding: 10px 4px !important;
         border-radius: 8px !important;
         box-sizing: border-box !important;
+        text-align: center !important;
       }
-      /* Total de horas (último filho div) */
+      /* Total de horas — col 3, centralizado verticalmente */
       .mobile-form-worker-grid > div:last-child {
-        text-align: left !important;
-        font-size: 12px !important;
-        width: auto !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 13px !important;
       }
     `}</style>
     <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(10,18,35,0.6)", backdropFilter: "blur(2px)" }} />
