@@ -160,6 +160,15 @@ export const useAuthStatus = (): AuthStatus => {
         console.log("[AUTH] Evento:", event);
 
         switch (event) {
+          case "INITIAL_SESSION":
+            // Sessão restaurada do localStorage ao carregar a página.
+            // Sem tratar este evento, a sessão só seria definida quando
+            // loadSession() completasse o await getSession(), criando uma
+            // janela onde loading=false mas session=null → flash do login.
+            handleAuthChange(newSession);
+            setLoading(false);
+            break;
+
           case "SIGNED_IN":
           case "TOKEN_REFRESHED":
             handleAuthChange(newSession);
