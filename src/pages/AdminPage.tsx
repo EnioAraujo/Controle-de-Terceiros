@@ -5,7 +5,6 @@ import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
 import { useToast } from "@/hooks/use-toast";
 import { mapSupabaseError } from "@/lib/i18n-translations";
-import adminIcon from "../../arquivolocal/admin.png";
 
 // shadcn/ui
 import { Button } from "@/components/ui/button";
@@ -470,7 +469,7 @@ export default function AdminPage() {
       {/* Header — mesmas cores do app principal */}
       <header style={{ background:"#212B36", borderBottom:"1px solid #2E3B4A", height:58, display:"flex", alignItems:"center", padding:"0 24px", gap:0, position:"sticky", top:0, zIndex:200 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, paddingRight:28, borderRight:"1px solid #2E3B4A", marginRight:20 }}>
-          <img src={adminIcon} alt="Administração" style={{ width:34, height:34, borderRadius:9, objectFit:"cover" }} />
+          <img src="/admin.png" alt="Administração" style={{ width:34, height:34, borderRadius:9, objectFit:"cover" }} />
           <div>
             <div style={{ color:"#F8FAFC", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Controle de</div>
             <div style={{ color:"#F37E38", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Terceiros</div>
