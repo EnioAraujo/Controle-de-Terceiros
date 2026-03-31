@@ -172,11 +172,11 @@ export default function AdminPage() {
       setMyEmail(session.user.email ?? "");
       // Usa rpc('is_admin') — SECURITY DEFINER, bypassa RLS, sem risco de recursão
       const { data: adminResult, error: adminErr } = await supabase.rpc('is_admin');
-      if (adminErr) console.error("Erro ao verificar admin:", adminErr.message);
+      if (adminErr && import.meta.env.DEV) console.error("Erro ao verificar admin:", adminErr.message);
       setIsAdmin(!!adminResult);
       setAuthReady(true);
     }).catch((err: unknown) => {
-      console.error("Erro ao obter sessão:", err);
+      if (import.meta.env.DEV) console.error("Erro ao obter sessão:", err);
       setAuthReady(true);
     });
   }, []);
@@ -184,12 +184,12 @@ export default function AdminPage() {
   // ── MFA: carregar fatores inscritos ───────────────────────────────
   const loadMfaFactors = useCallback(async () => {
     const { data, error } = await supabase.auth.mfa.listFactors();
-    if (error) { console.error("Erro ao listar fatores MFA:", error.message); return; }
+    if (error) { if (import.meta.env.DEV) console.error("Erro ao listar fatores MFA:", error.message); return; }
     setMfaFactors(data?.totp ?? []);
   }, []);
 
   useEffect(() => {
-    loadMfaFactors().catch((err: unknown) => console.error("Erro ao carregar MFA:", err));
+    loadMfaFactors().catch((err: unknown) => { if (import.meta.env.DEV) console.error("Erro ao carregar MFA:", err); });
   }, [loadMfaFactors]);
 
   const handleMfaEnroll = async () => {
@@ -209,7 +209,7 @@ export default function AdminPage() {
     setMfaSecret(data.totp.secret);
     setMfaEnrollStep("qr");
     } catch (err) {
-      console.error("Erro ao inscrever MFA:", err);
+      if (import.meta.env.DEV) console.error("Erro ao inscrever MFA:", err);
       setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Erro ao iniciar inscrição MFA." : "Error starting MFA enrollment." });
     } finally {
       setMfaLoading(false);
@@ -240,7 +240,7 @@ export default function AdminPage() {
     setMfaCode("");
     await loadMfaFactors();
     } catch (err) {
-      console.error("Erro ao verificar MFA:", err);
+      if (import.meta.env.DEV) console.error("Erro ao verificar MFA:", err);
       setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Erro ao verificar código MFA." : "Error verifying MFA code." });
     } finally {
       setMfaLoading(false);
@@ -327,7 +327,7 @@ export default function AdminPage() {
       const { data: roles, error: rolesErr } = await supabase
         .from("user_roles")
         .select("user_id, role");
-      if (rolesErr) console.error("Erro ao carregar roles:", rolesErr.message);
+      if (rolesErr && import.meta.env.DEV) console.error("Erro ao carregar roles:", rolesErr.message);
 
       const rolesMap = new Map<string, AppRole>();
       (roles ?? []).forEach(r => rolesMap.set(r.user_id, r.role as AppRole));
@@ -430,7 +430,7 @@ export default function AdminPage() {
     setResetFeedback(p => ({ ...p, [userId]: { text: msg, ok: !error } }));
     setTimeout(() => setResetFeedback(p => { const n = { ...p }; delete n[userId]; return n; }), 5000);
     } catch (err) {
-      console.error("Erro ao resetar senha:", err);
+      if (import.meta.env.DEV) console.error("Erro ao resetar senha:", err);
       setResetFeedback(p => ({ ...p, [userId]: { text: "Erro ao enviar e-mail de reset.", ok: false } }));
       setTimeout(() => setResetFeedback(p => { const n = { ...p }; delete n[userId]; return n; }), 5000);
     }

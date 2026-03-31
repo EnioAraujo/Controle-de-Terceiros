@@ -49,6 +49,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading]   = useState(false);
   const [erro, setErro]         = useState("");
+  const [failCount, setFailCount] = useState(0);
   const [deviceChoice, setDeviceChoice] = useState<DeviceChoice>(null);
 
   // MFA challenge state
@@ -74,16 +75,24 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (loginCancelledRef.current) { setLoading(false); return; }
       if (error) {
-        console.warn("[LOGIN_FAILURE]", { error: error.message });
+        if (import.meta.env.DEV) console.warn("[LOGIN_FAILURE]", { error: error.message });
+        const newCount = failCount + 1;
+        setFailCount(newCount);
         setLoading(false);
-        setErro(mapSupabaseError(error.message, lang));
+        const baseMsg = mapSupabaseError(error.message, lang);
+        const hint = newCount >= 3
+          ? (lang === "pt-BR"
+            ? " Muitas tentativas? Verifique sua conexão ou aguarde alguns minutos."
+            : " Too many attempts? Check your connection or wait a few minutes.")
+          : "";
+        setErro(baseMsg + hint);
         return;
       }
 
       const { data: factors, error: factErr } = await supabase.auth.mfa.listFactors();
       if (loginCancelledRef.current) { setLoading(false); return; }
       if (factErr) {
-        console.error("[MFA_LIST_ERROR]", factErr.message);
+        if (import.meta.env.DEV) console.error("[MFA_LIST_ERROR]", factErr.message);
         setLoading(false);
         setErro(lang === "pt-BR" ? "Erro ao verificar MFA." : "Error verifying MFA.");
         return;
@@ -95,7 +104,7 @@ export default function LoginPage() {
         const { data: aal, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
         if (loginCancelledRef.current) { setLoading(false); return; }
         if (aalErr) {
-          console.error("[MFA_AAL_ERROR]", aalErr.message);
+          if (import.meta.env.DEV) console.error("[MFA_AAL_ERROR]", aalErr.message);
           setLoading(false);
           setErro(lang === "pt-BR" ? "Erro ao verificar nível de autenticação." : "Error checking authentication level.");
           return;
@@ -116,7 +125,7 @@ export default function LoginPage() {
 
       setLoading(false);
     } catch (err) {
-      console.error("[LOGIN_UNEXPECTED_ERROR]", err);
+      if (import.meta.env.DEV) console.error("[LOGIN_UNEXPECTED_ERROR]", err);
       setLoading(false);
       setErro(lang === "pt-BR" ? "Erro interno. Tente novamente." : "Internal error. Please try again.");
     }
@@ -152,7 +161,7 @@ export default function LoginPage() {
       // Challenge fresco a cada submit — evita 422 por challengeId stale
       const { data: challenge, error: chalErr } = await supabase.auth.mfa.challenge({ factorId });
       if (chalErr || !challenge) {
-        console.error("[MFA_CHALLENGE_ERROR]", chalErr?.message);
+        if (import.meta.env.DEV) console.error("[MFA_CHALLENGE_ERROR]", chalErr?.message);
         setErro(lang === "pt-BR" ? "Erro ao iniciar verificação. Tente novamente." : "Error starting verification. Please try again.");
         return;
       }
@@ -164,7 +173,7 @@ export default function LoginPage() {
       });
 
       if (error) {
-        console.warn("[MFA_VERIFY_FAILURE]", { factorId, error: error.message });
+        if (import.meta.env.DEV) console.warn("[MFA_VERIFY_FAILURE]", { error: error.message });
         setMfaCode("");
 
         // Post-check: mesmo com erro na API, SDK pode ter elevado para aal2
@@ -182,7 +191,7 @@ export default function LoginPage() {
 
       setReplayGuard(codeHash);
     } catch (err) {
-      console.error("[MFA_VERIFY_UNEXPECTED_ERROR]", err);
+      if (import.meta.env.DEV) console.error("[MFA_VERIFY_UNEXPECTED_ERROR]", err);
       setErro(lang === "pt-BR" ? "Erro ao verificar código. Tente novamente." : "Error verifying code. Please try again.");
       setMfaCode("");
     } finally {

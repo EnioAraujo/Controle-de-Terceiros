@@ -4,7 +4,7 @@ import "./globals.css";
 
 // Rede de segurança: captura promises rejeitadas não tratadas
 window.addEventListener("unhandledrejection", (event) => {
-  console.error("Unhandled promise rejection:", event.reason);
+  if (import.meta.env.DEV) console.error("Unhandled promise rejection:", event.reason);
 });
 
 const missingEnv =

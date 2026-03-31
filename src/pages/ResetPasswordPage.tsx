@@ -39,7 +39,7 @@ export default function ResetPasswordPage() {
       setMsg({ ok: false, text: mapSupabaseError(error.message, lang) });
     } else {
       setMsg({ ok: true, text: t("reset_success") });
-      await supabase.auth.signOut().catch((err: unknown) => console.error("Erro ao encerrar sessão:", err));
+      await supabase.auth.signOut().catch((err: unknown) => { if (import.meta.env.DEV) console.error("Erro ao encerrar sessão:", err); });
       timerRef.current = setTimeout(() => navigate("/login", { replace: true }), 2000);
     }
   };

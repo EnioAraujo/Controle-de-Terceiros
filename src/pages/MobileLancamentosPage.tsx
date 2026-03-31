@@ -360,7 +360,7 @@ const MobileLancamentosPage = () => {
         .order("created_at", { ascending: true })
         .then(({ data: rows, error }) => {
           if (error) {
-            console.error("Erro ao carregar registros:", error.message);
+            if (import.meta.env.DEV) console.error("Erro ao carregar registros:", error.message);
           } else if (rows && rows.length > 0) {
             const parsed = (rows as unknown[]).map(r => dbToRegistro(r as Parameters<typeof dbToRegistro>[0]));
             setRegistrosState(parsed);
@@ -372,7 +372,7 @@ const MobileLancamentosPage = () => {
           const limite = dataLimiteRetencao();
           void supabase.from("registros").delete().lt("data", limite).select("id")
             .then(({ data: purged, error: pe }) => {
-              if (pe) { console.error("Erro ao purgar:", pe.message); return; }
+              if (pe) { if (import.meta.env.DEV) console.error("Erro ao purgar:", pe.message); return; }
               if (purged && purged.length > 0) {
                 logAudit("PURGE", "registros", undefined, {
                   motivo: `Retenção LGPD — anteriores a ${limite}`,
@@ -384,7 +384,7 @@ const MobileLancamentosPage = () => {
             });
         })
     ).catch((err: unknown) => {
-      console.error("Erro ao carregar registros:", err);
+      if (import.meta.env.DEV) console.error("Erro ao carregar registros:", err);
       setLoading(false);
     });
   }, []);
@@ -427,7 +427,7 @@ const MobileLancamentosPage = () => {
           }
         } catch { /* ignore bad JSON */ }
       }
-    }).catch((err: unknown) => console.error("Erro ao carregar opções:", err));
+    }).catch((err: unknown) => { if (import.meta.env.DEV) console.error("Erro ao carregar opções:", err); });
   }, []);
 
   // ── Persistência (mesma lógica do useStorage em Index.tsx) ──
@@ -458,14 +458,14 @@ const MobileLancamentosPage = () => {
     if (deletedIds.length > 0) {
       supabase.from("registros").delete().in("id", deletedIds)
         .then(({ error }) => {
-          if (error) console.error("Erro ao deletar:", error.message);
+          if (error) { if (import.meta.env.DEV) console.error("Erro ao deletar:", error.message); }
           else deletedIds.forEach(id => logAudit("DELETE", "registros", id));
         });
     }
     if (toUpsert.length > 0) {
       supabase.from("registros").upsert(toUpsert.map(registroToDb))
         .then(({ error }) => {
-          if (error) console.error("Erro ao salvar:", error.message);
+          if (error) { if (import.meta.env.DEV) console.error("Erro ao salvar:", error.message); }
           else toUpsert.forEach(r => {
             logAudit(prevMap.has(r.id) ? "UPDATE" : "INSERT", "registros", r.id);
           });
