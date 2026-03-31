@@ -1,158 +1,1874 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, ReactNode, InputHTMLAttributes, SelectHTMLAttributes, CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import DOMPurify from "dompurify";
+import { Registro } from "@/types/attendance";
+import { supabase, authReady } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
-import { useAuthStatus } from "@/hooks/useAuthStatus";
-import { hoje, mesAtual, WA_DEFAULT_TEMPLATE } from "@/lib/format-utils";
-import type { WhatsAppTemplate, WhatsAppField } from "@/lib/format-utils";
-import { dbToTurnoConfig, dbToDiariaConfig } from "@/lib/fechamento-utils";
-import type { TurnoConfig, DiariaConfig } from "@/lib/fechamento-utils";
-import { useStorage } from "@/hooks/useStorage";
-import { useOpcoes } from "@/hooks/useOpcoes";
-import { useTour } from "@/hooks/use-tour";
-import { usePrivacyAccepted, PrivacyNotice } from "@/components/PrivacyNotice";
-import { Icon } from "@/components/atoms";
-import { Dashboard } from "@/components/Dashboard";
-import GuidedTour from "@/components/GuidedTour";
-import type { TourStep } from "@/components/GuidedTour";
-import { Lancamentos } from "@/components/Lancamentos";
-import { Configuracoes } from "@/components/Configuracoes";
-import { FechamentoTab } from "@/components/FechamentoTab";
+import {
+  hoje, fmt, fmtMes, mesAtual, calcHoras,
+  RETENCAO_ANOS, dataLimiteRetencao,
+  FORN_PALETTE, fornCor,
+  dbToRegistro, registroToDb,
+  KEY_TO_FIELD,
+  WA_DEFAULT_TEMPLATE,
+} from "@/lib/format-utils";
+import type { WhatsAppTemplate } from "@/lib/format-utils";
 import ProjecaoPage from "@/pages/ProjecaoPage";
-
-// Re-exports para backward-compat (MobileLancamentosPage)
-export type { Opcoes } from "@/types/attendance";
-export { FormLancamento } from "@/components/FormLancamento";
-export type { PessoaRow, FormLancamentoProps } from "@/components/FormLancamento";
+import { Configuracoes } from "@/components/Configuracoes";
+import {
+  type TurnoConfig, type DiariaConfig, type FechamentoItem, type Fechamento,
+  type FechamentoStatus, type ResumoPessoa,
+  dbToTurnoConfig, dbToDiariaConfig,
+  dbToFechamento, fechamentoToDb,
+  dbToFechamentoItem, fechamentoItemToDb,
+  horasToDecimal, decimalToHoras,
+  periodosPadrao, resolverDiaria,
+  gerarItensFechamento, calcularTotal, agruparPorPessoa,
+  STATUS_COLORS, NEXT_STATUS,
+} from "@/lib/fechamento-utils";
 
 // ─── TIPOS ───────────────────────────────────────────────────────
-type TabId = "dashboard" | "lancamentos" | "projecao" | "fechamento" | "configuracoes";
-interface NavItem { id: TabId; label: string; icon: string; }
+interface Opcoes {
+  turnos:       string[];
+  unidades:     string[];
+  fornecedores: string[];
+  motivos:      string[];
+  cargos:       string[];
+  ccList:       string[];
+  nomes:        string[];
+}
 
-// ─── TOUR STEPS ──────────────────────────────────────────────────
-const ALL_STEPS: (TourStep & { adminOnly?: boolean })[] = [
-  { target: "#tour-nav",              icon: "🧭", title: "Navegação principal",    desc: "Use estas abas para navegar entre as seções do sistema." },
-  { target: "#tour-nav-dashboard",    icon: "📊", title: "Dashboard",              desc: "Visão analítica com KPIs e gráficos de presenças por dia e por período.", tabBefore: "dashboard" },
-  { target: "#tour-dashboard-kpis",   icon: "📈", title: "Indicadores do mês",     desc: "Total de presenças e distribuição por turno. Cada card mostra % do total e média/dia." },
-  { target: "#tour-dashboard-chart",  icon: "📉", title: "Gráfico dia a dia",      desc: "Barras empilhadas por turno e linha de média diária. Navegue entre meses pelas setas." },
-  { target: "#tour-nav-lancamentos",  icon: "📋", title: "Lançamentos",            desc: "Registre, consulte e filtre as presenças de terceiros.", tabBefore: "lancamentos" },
-  { target: "#tour-btn-novo",         icon: "➕", title: "Novo Lançamento",        desc: "Abre o formulário para registrar uma presença individual ou em lote." },
-  { target: "#tour-filtros",          icon: "🔍", title: "Filtros",                desc: "Filtre por data, turno, fornecedor, unidade ou busque pelo nome do colaborador." },
-  { target: "#tour-tabela",           icon: "📄", title: "Tabela de registros",    desc: "Clique em uma linha para ver detalhes, editar ou compartilhar via WhatsApp." },
-  { target: "#tour-btn-export",       icon: "📥", title: "Exportar CSV",           desc: "Baixe os registros filtrados em formato CSV compatível com Excel." },
-  { target: "#tour-nav-projecao",     icon: "🔮", title: "Projeção",               desc: "Analise a demanda histórica e projete quantidades futuras por turno.", tabBefore: "projecao",  adminOnly: true },
-  { target: "#tour-nav-fechamento",   icon: "💰", title: "Fechamento Financeiro",  desc: "Calcule e aprove o fechamento mensal por fornecedor com exportação XLSX/PDF.", tabBefore: "fechamento", adminOnly: true },
-  { target: "#tour-nav-configuracoes",icon: "⚙️", title: "Configurações",          desc: "Gerencie turnos, fornecedores, unidades, valores de diárias e template WhatsApp.", tabBefore: "configuracoes" },
-];
+// Sem defaults hardcoded — fonte de verdade é a tabela opcoes no Supabase.
+// Para popular um novo ambiente, execute supabase/migrations/seed_opcoes_default.sql
+const OPCOES_DEFAULT: Opcoes = {
+  turnos:       [],
+  unidades:     [],
+  fornecedores: [],
+  motivos:      [],
+  cargos:       [],
+  ccList:       [],
+  nomes:        [],
+};
+
+// ─── UTILITÁRIOS (importados de @/lib/format-utils) ─────────────
+const uuid = () => crypto.randomUUID();
+const sanitize = (v: string) => DOMPurify.sanitize(v, { ALLOWED_TAGS: [] });
+
+// ─── LGPD (importado de @/lib/format-utils) ──────────────────────
+
+const logAudit = (
+  operacao: "INSERT" | "UPDATE" | "DELETE" | "PURGE" | "EXCLUSAO_TITULAR",
+  tabela: string,
+  registroId?: string,
+  dados?: unknown
+) => {
+  authReady.then(() =>
+    supabase.from("audit_log").insert({
+      operacao,
+      tabela,
+      registro_id: registroId ?? null,
+      dados: dados ? dados : null,
+    }).then(({ error }) => {
+      if (error) console.warn("audit_log:", error.message);
+    })
+  );
+};
+
+// ─── MAPEAMENTO DB ↔ MODELO (importado de @/lib/format-utils) ──
+
+// ─── HOOKS ───────────────────────────────────────────────────────
+const useStorage = (): [Registro[], (val: Registro[]) => void, boolean] => {
+  const [data, setData]       = useState<Registro[]>([]);
+  const [loading, setLoading] = useState(true);
+  const prevRef               = useRef<Registro[]>([]);
+
+  useEffect(() => {
+    authReady.then(() =>
+      supabase
+        .from("registros")
+        .select("*")
+        .order("created_at", { ascending: true })
+        .then(({ data: rows, error }) => {
+          if (error) {
+            console.error("Erro ao carregar registros:", error.message);
+          } else if (rows && rows.length > 0) {
+            const parsed = (rows as any[]).map(dbToRegistro);
+            setData(parsed);
+            prevRef.current = parsed;
+          }
+          setLoading(false);
+
+          // LGPD Art. 15/16 — purga client-side de registros com mais de 5 anos
+          const limite = dataLimiteRetencao();
+          supabase
+            .from("registros")
+            .delete()
+            .lt("data", limite)
+            .select("id")
+            .then(({ data: purged, error: pe }) => {
+              if (pe) { console.error("Erro ao purgar registros antigos:", pe.message); return; }
+              if (purged && purged.length > 0) {
+                logAudit("PURGE", "registros", undefined, {
+                  motivo: `Retenção LGPD — registros anteriores a ${limite}`,
+                  registros_removidos: purged.length,
+                });
+                setData(prev => prev.filter(r => r.data >= limite));
+                prevRef.current = prevRef.current.filter(r => r.data >= limite);
+              }
+            });
+        })
+    );
+  }, []);
+
+  const save = useCallback((newValRaw: Registro[]) => {
+    // Última defesa: remove duplicatas intra-lote antes de persistir no Supabase
+    const loteVisto = new Map<string, Set<string>>();
+    const newVal = newValRaw.filter(r => {
+      if (!r.loteId) return true;
+      if (!loteVisto.has(r.loteId)) loteVisto.set(r.loteId, new Set());
+      const k = r.nome.trim().toLowerCase();
+      if (loteVisto.get(r.loteId)!.has(k)) return false;
+      loteVisto.get(r.loteId)!.add(k);
+      return true;
+    });
+
+    const prev = prevRef.current;
+    setData(newVal);
+    prevRef.current = newVal;
+
+    // Detectar deletados: estavam antes e não estão agora
+    const newIds     = new Set(newVal.map(r => r.id));
+    const deletedIds = prev.filter(r => !newIds.has(r.id)).map(r => r.id);
+
+    // Detectar inseridos/alterados: novos ou com conteúdo diferente
+    const prevMap  = new Map(prev.map(r => [r.id, r]));
+    const toUpsert = newVal.filter(r => {
+      const p = prevMap.get(r.id);
+      return !p || JSON.stringify(p) !== JSON.stringify(r);
+    });
+
+    if (deletedIds.length > 0) {
+      supabase
+        .from("registros")
+        .delete()
+        .in("id", deletedIds)
+        .then(({ error }) => {
+          if (error) console.error("Erro ao deletar registros:", error.message);
+          else deletedIds.forEach(id => logAudit("DELETE", "registros", id));
+        });
+    }
+    if (toUpsert.length > 0) {
+      supabase
+        .from("registros")
+        .upsert(toUpsert.map(registroToDb))
+        .then(({ error }) => {
+          if (error) console.error("Erro ao salvar registros:", error.message);
+          else toUpsert.forEach(r => {
+            const isNew = !prevMap.has(r.id);
+            logAudit(isNew ? "INSERT" : "UPDATE", "registros", r.id);
+          });
+        });
+    }
+  }, []);
+
+  return [data, save, loading];
+};
+
+const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
+  const [data, setData]       = useState<Opcoes>(OPCOES_DEFAULT);
+  const [loading, setLoading] = useState(true);
+  const prevRef               = useRef<Opcoes>(OPCOES_DEFAULT);
+
+  useEffect(() => {
+    authReady.then(async () => {
+      // Carrega opções (sem nomes) e nomes em paralelo
+      const [opcoesRes, nomesRes] = await Promise.all([
+        supabase.from("opcoes").select("chave, valor").neq("chave", "nomes").order("id", { ascending: true }),
+        supabase.from("terceiros").select("nome").order("nome", { ascending: true }),
+      ]);
+
+      // Limpeza: remove nomes residuais da tabela opcoes (devem estar apenas em terceiros)
+      supabase.from("opcoes").delete().eq("chave", "nomes")
+        .then(({ error }) => { if (error) console.error("Erro ao limpar nomes residuais:", error.message); });
+
+      if (opcoesRes.error) console.error("Erro ao carregar opções:", opcoesRes.error.message);
+      if (nomesRes.error)  console.error("Erro ao carregar nomes:", nomesRes.error.message);
+
+      const rows  = opcoesRes.data ?? [];
+      const nomes = (nomesRes.data ?? []).map((r: { nome: string }) => r.nome);
+
+      const byKey = new Map<string, string[]>();
+      (rows as { chave: string; valor: string }[]).forEach(row => {
+        if (!byKey.has(row.chave)) byKey.set(row.chave, []);
+        byKey.get(row.chave)!.push(row.valor);
+      });
+
+      const built: Opcoes = { turnos: [], unidades: [], fornecedores: [], motivos: [], cargos: [], ccList: [], nomes: [] };
+      byKey.forEach((vals, k) => {
+        if (k !== "nomes" && k in built) {
+          Object.assign(built, { [k]: vals });
+        }
+      });
+      built.nomes = nomes;
+
+      setData(built);
+      prevRef.current = built;
+      setLoading(false);
+    });
+  }, []);
+
+  const save = useCallback((newVal: Opcoes) => {
+    const prev = prevRef.current;
+    setData(newVal);
+    prevRef.current = newVal;
+
+    // ── Salva opções (excepto nomes, que têm tabela própria) ──
+    const KEYS = (Object.keys(newVal) as (keyof Opcoes)[]).filter(k => k !== "nomes");
+    for (const key of KEYS) {
+      const prevList = prev[key] as string[];
+      const nextList = newVal[key] as string[];
+      if (JSON.stringify(prevList) === JSON.stringify(nextList)) continue;
+
+      const toAdd    = nextList.filter(v => !prevList.includes(v));
+      const toRemove = prevList.filter(v => !nextList.includes(v));
+
+      if (toAdd.length > 0) {
+        const CHUNK = 100;
+        (async () => {
+          for (let i = 0; i < toAdd.length; i += CHUNK) {
+            const batch = toAdd.slice(i, i + CHUNK);
+            const { error } = await supabase
+              .from("opcoes")
+              .upsert(batch.map(valor => ({ chave: key, valor })), { onConflict: "chave,valor", ignoreDuplicates: true });
+            if (error) console.error(`Erro ao inserir opções [${key}]:`, error.message);
+          }
+        })();
+      }
+      if (toRemove.length > 0) {
+        supabase.from("opcoes").delete().eq("chave", key).in("valor", toRemove)
+          .then(({ error }) => { if (error) console.error(`Erro ao remover opções [${key}]:`, error.message); });
+      }
+    }
+
+    // ── Salva nomes na tabela terceiros ──
+    const prevNomes = prev.nomes;
+    const nextNomes = newVal.nomes;
+    if (JSON.stringify(prevNomes) !== JSON.stringify(nextNomes)) {
+      const toAdd    = nextNomes.filter(v => !prevNomes.includes(v));
+      const toRemove = prevNomes.filter(v => !nextNomes.includes(v));
+
+      if (toAdd.length > 0) {
+        const CHUNK = 100;
+        (async () => {
+          for (let i = 0; i < toAdd.length; i += CHUNK) {
+            const batch = toAdd.slice(i, i + CHUNK);
+            const { error } = await supabase
+              .from("terceiros")
+              .upsert(batch.map(nome => ({ nome })), { onConflict: "nome", ignoreDuplicates: true });
+            if (error) console.error("Erro ao inserir nomes:", error.message);
+          }
+        })();
+      }
+      if (toRemove.length > 0) {
+        supabase.from("terceiros").delete().in("nome", toRemove)
+          .then(({ error }) => { if (error) console.error("Erro ao remover nomes:", error.message); });
+      }
+    }
+  }, []);
+
+  return [data, save, loading];
+};
+
+// ─── LGPD: AVISO DE PRIVACIDADE ──────────────────────────────────
+const usePrivacyAccepted = () => {
+  const [accepted, setAccepted] = useState(() => localStorage.getItem("lgpd_aceito") === "1");
+  const accept = () => { localStorage.setItem("lgpd_aceito", "1"); setAccepted(true); };
+  return [accepted, accept] as const;
+};
+
+const PrivacyNotice = ({ dpoNome, dpoEmail, onAccept }: { dpoNome: string; dpoEmail: string; onAccept: () => void }) => {
+  const { t } = useI18n();
+  return (
+  <div style={{ position:"fixed", inset:0, zIndex:9999, background:"rgba(11,22,40,.92)", display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+    <div style={{ background:"#fff", borderRadius:16, maxWidth:620, width:"100%", maxHeight:"90vh", overflowY:"auto", boxShadow:"0 24px 80px rgba(0,0,0,.4)" }}>
+      <div style={{ background:"linear-gradient(135deg,#0B1628,#1A2C4A)", padding:"24px 28px", borderRadius:"16px 16px 0 0", display:"flex", alignItems:"center", gap:12 }}>
+        <div style={{ width:40, height:40, background:"#1A56DB", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div>
+          <div style={{ color:"#F8FAFC", fontWeight:800, fontSize:16 }}>{t("privacy_title")}</div>
+          <div style={{ color:"#64748B", fontSize:12, marginTop:2 }}>{t("privacy_law")}</div>
+        </div>
+      </div>
+
+      <div style={{ padding:"24px 28px", display:"flex", flexDirection:"column", gap:18, fontSize:13, color:"#334155", lineHeight:1.7 }}>
+        <div style={{ background:"#EFF6FF", border:"1px solid #BFDBFE", borderRadius:10, padding:"12px 16px", fontSize:12, color:"#1A56DB", fontWeight:600 }}>
+          {t("privacy_intro")}
+        </div>
+
+        <section>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>{t("privacy_col_title")}</div>
+          <ul style={{ paddingLeft:18, margin:0, display:"flex", flexDirection:"column", gap:3, fontSize:12 }}>
+            <li>{t("privacy_col_1")}</li>
+            <li>{t("privacy_col_2")}</li>
+            <li>{t("privacy_col_3")}</li>
+            <li>{t("privacy_col_4")}</li>
+            <li>{t("privacy_col_5")}</li>
+          </ul>
+        </section>
+
+        <section>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>{t("privacy_legal_title")}</div>
+          <p style={{ margin:0, fontSize:12 }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(t("privacy_legal_text")) }} />
+        </section>
+
+        <section>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>{t("privacy_ret_title")}</div>
+          <p style={{ margin:0, fontSize:12 }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(t("privacy_ret_text").replace("{years}", String(RETENCAO_ANOS))) }} />
+        </section>
+
+        <section>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>{t("privacy_sec_title")}</div>
+          <p style={{ margin:0, fontSize:12 }}>{t("privacy_sec_text")}</p>
+        </section>
+
+        <section>
+          <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>{t("privacy_rights_title")}</div>
+          <p style={{ margin:0, fontSize:12 }}>{t("privacy_rights_text")}</p>
+        </section>
+
+        {(dpoNome || dpoEmail) && (
+          <section style={{ background:"#F8FAFC", border:"1px solid #E2E6EC", borderRadius:10, padding:"12px 16px" }}>
+            <div style={{ fontWeight:700, fontSize:13, color:"#0F1C2E", marginBottom:6 }}>{t("privacy_dpo_title")}</div>
+            {dpoNome  && <div style={{ fontSize:12 }}><strong>{t("privacy_dpo_name")}</strong> {dpoNome}</div>}
+            {dpoEmail && <div style={{ fontSize:12 }}><strong>{t("privacy_dpo_email_lbl")}</strong> {dpoEmail}</div>}
+          </section>
+        )}
+
+        <button onClick={onAccept} style={{ background:"#1A56DB", border:"none", borderRadius:10, padding:"14px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:14, fontFamily:"inherit", marginTop:4 }}>
+          {t("privacy_accept_btn")}
+        </button>
+        <div style={{ fontSize:11, color:"#94A3B8", textAlign:"center", marginTop:-8 }}>
+          {t("privacy_footer")}
+        </div>
+      </div>
+    </div>
+  </div>
+  );
+};
+
+// ─── UI ATOMS ────────────────────────────────────────────────────
+const Icon = ({ d, size = 16 }: { d: string; size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>
+);
+
+interface ChipProps { label: string; color?: string; bg?: string; size?: "sm" | "lg"; }
+const Chip = ({ label, color = "#1A56DB", bg, size = "sm" }: ChipProps) => (
+  <span style={{ display:"inline-flex", alignItems:"center", padding: size === "lg" ? "4px 12px" : "2px 8px", borderRadius:99, fontSize: size === "lg" ? 12 : 11, fontWeight:700, color, background: bg || color + "1A", whiteSpace:"nowrap", letterSpacing:.2 }}>{label}</span>
+);
+
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> { label?: string; }
+const Input = ({ label, ...props }: InputProps) => (
+  <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+    {label && <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{label}</label>}
+    <input {...props} style={{ border:"1.5px solid #E2E6EC", borderRadius:8, padding:"8px 11px", fontSize:13, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", transition:"border .15s", ...props.style }} />
+  </div>
+);
+
+interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> { label?: string; children: ReactNode; }
+const Select = ({ label, children, ...props }: SelectProps) => (
+  <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+    {label && <label style={{ fontSize:11, fontWeight:600, color:"#64748B", textTransform:"uppercase", letterSpacing:.7 }}>{label}</label>}
+    <select {...props} style={{ border:"1.5px solid #E2E6EC", borderRadius:8, padding:"8px 11px", fontSize:13, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", ...props.style }}>
+      {children}
+    </select>
+  </div>
+);
+
+type BtnVariant = "primary" | "ghost" | "danger" | "success" | "warning" | "outline";
+interface BtnProps { children: ReactNode; onClick?: () => void; variant?: BtnVariant; small?: boolean; icon?: ReactNode; disabled?: boolean; full?: boolean; style?: CSSProperties; }
+const Btn = ({ children, onClick, variant = "primary", small, icon, disabled, full, style: s }: BtnProps) => {
+  const V: Record<BtnVariant, { bg: string; c: string; border?: string }> = {
+    primary: { bg:"#1A56DB", c:"#fff" },
+    ghost:   { bg:"#F1F5F9", c:"#334155" },
+    danger:  { bg:"#FDE8E8", c:"#E02424" },
+    success: { bg:"#E6F9F4", c:"#0E9F6E" },
+    warning: { bg:"#FEF3C7", c:"#B45309" },
+    outline: { bg:"transparent", c:"#1A56DB", border:"1.5px solid #1A56DB" },
+  };
+  const v = V[variant] || V.primary;
+  return (
+    <button onClick={onClick} disabled={disabled} style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", gap:6, padding: small ? "5px 11px" : "9px 16px", borderRadius:8, border: v.border || "none", cursor: disabled ? "not-allowed" : "pointer", fontFamily:"inherit", fontWeight:600, fontSize: small ? 12 : 13, background: v.bg, color: v.c, opacity: disabled ? .5 : 1, transition:"all .15s", width: full ? "100%" : "auto", whiteSpace:"nowrap", ...s }}>
+      {icon}{children}
+    </button>
+  );
+};
+
+interface ModalProps { title: string; subtitle?: string; onClose: () => void; children: ReactNode; wide?: boolean; xl?: boolean; }
+const Modal = ({ title, subtitle, onClose, children, wide, xl }: ModalProps) => (
+  <div style={{ position:"fixed", inset:0, background:"rgba(10,18,35,.6)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:16, backdropFilter:"blur(2px)" }}>
+    <div style={{ background:"#fff", borderRadius:16, width:"100%", maxWidth: xl ? 960 : wide ? 680 : 520, maxHeight:"92vh", overflowY:"auto", boxShadow:"0 32px 80px rgba(10,18,35,.22)", display:"flex", flexDirection:"column" }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"18px 24px", borderBottom:"1px solid #F1F5F9", position:"sticky", top:0, background:"#fff", zIndex:1, borderRadius:"16px 16px 0 0" }}>
+        <div>
+          <div style={{ fontWeight:800, fontSize:15, color:"#0F1C2E" }}>{title}</div>
+          {subtitle && <div style={{ fontSize:12, color:"#94A3B8", marginTop:2 }}>{subtitle}</div>}
+        </div>
+        <button onClick={onClose} style={{ background:"#F1F5F9", border:"none", borderRadius:8, padding:7, cursor:"pointer", color:"#64748B", display:"flex" }}>
+          <Icon d="M18 6L6 18M6 6l12 12" />
+        </button>
+      </div>
+      <div style={{ padding:"20px 24px", flex:1 }}>{children}</div>
+    </div>
+  </div>
+);
+
+// ─── AUTOCOMPLETE DE NOME ────────────────────────────────────────
+interface AutocompleteNomeProps { value: string; onChange: (val: string) => void; suggestions: string[]; placeholder?: string; style?: CSSProperties; }
+const AutocompleteNome = ({ value, onChange, suggestions, placeholder, style }: AutocompleteNomeProps) => {
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filtered = useMemo(() => {
+    if (!value.trim()) return suggestions.slice(0, 8);
+    const q = value.toLowerCase();
+    return suggestions.filter(s => s.toLowerCase().includes(q)).slice(0, 10);
+  }, [value, suggestions]);
+
+  useEffect(() => { setHighlighted(0); }, [filtered.length]);
+
+  const calcPos = () => {
+    if (!inputRef.current) return;
+    const r = inputRef.current.getBoundingClientRect();
+    setDropPos({ top: r.bottom + 2, left: r.left, width: r.width });
+  };
+
+  const openDropdown = () => { calcPos(); setOpen(true); };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const reposition = () => { calcPos(); };
+    document.addEventListener("mousedown", close);
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [open]);
+
+  const select = (name: string) => { onChange(name); setOpen(false); };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); openDropdown(); setHighlighted(h => Math.min(h + 1, filtered.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
+    else if (e.key === "Enter") { e.preventDefault(); if (open && filtered[highlighted]) select(filtered[highlighted]); }
+    else if (e.key === "Escape") setOpen(false);
+  };
+
+  return (
+    <div ref={wrapRef} style={{ position:"relative", width:"100%" }}>
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={e => { onChange(e.target.value.toUpperCase()); openDropdown(); setHighlighted(0); }}
+        onFocus={openDropdown}
+        onKeyDown={onKeyDown}
+        placeholder={placeholder}
+        autoComplete="off"
+        style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 10px", fontSize:12, fontFamily:"inherit", background:"#FAFBFC", width:"100%", outline:"none", fontWeight:600, boxSizing:"border-box", ...style }}
+      />
+      {open && filtered.length > 0 && (
+        <div style={{ position:"fixed", top: dropPos.top, left: dropPos.left, width: dropPos.width, background:"#fff", border:"1.5px solid #BFDBFE", borderRadius:8, boxShadow:"0 8px 24px rgba(10,18,35,.13)", zIndex:9999, maxHeight:200, overflowY:"auto", marginTop:0 }}>
+          {filtered.map((name, idx) => (
+            <div key={name} onMouseDown={() => select(name)} onMouseEnter={() => setHighlighted(idx)}
+              style={{ padding:"8px 12px", fontSize:12, fontWeight:600, color:"#334155", cursor:"pointer", background: idx === highlighted ? "#EFF6FF" : "transparent", borderBottom: idx < filtered.length - 1 ? "1px solid #F1F5F9" : "none" }}>
+              {name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── FORM DE LANÇAMENTO ─────────────────────────────────────────
+interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; }
+interface FormLancamentoProps { inicial?: Registro | null; loteInicial?: Registro[]; onSave: (registros: Registro[]) => void; onCancel: () => void; opcoes: Opcoes; registros?: Registro[]; turnosConfig?: TurnoConfig[]; }
+
+const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, registros: todosRegistros = [], turnosConfig = [] }: FormLancamentoProps) => {
+  const { t } = useI18n();
+  const isEdit = !!inicial && !loteInicial?.length;
+  const isLoteEdit = !!loteInicial?.length;
+  const base = loteInicial?.[0] ?? inicial;
+
+  const [comum, setComum] = useState({
+    data:        base?.data        || hoje(),
+    turno:       base?.turno       || opcoes.turnos[0]       || "",
+    horaEntrada: base?.horaEntrada || "05:00",
+    horaSaida:   base?.horaSaida   || "13:20",
+    cargo:       base?.cargo       || opcoes.cargos[0]       || "",
+    setor:       base?.setor       || "",
+    unidade:     base?.unidade     || opcoes.unidades[0]     || "",
+    cc:          base?.cc          || opcoes.ccList[0]       || "",
+    motivo:      base?.motivo      || opcoes.motivos[0]      || "",
+    fornecedor:  base?.fornecedor  || opcoes.fornecedores[0] || "",
+    obs:         base?.obs         || "",
+  });
+
+  const [pessoas, setPessoas] = useState<PessoaRow[]>(
+    isLoteEdit
+      ? loteInicial!.map(r => ({ nome: r.nome, horaEntrada: r.horaEntrada, horaSaida: r.horaSaida }))
+      : [{ nome: inicial?.nome || "", horaEntrada: base?.horaEntrada || "05:00", horaSaida: base?.horaSaida || "13:20" }]
+  );
+
+  const setC = (k: string, v: string) => {
+    const val = k === "obs" ? sanitize(v) : v;
+    if (k === "horaEntrada") setPessoas(ps => ps.map(p => p.horaEntrada === comum.horaEntrada ? { ...p, horaEntrada: val } : p));
+    if (k === "horaSaida")   setPessoas(ps => ps.map(p => p.horaSaida   === comum.horaSaida   ? { ...p, horaSaida: val }   : p));
+    if (k === "turno") {
+      const tc = turnosConfig.find(c => c.turno === val);
+      if (tc) {
+        setPessoas(ps => ps.map(p => ({ ...p, horaEntrada: tc.horaInicio, horaSaida: tc.horaFim })));
+        setComum(prev => ({ ...prev, turno: val, horaEntrada: tc.horaInicio, horaSaida: tc.horaFim }));
+        return;
+      }
+    }
+    setComum(prev => ({ ...prev, [k]: val }));
+  };
+
+  const handleQtd = (n: number) => {
+    const cap = Math.max(1, Math.min(20, n));
+    setPessoas(prev => {
+      if (cap > prev.length)
+        return [...prev, ...Array.from({ length: cap - prev.length }, () => ({ nome: "", horaEntrada: comum.horaEntrada, horaSaida: comum.horaSaida }))];
+      return prev.slice(0, cap);
+    });
+  };
+
+  const setP = (i: number, k: keyof PessoaRow, v: string) =>
+    setPessoas(ps => ps.map((p, idx) => idx === i ? { ...p, [k]: v } : p));
+
+  const validCount = pessoas.filter(p => p.nome.trim().length > 2).length;
+  const valid = isEdit ? pessoas[0]?.nome.trim().length > 2 : validCount > 0;
+
+  const [dupAviso, setDupAviso] = useState<string[]>([]);
+  const [dupTipo, setDupTipo] = useState<"interna" | "banco">("banco");
+
+  const handleSave = (force = false) => {
+    if (!valid) return;
+
+    if (isEdit) {
+      const p = pessoas[0];
+      const nomeTrimmed = p.nome.trim();
+      // Verifica conflito de nome+data+turno ao editar registro individual
+      if (!force) {
+        const conflito = todosRegistros.find(r =>
+          r.id !== inicial!.id &&
+          r.nome.toLowerCase() === nomeTrimmed.toLowerCase() &&
+          r.data === comum.data &&
+          r.turno.toLowerCase() === comum.turno.toLowerCase()
+        );
+        if (conflito) {
+          setDupTipo("banco");
+          setDupAviso([nomeTrimmed]);
+          return;
+        }
+      }
+      // Conflito turno diferente é tratado em salvar() de Lancamentos
+      onSave([{ ...inicial!, ...comum, nome: nomeTrimmed, horaEntrada: p.horaEntrada, horaSaida: p.horaSaida, totalHoras: calcHoras(p.horaEntrada, p.horaSaida) }]);
+    } else {
+      const validPessoas = pessoas.filter(p => p.nome.trim().length > 2);
+      if (!force) {
+        // 1) Duplicatas dentro do próprio lote (case-insensitive)
+        const nomesNoLote = validPessoas.map(p => p.nome.trim());
+        const nomesNorm = nomesNoLote.map(n => n.toLowerCase());
+        const duplicatasInternas = nomesNoLote.filter(
+          (_, idx) => nomesNorm.indexOf(nomesNorm[idx]) !== idx
+        );
+        if (duplicatasInternas.length > 0) {
+          setDupTipo("interna");
+          setDupAviso([...new Set(duplicatasInternas)]);
+          return;
+        }
+        // 2) Mesmo nome + mesmo turno + mesma data → bloqueia
+        const editIds = new Set(isLoteEdit ? loteInicial!.map(r => r.id) : []);
+        const mesmoTurno = nomesNoLote.filter(nome =>
+          todosRegistros.some(r =>
+            !editIds.has(r.id) &&
+            r.nome.toLowerCase() === nome.toLowerCase() &&
+            r.data === comum.data &&
+            r.turno.toLowerCase() === comum.turno.toLowerCase()
+          )
+        );
+        if (mesmoTurno.length > 0) {
+          setDupTipo("banco");
+          setDupAviso(mesmoTurno);
+          return;
+        }
+        // Conflito turno diferente é tratado em salvar() de Lancamentos
+      }
+      const lId = isLoteEdit ? loteInicial![0].loteId : (validPessoas.length > 1 ? uuid() : undefined);
+      onSave(validPessoas.map((p, i) => ({
+        id: isLoteEdit ? (loteInicial![i]?.id ?? uuid()) : uuid(),
+        ...(lId ? { loteId: lId } : {}),
+        ...comum,
+        nome: p.nome.trim(),
+        horaEntrada: p.horaEntrada,
+        horaSaida: p.horaSaida,
+        totalHoras: calcHoras(p.horaEntrada, p.horaSaida),
+      })));
+    }
+  };
+
+  const G = ({ children, cols = 2 }: { children: ReactNode; cols?: number }) => {
+    const cls = cols >= 4 ? "rsp-grid-4" : cols === 3 ? "rsp-grid-3" : "rsp-grid-2";
+    return <div className={cls} style={{ display:"grid", gridTemplateColumns:`repeat(${cols},1fr)`, gap:14 }}>{children}</div>;
+  };
+
+  const totalPadrao = calcHoras(comum.horaEntrada, comum.horaSaida);
+  const btnLabel = (isEdit || isLoteEdit)
+    ? t("form_btn_save_edit")
+    : validCount > 1
+      ? t("form_btn_save_multi").replace("{n}", String(validCount))
+      : t("form_btn_save");
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+
+      {/* Bloco 0 — Quantidade */}
+      {!isEdit && !isLoteEdit && (
+        <div style={{ background:"#F0F6FF", border:"1.5px solid #BFDBFE", borderRadius:12, padding:"12px 18px", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+          <div style={{ fontSize:11, fontWeight:700, color:"#1A56DB", textTransform:"uppercase", letterSpacing:.8 }}>{t("form_block_qty")}</div>
+          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+            <button onClick={() => handleQtd(pessoas.length - 1)} style={{ width:28, height:28, borderRadius:7, border:"1.5px solid #BFDBFE", background:"#fff", cursor:"pointer", fontWeight:800, fontSize:15, color:"#1A56DB", display:"flex", alignItems:"center", justifyContent:"center" }}>−</button>
+            <input type="number" min={1} max={20} value={pessoas.length} onChange={e => handleQtd(Number(e.target.value))}
+              style={{ width:48, textAlign:"center", border:"1.5px solid #BFDBFE", borderRadius:7, padding:"5px 6px", fontSize:15, fontWeight:800, color:"#1A56DB", fontFamily:"inherit", background:"#fff", outline:"none" }} />
+            <button onClick={() => handleQtd(pessoas.length + 1)} style={{ width:28, height:28, borderRadius:7, border:"none", background:"#1A56DB", cursor:"pointer", fontWeight:800, fontSize:15, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
+          </div>
+          <div style={{ fontSize:12, color:"#64748B" }}>{pessoas.length !== 1 ? t("form_persons") : t("form_person")} {t("form_suffix")}</div>
+        </div>
+      )}
+
+      {/* Bloco 1 — Identificação */}
+      <div>
+        <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:20, height:20, borderRadius:6, background:"#1A56DB", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>1</div>
+          {t("form_block_1")}
+        </div>
+        <G cols={2}>
+          <Select label={t("form_label_cargo")} value={comum.cargo} onChange={e => setC("cargo", e.target.value)}>{opcoes.cargos.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label={t("form_label_forn")} value={comum.fornecedor} onChange={e => setC("fornecedor", e.target.value)}>{opcoes.fornecedores.map(c => <option key={c}>{c}</option>)}</Select>
+        </G>
+      </div>
+
+      {/* Bloco 2 — Lotação */}
+      <div>
+        <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:20, height:20, borderRadius:6, background:"#0E9F6E", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>2</div>
+          {t("form_block_2")}
+        </div>
+        <G cols={2}>
+          <Select label={t("form_label_unidade")} value={comum.unidade} onChange={e => setC("unidade", e.target.value)}>{opcoes.unidades.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label={t("form_label_cc")} value={comum.cc} onChange={e => setC("cc", e.target.value)}>{opcoes.ccList.map(c => <option key={c}>{c}</option>)}</Select>
+        </G>
+      </div>
+
+      {/* Bloco 3 — Jornada */}
+      <div>
+        <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:20, height:20, borderRadius:6, background:"#D97706", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>3</div>
+          {t("form_block_3")}
+          {!isEdit && <span style={{ fontSize:10, color:"#94A3B8", fontWeight:400, letterSpacing:.3, marginLeft:4 }}>{t("form_block_3_note")}</span>}
+        </div>
+        <G cols={4}>
+          <Input label={t("form_label_data")} type="date" value={comum.data} onChange={e => setC("data", e.target.value)} />
+          <Select label={t("form_label_turno")} value={comum.turno} onChange={e => setC("turno", e.target.value)}>{opcoes.turnos.map(c => <option key={c}>{c}</option>)}</Select>
+          <Input label={isEdit ? t("form_label_entrada") : t("form_label_entrada_padrao")} type="time" value={comum.horaEntrada} onChange={e => setC("horaEntrada", e.target.value)} />
+          <Input label={isEdit ? t("form_label_saida") : t("form_label_saida_padrao")} type="time" value={comum.horaSaida} onChange={e => setC("horaSaida", e.target.value)} />
+        </G>
+        {totalPadrao && (
+          <div style={{ marginTop:10, display:"inline-flex", alignItems:"center", gap:8, background:"#E6F9F4", borderRadius:8, padding:"8px 14px" }}>
+            <Icon d="M12 8v4l3 3M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0" size={14} />
+            <span style={{ fontSize:13, fontWeight:700, color:"#0E9F6E", fontFamily:"monospace" }}>{isEdit ? t("form_total") : t("form_padrao")} {totalPadrao}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Bloco 4 — Motivo */}
+      <div>
+        <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:20, height:20, borderRadius:6, background:"#6C63FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>4</div>
+          {t("form_block_4")}
+        </div>
+        <G cols={1}>
+          <Select label={t("form_label_motivo")} value={comum.motivo} onChange={e => setC("motivo", e.target.value)}>{opcoes.motivos.map(c => <option key={c}>{c}</option>)}</Select>
+          <Input label={t("form_label_obs")} value={comum.obs} onChange={e => setC("obs", e.target.value)} placeholder={t("form_obs_placeholder")} />
+        </G>
+      </div>
+
+      {/* Bloco 5 — Colaboradores */}
+      <div>
+        <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textTransform:"uppercase", letterSpacing:1, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:20, height:20, borderRadius:6, background:"#0891B2", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>5</div>
+          {isEdit ? t("form_block_5") : `${t("form_block_5_multi")} — ${pessoas.length} ${pessoas.length !== 1 ? t("form_persons") : t("form_person")}`}
+        </div>
+        <div style={{ border:"1px solid #E2E6EC", borderRadius:10, overflow:"hidden" }}>
+          <div style={{ overflowX:"auto" }}>
+          <div style={{ minWidth:460 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"36px 1fr 124px 124px 72px", background:"#F8FAFC", borderBottom:"1px solid #E2E6EC", padding:"9px 14px", gap:8 }}>
+            {[t("form_col_num"), t("form_col_nome"), t("form_col_entrada"), t("form_col_saida"), t("form_col_total")].map(h => (
+              <div key={h} style={{ fontSize:10, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:.6 }}>{h}</div>
+            ))}
+          </div>
+          {pessoas.map((p, i) => {
+            const total = calcHoras(p.horaEntrada, p.horaSaida);
+            return (
+              <div key={i} style={{ display:"grid", gridTemplateColumns:"36px 1fr 124px 124px 72px", gap:8, padding:"8px 14px", borderBottom: i < pessoas.length - 1 ? "1px solid #F1F5F9" : "none", alignItems:"center", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textAlign:"center" }}>{i + 1}</div>
+                <AutocompleteNome
+                  value={p.nome}
+                  onChange={v => setP(i, "nome", v)}
+                  suggestions={opcoes.nomes}
+                  placeholder={t("form_placeholder_nome")}
+                />
+                <input type="time" value={p.horaEntrada} onChange={e => setP(i, "horaEntrada", e.target.value)}
+                  style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:12, fontFamily:"monospace", background:"#FAFBFC", width:"100%", outline:"none" }} />
+                <input type="time" value={p.horaSaida} onChange={e => setP(i, "horaSaida", e.target.value)}
+                  style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:12, fontFamily:"monospace", background:"#FAFBFC", width:"100%", outline:"none" }} />
+                <div style={{ fontFamily:"monospace", fontSize:12, fontWeight:700, color: total ? "#0E9F6E" : "#CBD5E1", textAlign:"center" }}>{total || "—"}</div>
+              </div>
+            );
+          })}
+          </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display:"flex", justifyContent:"flex-end", gap:8, paddingTop:16, borderTop:"1px solid #F1F5F9", flexWrap:"wrap" }}>
+        <Btn variant="ghost" onClick={onCancel}>{t("form_btn_cancel")}</Btn>
+        <Btn onClick={handleSave} disabled={!valid} icon={<Icon d="M5 13l4 4L19 7" />}>{btnLabel}</Btn>
+      </div>
+
+      {/* Aviso de duplicidade (apenas interna e mesmo turno — turno diferente é tratado em Lancamentos.salvar) */}
+      {dupAviso.length > 0 && (
+        <div style={{ background:"#FEF2F2", border:"1.5px solid #FCA5A5", borderRadius:10, padding:"14px 18px", display:"flex", flexDirection:"column", gap:10 }}>
+          <div style={{ fontWeight:700, color:"#E02424", fontSize:13 }}>
+            ⚠️ Lançamento duplicado detectado!
+          </div>
+          <div style={{ fontSize:12, color:"#7F1D1D" }}>
+            {dupTipo === "interna"
+              ? (dupAviso.length === 1
+                  ? `O nome "${dupAviso[0]}" aparece mais de uma vez neste lote.`
+                  : `${dupAviso.length} nomes estão repetidos neste lote: ${dupAviso.join(", ")}.`)
+              : (dupAviso.length === 1
+                  ? `"${dupAviso[0]}" já possui um registro no mesmo turno em ${fmt(comum.data, "pt-BR")}.`
+                  : `${dupAviso.length} colaboradores já possuem registro no mesmo turno em ${fmt(comum.data, "pt-BR")}: ${dupAviso.join(", ")}.`)
+            }
+          </div>
+          <div style={{ fontSize:12, color:"#374151" }}>
+            {dupTipo === "interna"
+              ? "Corrija ou remova os nomes duplicados antes de salvar."
+              : "Para continuar, corrija os nomes/data ou clique em \"Confirmar mesmo assim\"."}
+          </div>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+            <Btn variant="ghost" onClick={() => setDupAviso([])}>{t("form_btn_cancel")}</Btn>
+            {dupTipo === "banco" && (
+              <Btn onClick={() => { setDupAviso([]); handleSave(true); }}
+                style={{ background:"#E02424" }}>
+                Confirmar mesmo assim
+              </Btn>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── TELA: LANÇAMENTOS ──────────────────────────────────────────
+interface Filtros { data: string; turno: string; fornecedor: string; unidade: string; busca: string; }
+
+const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin }: { registros: Registro[]; setRegistros: (val: Registro[]) => void; opcoes: Opcoes; turnosConfig: TurnoConfig[]; isAdmin: boolean }) => {
+  const { t, lang } = useI18n();
+  const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", busca: "" });
+  const [modal, setModal]     = useState<null | "new" | Registro | Registro[]>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [confirm, setConfirm] = useState<string[] | null>(null);
+  const [detalhe, setDetalhe] = useState<Registro | Registro[] | null>(null);
+
+  // Estado de conflito de turno — vive em Lancamentos, fora do FormLancamento
+  const [conflito, setConflito] = useState<{ novos: Registro[]; nomes: string[]; justificativa: string } | null>(null);
+
+  const set = (k: keyof Filtros, v: string) => setFiltros(f => ({ ...f, [k]: v }));
+
+  const filtered = useMemo(() => registros.filter(r => {
+    if (filtros.data       && r.data !== filtros.data)               return false;
+    if (filtros.turno      && r.turno !== filtros.turno)             return false;
+    if (filtros.fornecedor && r.fornecedor !== filtros.fornecedor)   return false;
+    if (filtros.unidade    && r.unidade !== filtros.unidade)         return false;
+    if (filtros.busca      && !r.nome.toLowerCase().includes(filtros.busca.toLowerCase())) return false;
+    return true;
+  }), [registros, filtros]);
+
+  // Agrupa registros do mesmo lote em uma única entrada para exibição
+  const grupos = useMemo(() => {
+    // Exibe cada registro individualmente, sem agrupar por loteId
+    return filtered;
+  }, [filtered]);
+
+  const salvar = (novos: Registro[], forceComJustificativa = "") => {
+    // Dedup intra-lote
+    const nomesLote = novos.map(r => r.nome.toLowerCase());
+    const semDup = novos.filter((r, idx) => nomesLote.indexOf(r.nome.toLowerCase()) === idx);
+
+    // Verifica conflito de turno: mesmo nome + mesma data + turno DIFERENTE nos registros existentes
+    const editIds = new Set(Array.isArray(modal) ? (modal as Registro[]).map(r => r.id) : modal && modal !== "new" ? [(modal as Registro).id] : []);
+    const conflitosNome: string[] = [];
+    for (const r of semDup) {
+      const existente = registros.find(e =>
+        !editIds.has(e.id) &&
+        e.nome.toLowerCase() === r.nome.toLowerCase() &&
+        e.data === r.data &&
+        e.turno.toLowerCase() !== r.turno.toLowerCase()
+      );
+      if (existente) {
+        conflitosNome.push(`${r.nome} (já no ${existente.turno})`);
+      }
+    }
+
+    // Se há conflito e não foi forçado com justificativa → bloqueia e mostra modal de conflito
+    if (conflitosNome.length > 0 && !forceComJustificativa) {
+      setConflito({ novos: semDup, nomes: conflitosNome, justificativa: "" });
+      return; // NÃO salva, NÃO fecha o modal do form
+    }
+
+    // Se forçado com justificativa → prefixar obs nos registros com conflito
+    const registrosFinais = forceComJustificativa
+      ? semDup.map(r => {
+          const temConflito = registros.some(e =>
+            !editIds.has(e.id) &&
+            e.nome.toLowerCase() === r.nome.toLowerCase() &&
+            e.data === r.data &&
+            e.turno.toLowerCase() !== r.turno.toLowerCase()
+          );
+          if (temConflito) {
+            const obsAtual = r.obs || "";
+            return { ...r, obs: `[DUPLO TURNO] ${forceComJustificativa}${obsAtual ? ` | ${obsAtual}` : ""}` };
+          }
+          return r;
+        })
+      : semDup;
+
+    if (modal === "new") {
+      setRegistros([...registros, ...registrosFinais]);
+    } else if (Array.isArray(modal)) {
+      const ids = new Set((modal as Registro[]).map(r => r.id));
+      setRegistros([...registros.filter(r => !ids.has(r.id)), ...registrosFinais]);
+    } else {
+      setRegistros(registros.map(r => r.id === registrosFinais[0].id ? registrosFinais[0] : r));
+    }
+    setModal(null);
+    setConflito(null);
+  };
+
+  const excluir = (ids: string[]) => { setRegistros(registros.filter(r => !ids.includes(r.id))); setConfirm(null); };
+
+  // Proteção contra CSV injection: escapa campos que começam com caracteres perigosos
+  const csvSafe = (val: string) => {
+    if (!val) return val;
+    if (/^[=+\-@|\t]/.test(val)) return `'${val}`;
+    if (val.includes(";") || val.includes('"') || val.includes("\n")) return `"${val.replace(/"/g, '""')}"` ;
+    return val;
+  };
+
+  const exportCSV = () => {
+    const h = ["Data","Turno","Hora Entrada","Hora Saída","Total Horas","Nome","Cargo","Unidade","CC","Motivo","Fornecedor","Obs"];
+    const rows = filtered.map(r => [r.data,r.turno,r.horaEntrada,r.horaSaida,r.totalHoras,r.nome,r.cargo,r.unidade,r.cc,r.motivo,r.fornecedor,r.obs].map(csvSafe).join(";"));
+    const blob = new Blob(["\uFEFF" + [h.join(";"), ...rows].join("\n")], { type:"text/csv;charset=utf-8;" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `terceiros_${filtros.data || "todos"}.csv`; a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+      {/* Botões de seleção/exclusão em massa — visíveis só para admins */}
+      {/* Contador de registros acima da tabela */}
+      <div style={{ fontSize: 15, color: "#64748B", fontWeight: 500, marginBottom: 8, marginTop: 8 }}>
+        Exibindo {filtered.length} de {registros.length} registros
+      </div>
+
+      {/* Barra de exclusão em massa igual à imagem 2 */}
+      {selectedIds.length > 0 && (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          background: "#FDE8E8",
+          borderRadius: 10,
+          padding: "12px 18px",
+          margin: "16px 0 12px 0",
+          boxShadow: "0 1px 4px #FDE8E880"
+        }}>
+          <Btn variant="danger" onClick={() => setConfirm(selectedIds)} style={{ fontWeight: 700, fontSize: 15, padding: "10px 22px", background: "#F87171", color: "#fff" }}>
+            Excluir selecionados
+          </Btn>
+          <span style={{ fontSize: 14, color: "#B91C1C", fontWeight: 600 }}>{selectedIds.length} selecionado{selectedIds.length > 1 ? 's' : ''}</span>
+        </div>
+      )}
+        {/* Removido: declaração duplicada de excluir dentro do JSX */}
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
+        <div>
+          <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{t("lanc_section")}</div>
+          <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>{t("lanc_title")}</div>
+        </div>
+        <div style={{ display:"flex", gap:8 }}>
+          <Btn variant="ghost" onClick={exportCSV} icon={<Icon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />}>{t("lanc_btn_export")}</Btn>
+          <Btn onClick={() => setModal("new")} icon={<Icon d="M12 5v14M5 12h14" />}>{t("lanc_btn_new")}</Btn>
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:"14px 18px", display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
+        <Input label={t("form_label_data")} type="date" value={filtros.data} onChange={e => set("data", e.target.value)} style={{ width:150 }} />
+        <Select label={t("form_label_turno")} value={filtros.turno} onChange={e => set("turno", e.target.value)} style={{ width:150 }}>
+          <option value="">{t("lanc_filter_all_m")}</option>{opcoes.turnos.map(opt => <option key={opt}>{opt}</option>)}
+        </Select>
+        <Select label={t("form_label_forn")} value={filtros.fornecedor} onChange={e => set("fornecedor", e.target.value)} style={{ width:150 }}>
+          <option value="">{t("lanc_filter_all_m")}</option>{opcoes.fornecedores.map(opt => <option key={opt}>{opt}</option>)}
+        </Select>
+        <Select label={t("form_label_unidade")} value={filtros.unidade} onChange={e => set("unidade", e.target.value)} style={{ width:150 }}>
+          <option value="">{t("lanc_filter_all_f")}</option>{opcoes.unidades.map(opt => <option key={opt}>{opt}</option>)}
+        </Select>
+        <Input label={t("lanc_filter_busca")} value={filtros.busca} onChange={e => set("busca", e.target.value)} placeholder="Nome…" style={{ width:180 }} />
+        <div style={{ marginLeft:"auto", alignSelf:"flex-end" }}>
+          <Btn variant="ghost" small onClick={() => setFiltros({ data:"", turno:"", fornecedor:"", unidade:"", busca:"" })}>{t("lanc_filter_clear")}</Btn>
+        </div>
+      </div>
+
+      {/* Contador */}
+      <div style={{ fontSize:12, color:"#94A3B8", paddingLeft:2 }}>
+        {t("lanc_showing").replace("{n}", String(filtered.length)).replace("{total}", String(registros.length))}
+      </div>
+
+      {/* Tabela */}
+      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, overflow:"hidden" }}>
+        <div style={{ overflowX:"auto" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+            <thead>
+              <tr style={{ background:"#F8FAFC" }}>
+                <th style={{ padding:"10px 12px", textAlign:"center", width:32 }}>
+                  <input type="checkbox"
+                    checked={filtered.length > 0 && selectedIds.length === filtered.length}
+                    indeterminate={selectedIds.length > 0 && selectedIds.length < filtered.length}
+                    onChange={e => setSelectedIds(e.target.checked ? filtered.map(r => r.id) : [])}
+                  />
+                </th>
+                {[t("lanc_col_data"),t("lanc_col_turno"),t("lanc_col_nome"),t("lanc_col_cargo"),t("lanc_col_forn"),t("lanc_col_unidade"),t("lanc_col_entrada"),t("lanc_col_saida"),t("lanc_col_horas"),t("lanc_col_motivo"),t("lanc_col_acoes")].map(h => (
+                  <th key={h} style={{ padding:"10px 12px", textAlign:"left", color:"#64748B", fontWeight:700, fontSize:10, textTransform:"uppercase", letterSpacing:.7, whiteSpace:"nowrap", borderBottom:"2px solid #E2E6EC" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {grupos.length === 0 && (
+                <tr><td colSpan={12} style={{ textAlign:"center", padding:48, color:"#94A3B8" }}>
+                  <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
+                  {t("lanc_empty")}
+                </td></tr>
+              )}
+              {grupos.map((item, i) => {
+                const isLote = Array.isArray(item);
+                const r = isLote ? item[0] : item;
+                const count = isLote ? item.length : 1;
+                const bgBase = i % 2 === 0 ? "#fff" : "#FAFBFC";
+                const isChecked = selectedIds.includes(r.id);
+                return (
+                  <tr key={isLote ? r.loteId : r.id}
+                    style={{ borderBottom:"1px solid #F1F5F9", background: bgBase, cursor:"pointer",
+                      borderLeft: isLote ? "3px solid #1A56DB" : "3px solid transparent" }}
+                    onClick={() => setDetalhe(item)}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#F0F6FF")}
+                    onMouseLeave={e => (e.currentTarget.style.background = bgBase)}>
+                    <td style={{ padding:"10px 12px", textAlign:"center" }} onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" checked={isChecked} onChange={e => {
+                        e.stopPropagation();
+                        setSelectedIds(val => e.target.checked ? [...val, r.id] : val.filter(id => id !== r.id));
+                      }} />
+                    </td>
+                    <td style={{ padding:"10px 12px", fontFamily:"monospace", fontSize:11, color:"#64748B" }}>{fmt(r.data, lang)}</td>
+                    <td style={{ padding:"10px 12px" }}><Chip label={r.turno} color="#1A56DB" /></td>
+                    <td style={{ padding:"10px 12px" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                        <div style={{ fontWeight:700, color:"#0F1C2E", whiteSpace:"nowrap" }}>{r.nome}</div>
+                        {isLote && <span style={{ background:"#1A56DB", color:"#fff", borderRadius:99, padding:"1px 7px", fontSize:10, fontWeight:800, flexShrink:0 }}>{count}×</span>}
+                      </div>
+                      {isLote && <div style={{ fontSize:10, color:"#94A3B8", marginTop:2 }}>{item.slice(1, 3).map(x => x.nome).join(", ")}{count > 3 ? ` +${count - 3}` : ""}</div>}
+                    </td>
+                    <td style={{ padding:"10px 12px", color:"#475569", maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.cargo}</td>
+                    <td style={{ padding:"10px 12px" }}><Chip label={r.fornecedor} color={fornCor(r.fornecedor, opcoes.fornecedores)} /></td>
+                    <td style={{ padding:"10px 12px" }}><Chip label={r.unidade} color="#0E9F6E" /></td>
+                    <td style={{ padding:"10px 12px", fontFamily:"monospace", color:"#475569" }}>{r.horaEntrada}</td>
+                    <td style={{ padding:"10px 12px", fontFamily:"monospace", color:"#475569" }}>{r.horaSaida}</td>
+                    <td style={{ padding:"10px 12px", fontFamily:"monospace", fontWeight:800, color:"#0E9F6E" }}>{r.totalHoras}</td>
+                    <td style={{ padding:"10px 12px", color:"#64748B", maxWidth:150, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.motivo}</td>
+                    <td style={{ padding:"10px 12px" }} onClick={e => e.stopPropagation()}>
+                      <div style={{ display:"flex", gap:5 }}>
+                        <button onClick={() => setDetalhe(item)} title="Ver detalhes" style={{ background:"#F1F5F9", border:"none", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:"#64748B", display:"flex" }}><Icon d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" size={14} /></button>
+                        <button onClick={() => setModal(item)} title="Editar" style={{ background:"#EBF0FD", border:"none", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:"#1A56DB", display:"flex" }}><Icon d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" size={14} /></button>
+                        <button onClick={() => setConfirm(isLote ? item.map(x => x.id) : [r.id])} title="Excluir" style={{ background:"#FDE8E8", border:"none", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:"#E02424", display:"flex" }}><Icon d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {modal && (
+        <Modal
+          title={modal === "new" ? t("lanc_modal_new") : Array.isArray(modal) ? `${t("lanc_modal_edit_lote")} — ${modal.length} ${modal.length !== 1 ? t("form_persons") : t("form_person")}` : t("lanc_modal_edit")}
+          subtitle="Controle de Terceiros" onClose={() => setModal(null)} xl>
+          <FormLancamento
+            inicial={modal === "new" || Array.isArray(modal) ? null : modal as Registro}
+            loteInicial={Array.isArray(modal) ? modal : undefined}
+            onSave={salvar} onCancel={() => setModal(null)} opcoes={opcoes} registros={registros} turnosConfig={turnosConfig} />
+        </Modal>
+      )}
+
+      {detalhe && (
+        <Modal
+          title={Array.isArray(detalhe) ? `${t("lanc_detail_lote")} — ${detalhe.length} ${detalhe.length !== 1 ? t("form_persons") : t("form_person")}` : t("lanc_detail_title")}
+          subtitle={Array.isArray(detalhe) ? `${fmt(detalhe[0].data, lang)} · ${detalhe[0].turno}` : detalhe.nome}
+          onClose={() => setDetalhe(null)} wide={!Array.isArray(detalhe)} xl={Array.isArray(detalhe)}>
+          {Array.isArray(detalhe) ? (
+            <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+              {/* Campos comuns */}
+              <div className="rsp-modal-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                {([
+                  [t("detail_data"), fmt(detalhe[0].data, lang)], [t("detail_turno"), detalhe[0].turno],
+                  [t("detail_cargo"), detalhe[0].cargo], [t("detail_forn"), detalhe[0].fornecedor],
+                  [t("detail_unidade"), detalhe[0].unidade],
+                  [t("detail_cc"), detalhe[0].cc], [t("detail_motivo"), detalhe[0].motivo],
+                ] as [string, string][]).map(([k, v]) => (
+                  <div key={k} style={{ background:"#F8FAFC", borderRadius:8, padding:"10px 14px" }}>
+                    <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{k}</div>
+                    <div style={{ fontSize:13, fontWeight:600, color:"#0F1C2E" }}>{v || "—"}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Lista de colaboradores */}
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>{t("lanc_detail_cols")} ({detalhe.length})</div>
+                <div style={{ border:"1px solid #E2E6EC", borderRadius:8, overflow:"hidden" }}>
+                  <div style={{ overflowX:"auto" }}>
+                  <div style={{ minWidth:380 }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 96px 96px 72px", background:"#F8FAFC", padding:"8px 14px", gap:8, borderBottom:"1px solid #E2E6EC" }}>
+                    {[t("detail_col_nome"),t("detail_col_entrada"),t("detail_col_saida"),t("detail_col_total")].map(h => <div key={h} style={{ fontSize:10, fontWeight:700, color:"#64748B", textTransform:"uppercase" }}>{h}</div>)}
+                  </div>
+                  {detalhe.map((rec, idx) => (
+                    <div key={rec.id} style={{ display:"grid", gridTemplateColumns:"1fr 96px 96px 72px", gap:8, padding:"8px 14px", background: idx%2===0?"#fff":"#FAFBFC", borderTop: idx > 0 ? "1px solid #F1F5F9" : "none" }}>
+                      <span style={{ fontWeight:600, color:"#0F1C2E", fontSize:12 }}>{rec.nome}</span>
+                      <span style={{ fontFamily:"monospace", color:"#475569", fontSize:12 }}>{rec.horaEntrada}</span>
+                      <span style={{ fontFamily:"monospace", color:"#475569", fontSize:12 }}>{rec.horaSaida}</span>
+                      <span style={{ fontFamily:"monospace", fontWeight:700, color:"#0E9F6E", fontSize:12 }}>{rec.totalHoras}</span>
+                    </div>
+                  ))}
+                  </div>
+                  </div>
+                </div>
+              </div>
+              {detalhe[0].obs && (
+                <div style={{ background:"#FEF3C7", borderRadius:8, padding:"10px 14px" }}>
+                  <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{t("lanc_detail_obs")}</div>
+                  <div style={{ fontSize:13, color:"#0F1C2E" }}>{detalhe[0].obs}</div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="rsp-modal-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              {([
+                  [t("detail_nome"), detalhe.nome], [t("detail_cargo"), detalhe.cargo], [t("detail_forn"), detalhe.fornecedor],
+                  [t("detail_data"), fmt(detalhe.data, lang)], [t("detail_turno"), detalhe.turno],
+                  [t("detail_unidade"), detalhe.unidade], [t("detail_cc"), detalhe.cc],
+                  [t("detail_entrada"), detalhe.horaEntrada], [t("detail_saida"), detalhe.horaSaida],
+                  [t("detail_total_horas"), detalhe.totalHoras], [t("detail_motivo"), detalhe.motivo],
+              ] as [string, string][]).map(([k, v]) => (
+                <div key={k} style={{ background:"#F8FAFC", borderRadius:8, padding:"10px 14px" }}>
+                  <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{k}</div>
+                  <div style={{ fontSize:13, fontWeight:600, color:"#0F1C2E" }}>{v || "—"}</div>
+                </div>
+              ))}
+              {detalhe.obs && (
+                <div style={{ gridColumn:"span 2", background:"#FEF3C7", borderRadius:8, padding:"10px 14px" }}>
+                  <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{t("lanc_detail_obs")}</div>
+                  <div style={{ fontSize:13, color:"#0F1C2E" }}>{detalhe.obs}</div>
+                </div>
+              )}
+            </div>
+          )}
+          <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:16, paddingTop:16, borderTop:"1px solid #F1F5F9" }}>
+            <Btn variant="ghost" onClick={() => setDetalhe(null)}>{t("lanc_detail_close")}</Btn>
+            <Btn onClick={() => { setModal(detalhe); setDetalhe(null); }}>{t("lanc_detail_edit")}</Btn>
+          </div>
+        </Modal>
+      )}
+
+      {confirm && (
+        <Modal title={t("lanc_confirm_title")} onClose={() => setConfirm(null)}>
+          {confirm === 'ALL' ? (
+            <>
+              <p style={{ color: "#E02424", fontWeight:700, fontSize:15, lineHeight:1.6 }}>
+                Tem certeza que deseja <b>EXCLUIR TODOS os registros</b>?<br/>Esta ação não poderá ser desfeita e será registrada no log de auditoria.
+              </p>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+                <Btn variant="ghost" onClick={() => setConfirm(null)}>{t("lanc_confirm_cancel")}</Btn>
+                <Btn variant="danger" style={{ fontWeight:800, background:'#E02424', color:'#fff' }} onClick={() => {
+                  // Excluir todos os registros
+                  setRegistros([]);
+                  setConfirm(null);
+                  logAudit("PURGE", "registros", undefined, { motivo: "Exclusão em massa (admin)", registros_removidos: registros.length });
+                }}>Excluir TODOS</Btn>
+              </div>
+            </>
+          ) : (
+            <>
+              <p style={{ color: "#475569", fontSize: 13, lineHeight: 1.6 }}>
+                {confirm.length > 1
+                  ? t("lanc_confirm_lote").replace("{n}", String(confirm.length))
+                  : t("lanc_confirm_single")}
+              </p>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+                <Btn variant="ghost" onClick={() => setConfirm(null)}>{t("lanc_confirm_cancel")}</Btn>
+                <Btn variant="danger" onClick={() => excluir(confirm)}>{t("lanc_confirm_delete")}</Btn>
+              </div>
+            </>
+          )}
+        </Modal>
+      )}
+
+      {/* Modal de conflito de turno — vive em Lancamentos, impossível de contornar */}
+      {conflito && (
+        <Modal title="⚠️ Colaborador já lançado em outro turno" onClose={() => setConflito(null)} wide>
+          <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+            <div style={{ background:"#FFFBEB", border:"1.5px solid #FCD34D", borderRadius:10, padding:"14px 18px" }}>
+              <div style={{ fontWeight:700, color:"#D97706", fontSize:13, marginBottom:8 }}>
+                {conflito.nomes.length === 1
+                  ? `${conflito.nomes[0]} já tem registro em outro turno nesta data.`
+                  : `${conflito.nomes.length} colaboradores já têm registro em outro turno nesta data:`}
+              </div>
+              {conflito.nomes.length > 1 && (
+                <ul style={{ margin:0, paddingLeft:18, fontSize:12, color:"#92400E" }}>
+                  {conflito.nomes.map(n => <li key={n}>{n}</li>)}
+                </ul>
+              )}
+            </div>
+            <div style={{ fontSize:12, color:"#374151" }}>
+              Para registrar em dois turnos no mesmo dia, informe o motivo abaixo. A justificativa será salva no campo Obs do registro.
+            </div>
+            <textarea
+              value={conflito.justificativa}
+              onChange={e => setConflito(c => c ? { ...c, justificativa: sanitize(e.target.value) } : c)}
+              placeholder="Ex: horas extras autorizadas, cobertura de falta emergencial, dobra de turno..."
+              rows={3}
+              style={{
+                border: `1.5px solid ${conflito.justificativa.trim().length > 0 ? "#FCD34D" : "#E2E6EC"}`,
+                borderRadius: 8, padding: "10px 12px", fontSize: 12, fontFamily: "inherit",
+                resize: "vertical", outline: "none", width: "100%", boxSizing: "border-box", background: "#FAFBFC"
+              }}
+            />
+            <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
+              <Btn variant="ghost" onClick={() => setConflito(null)}>Cancelar</Btn>
+              <Btn
+                onClick={() => {
+                  const j = conflito.justificativa.trim();
+                  if (!j) return;
+                  const novos = conflito.novos;
+                  setConflito(null);
+                  salvar(novos, j);
+                }}
+                disabled={conflito.justificativa.trim().length === 0}
+                style={{
+                  background: conflito.justificativa.trim().length > 0 ? "#D97706" : undefined,
+                  opacity: conflito.justificativa.trim().length === 0 ? 0.45 : 1
+                }}>
+                Confirmar com justificativa
+              </Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
+// ─── TELA: DASHBOARD ────────────────────────────────────────────
+const Dashboard = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoes }) => {
+  const { t, lang } = useI18n();
+  const [periodo, setPeriodo] = useState(mesAtual());
+
+  const doMes  = useMemo(() => registros.filter(r => r.data.startsWith(periodo)), [registros, periodo]);
+  const deHoje = registros.filter(r => r.data === hoje());
+
+  const porFornecedor = useMemo(() => {
+    const m: Record<string, number> = {};
+    doMes.filter(r => opcoes.fornecedores.includes(r.fornecedor))
+         .forEach(r => { m[r.fornecedor] = (m[r.fornecedor] || 0) + 1; });
+    return Object.entries(m).sort((a, b) => b[1] - a[1]);
+  }, [doMes, opcoes.fornecedores]);
+
+  const CHART_CORES = ["#1A56DB","#0E9F6E","#D97706","#6C63FF","#E02424","#0891B2"];
+
+  interface KPIProps { label: string; value: string | number; sub?: string; color?: string; icon?: ReactNode; }
+  const KPI = ({ label, value, sub, color = "#1A56DB", icon }: KPIProps) => (
+    <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:"18px 20px", position:"relative", overflow:"hidden" }}>
+      <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:color, borderRadius:"12px 12px 0 0" }} />
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
+        <div>
+          <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.8, marginBottom:8 }}>{label}</div>
+          <div style={{ fontSize:30, fontWeight:800, color, letterSpacing:-1, lineHeight:1 }}>{value}</div>
+          {sub && <div style={{ fontSize:12, color:"#64748B", marginTop:6 }}>{sub}</div>}
+        </div>
+        <div style={{ width:36, height:36, borderRadius:10, background:color + "15", display:"flex", alignItems:"center", justifyContent:"center", color }}>{icon}</div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
+        <div>
+          <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{t("dash_section")}</div>
+          <div style={{ fontSize:20, fontWeight:800, color:"#0F1C2E" }}>{t("dash_title")}</div>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <button onClick={() => { const d = new Date(periodo + "-01"); d.setMonth(d.getMonth() - 1); setPeriodo(d.toISOString().slice(0, 7)); }}
+            style={{ background:"#F1F5F9", border:"none", borderRadius:8, padding:"8px 12px", cursor:"pointer", fontWeight:700 }}>‹</button>
+          <span style={{ fontSize:14, fontWeight:800, minWidth:100, textAlign:"center", color:"#0F1C2E" }}>{fmtMes(periodo, lang)}</span>
+          <button onClick={() => { const d = new Date(periodo + "-01"); d.setMonth(d.getMonth() + 1); setPeriodo(d.toISOString().slice(0, 7)); }}
+            style={{ background:"#F1F5F9", border:"none", borderRadius:8, padding:"8px 12px", cursor:"pointer", fontWeight:700 }}>›</button>
+        </div>
+      </div>
+
+      <div className="rsp-grid-2" style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:12 }}>
+        <KPI label={t("dash_kpi_records")} value={doMes.length} sub={t("dash_kpi_today").replace("{n}", String(deHoje.length))} color="#1A56DB"
+          icon={<Icon d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />} />
+        <KPI label={t("dash_kpi_forn")} value={porFornecedor.length} sub={t("dash_kpi_period")} color="#D97706"
+          icon={<Icon d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />} />
+      </div>
+
+      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+          <div style={{ fontWeight:700, fontSize:13, marginBottom:16, color:"#0F1C2E" }}>{t("dash_chart_forn")}</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {porFornecedor.length === 0 && <div style={{ color:"#94A3B8", fontSize:12, textAlign:"center", padding:20 }}>{t("dash_no_data")}</div>}
+            {porFornecedor.map(([forn, n], i) => {
+              const pct = doMes.length ? (n / doMes.length * 100) : 0;
+              const cor = CHART_CORES[i % CHART_CORES.length];
+              return (
+                <div key={forn}>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:5 }}>
+                    <span style={{ fontWeight:600, color:"#334155" }}>{forn}</span>
+                    <span style={{ fontFamily:"monospace", fontWeight:700, color:cor }}>{n} ({pct.toFixed(0)}%)</span>
+                  </div>
+                  <div style={{ height:8, background:"#F1F5F9", borderRadius:99, overflow:"hidden" }}>
+                    <div style={{ height:"100%", width:`${pct}%`, background:cor, borderRadius:99, transition:"width .6s" }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+      <div style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:20 }}>
+        <div style={{ fontWeight:700, fontSize:13, marginBottom:14, color:"#0F1C2E" }}>{t("dash_chart_turno")}</div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          {opcoes.turnos.map((turno, i) => {
+            const doMes_t  = doMes.filter(r => r.turno === turno);
+            const n        = doMes_t.length;
+            const pct      = doMes.length ? (n / doMes.length * 100).toFixed(0) : 0;
+            const cor      = CHART_CORES[i % CHART_CORES.length];
+            const diasTurno = new Set(doMes_t.map(r => r.data)).size;
+            const mediaDia  = diasTurno > 0 ? (n / diasTurno).toFixed(1) : "—";
+            const allTurno  = registros.filter(r => r.turno === turno);
+            const mesesTurno = new Set(allTurno.map(r => r.data.slice(0, 7))).size;
+            const mediaMes  = mesesTurno > 0 ? (allTurno.length / mesesTurno).toFixed(1) : "—";
+            return (
+              <div key={turno} style={{ flex:1, minWidth:140, background: cor + "0F", border:`1.5px solid ${cor}33`, borderRadius:10, padding:"12px 16px" }}>
+                <div style={{ fontSize:11, color:cor, fontWeight:700, marginBottom:8 }}>{turno}</div>
+                <div style={{ fontSize:26, fontWeight:800, color:cor, lineHeight:1 }}>{n}</div>
+                <div style={{ fontSize:11, color:"#94A3B8", marginTop:2, marginBottom:10 }}>{pct}{t("dash_pct")}</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:4, borderTop:`1px solid ${cor}22`, paddingTop:8 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:11 }}>
+                    <span style={{ color:"#94A3B8" }}>{t("dash_media_dia")}</span>
+                    <span style={{ fontWeight:700, color:cor, fontFamily:"monospace" }}>{mediaDia}</span>
+                  </div>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:11 }}>
+                    <span style={{ color:"#94A3B8" }}>{t("dash_media_mes")}</span>
+                    <span style={{ fontWeight:700, color:cor, fontFamily:"monospace" }}>{mediaMes}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── TELA: FECHAMENTO ────────────────────────────────────────────
+const STATUS_LABEL_KEY: Record<FechamentoStatus, string> = {
+  rascunho: "fech_status_rascunho",
+  enviado:  "fech_status_enviado",
+  revisao:  "fech_status_revisao",
+  aprovado: "fech_status_aprovado",
+};
+
+const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoes }) => {
+  const { t, lang } = useI18n();
+
+  // ── Filtros ──
+  const [mes, setMes] = useState(mesAtual());
+  const [periodoIdx, setPeriodoIdx] = useState(0); // 0,1,2 = padrão; 3 = custom
+  const [customInicio, setCustomInicio] = useState("");
+  const [customFim, setCustomFim] = useState("");
+  const [fornecedor, setFornecedor] = useState("");
+
+  // ── Dados calculados ──
+  const [itens, setItens] = useState<FechamentoItem[]>([]);
+  const [resumoPessoas, setResumoPessoas] = useState<ResumoPessoa[]>([]);
+  const [total, setTotal] = useState(0);
+  const [calculado, setCalculado] = useState(false);
+
+  // ── Fechamento salvo ──
+  const [fechamento, setFechamento] = useState<Fechamento | null>(null);
+  const [historico, setHistorico] = useState<Fechamento[]>([]);
+  const [feedback, setFeedback] = useState("");
+
+  // ── Configs (carregar do DB) ──
+  const [turnosConfig, setTurnosConfig] = useState<TurnoConfig[]>([]);
+  const [diariasConfig, setDiariasConfig] = useState<DiariaConfig[]>([]);
+
+  // ── Edição inline ──
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+  const [editValor, setEditValor] = useState("");
+  const [editObs, setEditObs] = useState("");
+
+  // Carregar configs + histórico
+  useEffect(() => {
+    authReady.then(async () => {
+      const { data: tData } = await supabase.from("turnos_config").select("*").order("turno");
+      if (tData) setTurnosConfig(tData.map(dbToTurnoConfig));
+      const { data: dData } = await supabase.from("diarias_config").select("*").order("fornecedor");
+      if (dData) setDiariasConfig(dData.map(dbToDiariaConfig));
+      const { data: hData } = await supabase.from("fechamentos").select("*").order("created_at", { ascending: false }).limit(50);
+      if (hData) setHistorico(hData.map(dbToFechamento));
+    });
+  }, []);
+
+  // Períodos do mês selecionado
+  const periodos = useMemo(() => periodosPadrao(mes), [mes]);
+
+  // Intervalo de datas ativo
+  const intervalo = useMemo(() => {
+    if (periodoIdx === 3) return { inicio: customInicio, fim: customFim };
+    const p = periodos[periodoIdx];
+    return p ? { inicio: p.inicio, fim: p.fim } : { inicio: "", fim: "" };
+  }, [periodoIdx, periodos, customInicio, customFim]);
+
+  // ── Calcular fechamento ──
+  const calcular = useCallback(() => {
+    if (!fornecedor || !intervalo.inicio || !intervalo.fim) return;
+    const regs = registros.filter(r =>
+      r.fornecedor === fornecedor &&
+      r.data >= intervalo.inicio &&
+      r.data <= intervalo.fim
+    );
+    const items = gerarItensFechamento(
+      regs.map(r => ({
+        id: r.id, nome: r.nome, data: r.data,
+        turno: r.turno, totalHoras: r.totalHoras, fornecedor: r.fornecedor,
+      })),
+      diariasConfig, turnosConfig,
+    );
+    setItens(items);
+    setResumoPessoas(agruparPorPessoa(items));
+    setTotal(calcularTotal(items));
+    setCalculado(true);
+    setFechamento(null);
+    setEditIdx(null);
+    setFeedback("");
+  }, [fornecedor, intervalo, registros, diariasConfig, turnosConfig]);
+
+  // ── Aplicar edição inline ──
+  const aplicarEdicao = (idx: number) => {
+    const val = parseFloat(editValor);
+    if (isNaN(val)) return;
+    setItens(prev => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], valorCalculado: val, ajusteManual: true, obs: editObs };
+      const newTotal = calcularTotal(next);
+      setTotal(newTotal);
+      setResumoPessoas(agruparPorPessoa(next));
+      return next;
+    });
+    setEditIdx(null);
+  };
+
+  // ── Salvar ──
+  const salvar = async () => {
+    if (!fornecedor || itens.length === 0) return;
+    const fech: Fechamento = fechamento ?? {
+      fornecedor,
+      dataInicio: intervalo.inicio,
+      dataFim: intervalo.fim,
+      status: "rascunho",
+      valorTotal: total,
+    };
+    fech.valorTotal = total;
+    const dbFech = fechamentoToDb(fech);
+    const { data: savedFech, error } = fech.id
+      ? await supabase.from("fechamentos").update(dbFech).eq("id", fech.id).select().single()
+      : await supabase.from("fechamentos").insert(dbFech).select().single();
+    if (error || !savedFech) {
+      setFeedback(t("fech_erro_salvar"));
+      return;
+    }
+    const fechId = savedFech.id as string;
+    // Deletar itens antigos e inserir novos
+    await supabase.from("fechamento_itens").delete().eq("fechamento_id", fechId);
+    const dbItens = itens.map(i => fechamentoItemToDb(i, fechId));
+    await supabase.from("fechamento_itens").insert(dbItens);
+    const savedObj = dbToFechamento(savedFech);
+    setFechamento(savedObj);
+    logAudit(fech.id ? "UPDATE" : "INSERT", "fechamentos", fechId, { fornecedor, total });
+    // Atualizar histórico
+    setHistorico(prev => {
+      const filtered = prev.filter(h => h.id !== fechId);
+      return [savedObj, ...filtered];
+    });
+    setFeedback(t("fech_salvo_sucesso"));
+    setTimeout(() => setFeedback(""), 3000);
+  };
+
+  // ── Avançar status ──
+  const avancarStatus = async () => {
+    if (!fechamento?.id) return;
+    const next = NEXT_STATUS[fechamento.status];
+    if (!next) return;
+    const { error } = await supabase.from("fechamentos").update({ status: next }).eq("id", fechamento.id);
+    if (!error) {
+      const updated = { ...fechamento, status: next };
+      setFechamento(updated);
+      logAudit("UPDATE", "fechamentos", fechamento.id, { status: next });
+      setHistorico(prev => prev.map(h => h.id === fechamento.id ? updated : h));
+    }
+  };
+
+  const voltarRevisao = async () => {
+    if (!fechamento?.id || fechamento.status !== "enviado") return;
+    const { error } = await supabase.from("fechamentos").update({ status: "revisao" }).eq("id", fechamento.id);
+    if (!error) {
+      const updated = { ...fechamento, status: "revisao" as FechamentoStatus };
+      setFechamento(updated);
+      logAudit("UPDATE", "fechamentos", fechamento.id, { status: "revisao" });
+      setHistorico(prev => prev.map(h => h.id === fechamento.id ? updated : h));
+    }
+  };
+
+  // ── Abrir fechamento salvo ──
+  const abrirFechamento = async (f: Fechamento) => {
+    if (!f.id) return;
+    setFornecedor(f.fornecedor);
+    // Ajustar mes e período
+    setMes(f.dataInicio.slice(0, 7));
+    setPeriodoIdx(3);
+    setCustomInicio(f.dataInicio);
+    setCustomFim(f.dataFim);
+    // Carregar itens
+    const { data } = await supabase.from("fechamento_itens").select("*").eq("fechamento_id", f.id).order("nome").order("data");
+    if (data) {
+      const items = data.map(dbToFechamentoItem);
+      setItens(items);
+      setResumoPessoas(agruparPorPessoa(items));
+      setTotal(calcularTotal(items));
+    }
+    setFechamento(f);
+    setCalculado(true);
+    setEditIdx(null);
+    setFeedback("");
+  };
+
+  // ── Excluir fechamento ──
+  const excluirFechamento = async (f: Fechamento) => {
+    if (!f.id || !confirm(t("fech_confirmar_excluir"))) return;
+    await supabase.from("fechamento_itens").delete().eq("fechamento_id", f.id);
+    await supabase.from("fechamentos").delete().eq("id", f.id);
+    logAudit("DELETE", "fechamentos", f.id);
+    setHistorico(prev => prev.filter(h => h.id !== f.id));
+    if (fechamento?.id === f.id) {
+      setFechamento(null);
+      setItens([]);
+      setCalculado(false);
+    }
+  };
+
+  // ── Exportar PDF ──
+  const exportarPdf = async () => {
+    const { default: jsPDF } = await import("jspdf");
+    const { default: autoTable } = await import("jspdf-autotable");
+    const doc = new jsPDF({ orientation: "landscape" });
+    const title = `Fechamento — ${fornecedor} (${fmt(intervalo.inicio, lang)} a ${fmt(intervalo.fim, lang)})`;
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.text(title, 14, 16);
+    autoTable(doc, {
+      startY: 22,
+      head: [[
+        t("fech_col_nome"),
+        t("fech_col_data"),
+        t("fech_col_turno"),
+        t("fech_col_horas"),
+        t("fech_col_diaria"),
+        t("fech_col_vlr_hora"),
+        t("fech_col_vlr_dia"),
+        t("fech_col_diff"),
+        t("fech_col_obs"),
+      ]],
+      body: itens.map(i => [
+        i.nome,
+        fmt(i.data, lang),
+        i.turno,
+        i.horas,
+        fmtCurrency(i.valorDiaria),
+        fmtCurrency(i.valorHora),
+        fmtCurrency(i.valorCalculado),
+        (() => { const d = i.valorCalculado - i.valorDiaria; return d !== 0 ? fmtCurrency(d) : "—"; })(),
+        i.obs ?? "",
+      ]),
+      foot: [["", "", "", "", "", t("fech_total"), fmtCurrency(total), "", ""]],
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [26, 86, 219], textColor: 255, fontStyle: "bold" },
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 28, 46], fontStyle: "bold" },
+      columnStyles: { 6: { textColor: [14, 159, 110] } },
+    });
+    doc.save(`fechamento_${fornecedor}_${intervalo.inicio}_${intervalo.fim}.pdf`);
+  };
+
+  // ── Exportar XLSX ──
+  const exportarXlsx = async () => {
+    const XLSX = await import("xlsx");
+    const rows = itens.map(i => ({
+      [t("fech_col_nome")]: i.nome,
+      [t("fech_col_data")]: fmt(i.data, lang),
+      [t("fech_col_turno")]: i.turno,
+      [t("fech_col_horas")]: i.horas,
+      [t("fech_col_diaria")]: i.valorDiaria,
+      [t("fech_col_vlr_hora")]: i.valorHora,
+      [t("fech_col_vlr_dia")]: i.valorCalculado,
+      [t("fech_col_diff")]: i.valorCalculado - i.valorDiaria,
+      [t("fech_col_obs")]: i.obs,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Fechamento");
+    XLSX.writeFile(wb, `fechamento_${fornecedor}_${intervalo.inicio}_${intervalo.fim}.xlsx`);
+  };
+
+  const fmtCurrency = (v: number) => v.toLocaleString(lang, { style: "currency", currency: "BRL" });
+
+  const periodoBtns = [
+    { label: t("fech_periodo_1"), idx: 0 },
+    { label: t("fech_periodo_2"), idx: 1 },
+    { label: t("fech_periodo_3"), idx: 2 },
+    { label: t("fech_periodo_custom"), idx: 3 },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Header */}
+      <div>
+        <div style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>{t("fech_section")}</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: "#0F1C2E" }}>{t("fech_title")}</div>
+        <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>{t("fech_desc")}</div>
+      </div>
+
+      {/* ── Barra de Filtros ── */}
+      <div style={{ background: "#fff", border: "1px solid #E2E6EC", borderRadius: 12, padding: 16, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
+        {/* Mês */}
+        <div>
+          <label style={{ fontSize: 11, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 4 }}>{t("fech_mes")}</label>
+          <input type="month" value={mes} onChange={e => { setMes(e.target.value); setCalculado(false); }}
+            style={{ border: "1.5px solid #E2E6EC", borderRadius: 7, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", background: "#FAFBFC", outline: "none" }} />
+        </div>
+        {/* Período */}
+        <div>
+          <label style={{ fontSize: 11, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 4 }}>{t("fech_periodo")}</label>
+          <div style={{ display: "flex", gap: 4 }}>
+            {periodoBtns.map(pb => (
+              <button key={pb.idx} onClick={() => { setPeriodoIdx(pb.idx); setCalculado(false); }}
+                style={{
+                  padding: "6px 12px", borderRadius: 7, border: "1.5px solid", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+                  background: periodoIdx === pb.idx ? "#1A56DB" : "#fff",
+                  color: periodoIdx === pb.idx ? "#fff" : "#64748B",
+                  borderColor: periodoIdx === pb.idx ? "#1A56DB" : "#E2E6EC",
+                }}>
+                {pb.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* Range custom */}
+        {periodoIdx === 3 && (
+          <>
+            <div>
+              <label style={{ fontSize: 11, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 4 }}>{t("fech_data_inicio")}</label>
+              <input type="date" value={customInicio} onChange={e => { setCustomInicio(e.target.value); setCalculado(false); }}
+                style={{ border: "1.5px solid #E2E6EC", borderRadius: 7, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", background: "#FAFBFC", outline: "none" }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 4 }}>{t("fech_data_fim")}</label>
+              <input type="date" value={customFim} onChange={e => { setCustomFim(e.target.value); setCalculado(false); }}
+                style={{ border: "1.5px solid #E2E6EC", borderRadius: 7, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", background: "#FAFBFC", outline: "none" }} />
+            </div>
+          </>
+        )}
+        {/* Fornecedor */}
+        <div>
+          <label style={{ fontSize: 11, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 4 }}>{t("fech_fornecedor")}</label>
+          <select value={fornecedor} onChange={e => { setFornecedor(e.target.value); setCalculado(false); }}
+            style={{ border: "1.5px solid #E2E6EC", borderRadius: 7, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", background: "#FAFBFC", outline: "none", minWidth: 180 }}>
+            <option value="">{t("fech_selecione_forn")}</option>
+            {opcoes.fornecedores.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </div>
+        {/* Botão calcular */}
+        <button onClick={calcular} disabled={!fornecedor || !intervalo.inicio || !intervalo.fim}
+          style={{
+            background: "#1A56DB", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer",
+            color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit", opacity: !fornecedor ? 0.5 : 1,
+          }}>
+          {calculado ? t("fech_recalcular") : t("fech_calcular")}
+        </button>
+      </div>
+
+      {/* ── Resumo ── */}
+      {calculado && (
+        <div style={{ background: "#fff", border: "1px solid #E2E6EC", borderRadius: 12, padding: 16 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 16 }}>
+            <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 20px", flex: 1, minWidth: 120, textAlign: "center" }}>
+              <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: .6, marginBottom: 4 }}>{t("fech_presencas")}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#1A56DB" }}>{itens.length}</div>
+            </div>
+            <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 20px", flex: 1, minWidth: 120, textAlign: "center" }}>
+              <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: .6, marginBottom: 4 }}>{t("fech_total")}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#0E9F6E" }}>{fmtCurrency(total)}</div>
+            </div>
+            {fechamento && (
+              <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 20px", flex: 1, minWidth: 120, textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: .6, marginBottom: 4 }}>{t("fech_status")}</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: STATUS_COLORS[fechamento.status] }}>
+                  {t(STATUS_LABEL_KEY[fechamento.status] as any)}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {itens.length === 0 ? (
+            <div style={{ padding: 32, textAlign: "center", color: "#94A3B8", fontSize: 13 }}>{t("fech_sem_registros")}</div>
+          ) : (
+            <>
+              {/* ── Tabela detalhada ── */}
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: "#F1F5F9", textAlign: "left" }}>
+                      {[t("fech_col_nome"), t("fech_col_data"), t("fech_col_turno"), t("fech_col_horas"), t("fech_col_diaria"), t("fech_col_vlr_hora"), t("fech_col_vlr_dia"), t("fech_col_diff"), t("fech_col_obs"), t("fech_col_acoes")].map(h => (
+                        <th key={h} style={{ padding: "8px 10px", fontWeight: 700, color: "#475569", borderBottom: "2px solid #E2E6EC", whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {itens.map((item, idx) => (
+                      <tr key={idx} style={{ borderBottom: "1px solid #F1F5F9", background: item.ajusteManual ? "#FFFBEB" : "transparent" }}>
+                        <td style={{ padding: "7px 10px", fontWeight: 600, color: "#0F1C2E", whiteSpace: "nowrap" }}>{item.nome}</td>
+                        <td style={{ padding: "7px 10px", color: "#64748B", fontFamily: "monospace" }}>{fmt(item.data, lang)}</td>
+                        <td style={{ padding: "7px 10px", color: "#64748B" }}>{item.turno}</td>
+                        <td style={{ padding: "7px 10px", color: "#64748B", fontFamily: "monospace" }}>{item.horas}</td>
+                        <td style={{ padding: "7px 10px", color: "#64748B" }}>{fmtCurrency(item.valorDiaria)}</td>
+                        <td style={{ padding: "7px 10px", color: "#64748B" }}>{fmtCurrency(item.valorHora)}</td>
+                        {editIdx === idx ? (
+                          <>
+                            <td style={{ padding: "4px 6px" }}>
+                              <input type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)}
+                                style={{ width: 80, border: "1.5px solid #1A56DB", borderRadius: 5, padding: "4px 6px", fontSize: 12, fontFamily: "inherit", outline: "none" }} />
+                            </td>
+                            <td></td>
+                            <td style={{ padding: "4px 6px" }}>
+                              <input value={editObs} onChange={e => setEditObs(e.target.value)} placeholder={t("fech_col_obs")}
+                                style={{ width: 100, border: "1.5px solid #E2E6EC", borderRadius: 5, padding: "4px 6px", fontSize: 12, fontFamily: "inherit", outline: "none" }} />
+                            </td>
+                            <td style={{ padding: "4px 6px", whiteSpace: "nowrap" }}>
+                              <button onClick={() => aplicarEdicao(idx)} style={{ background: "#0E9F6E", border: "none", borderRadius: 5, padding: "4px 10px", color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit", marginRight: 4 }}>✓</button>
+                              <button onClick={() => setEditIdx(null)} style={{ background: "#F1F5F9", border: "none", borderRadius: 5, padding: "4px 10px", color: "#64748B", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>✕</button>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td style={{ padding: "7px 10px", fontWeight: 700, color: item.ajusteManual ? "#D97706" : "#0E9F6E" }}>{fmtCurrency(item.valorCalculado)}</td>
+                            {(() => { const diff = item.valorCalculado - item.valorDiaria; return (
+                              <td style={{ padding: "7px 10px", fontWeight: 700, color: diff < 0 ? "#E02424" : diff > 0 ? "#0E9F6E" : "#94A3B8" }}>
+                                {diff !== 0 ? fmtCurrency(diff) : "—"}
+                              </td>
+                            ); })()}
+                            <td style={{ padding: "7px 10px", color: "#94A3B8", fontSize: 11, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.obs}</td>
+                            <td style={{ padding: "7px 10px" }}>
+                              <button onClick={() => { setEditIdx(idx); setEditValor(String(item.valorCalculado)); setEditObs(item.obs); }}
+                                title={t("fech_ajuste")}
+                                style={{ background: "transparent", border: "1px solid #E2E6EC", borderRadius: 5, padding: "3px 8px", cursor: "pointer", color: "#64748B", fontSize: 11, fontFamily: "inherit" }}>
+                                ✎
+                              </button>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ background: "#F1F5F9" }}>
+                      <td colSpan={6} style={{ padding: "8px 10px", fontWeight: 800, color: "#0F1C2E", textAlign: "right" }}>{t("fech_total")}</td>
+                      <td style={{ padding: "8px 10px", fontWeight: 800, color: "#0E9F6E" }}>{fmtCurrency(total)}</td>
+                      <td colSpan={3}></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* ── Barra de ações ── */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16, alignItems: "center" }}>
+                <button onClick={salvar}
+                  style={{ background: "#1A56DB", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
+                  {t("fech_salvar")}
+                </button>
+                {fechamento && NEXT_STATUS[fechamento.status] && (
+                  <button onClick={avancarStatus}
+                    style={{ background: STATUS_COLORS[NEXT_STATUS[fechamento.status]!], border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
+                    {t("fech_avancar_status")}
+                  </button>
+                )}
+                {fechamento?.status === "enviado" && (
+                  <button onClick={voltarRevisao}
+                    style={{ background: "#E02424", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
+                    {t("fech_voltar_revisao")}
+                  </button>
+                )}
+                <button onClick={exportarXlsx}
+                  style={{ background: "#0E9F6E", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
+                  {t("fech_exportar_xlsx")}
+                </button>
+                <button onClick={exportarPdf}
+                  style={{ background: "#E02424", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
+                  {t("fech_exportar_pdf")}
+                </button>
+                {feedback && (
+                  <div style={{ fontSize: 12, fontWeight: 600, color: feedback === t("fech_salvo_sucesso") ? "#0E9F6E" : "#E02424", background: feedback === t("fech_salvo_sucesso") ? "#E6F9F4" : "#FEF2F2", borderRadius: 7, padding: "6px 14px" }}>
+                    {feedback}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Histórico de fechamentos ── */}
+      <div style={{ background: "#fff", border: "1px solid #E2E6EC", borderRadius: 12, padding: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#0F1C2E", marginBottom: 12 }}>{t("fech_historico")}</div>
+        {historico.length === 0 ? (
+          <div style={{ textAlign: "center", color: "#94A3B8", fontSize: 12, padding: 24 }}>{t("fech_nenhum_salvo")}</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {historico.map(h => (
+              <div key={h.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F8FAFC", borderRadius: 8, padding: "8px 14px", fontSize: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+                  <span style={{ fontWeight: 700, color: "#0F1C2E" }}>{h.fornecedor}</span>
+                  <span style={{ color: "#64748B", fontFamily: "monospace" }}>{fmt(h.dataInicio, lang)} → {fmt(h.dataFim, lang)}</span>
+                  <span style={{ fontWeight: 700, color: STATUS_COLORS[h.status], fontSize: 11, background: `${STATUS_COLORS[h.status]}18`, borderRadius: 99, padding: "2px 8px" }}>
+                    {t(STATUS_LABEL_KEY[h.status] as any)}
+                  </span>
+                  <span style={{ fontWeight: 700, color: "#0E9F6E" }}>{fmtCurrency(h.valorTotal)}</span>
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => abrirFechamento(h)}
+                    style={{ background: "#1A56DB18", border: "none", borderRadius: 6, padding: "4px 12px", cursor: "pointer", color: "#1A56DB", fontWeight: 700, fontSize: 11, fontFamily: "inherit" }}>
+                    {t("fech_abrir")}
+                  </button>
+                  <button onClick={() => excluirFechamento(h)}
+                    style={{ background: "#FEF2F2", border: "none", borderRadius: 6, padding: "4px 12px", cursor: "pointer", color: "#E02424", fontWeight: 700, fontSize: 11, fontFamily: "inherit" }}>
+                    {t("fech_excluir")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // ═══════════════════════════════════════════════════════════════
 // INDEX
 // ═══════════════════════════════════════════════════════════════
+type TabId = "dashboard" | "lancamentos" | "projecao" | "fechamento" | "configuracoes";
+interface NavItem { id: TabId; label: string; icon: string; }
+
 const Index = () => {
   const navigate = useNavigate();
   const { t, lang } = useI18n();
-  const { session, user, isAuthenticated } = useAuthStatus();
-  const [tab, setTab]                                         = useState<TabId>("lancamentos");
-  const [registros, setRegistros, loadingRegs, isSyncing, syncError, pendingCount, isOnline, retryPending] = useStorage();
-  const [opcoes, setOpcoes, loadingOpts]                      = useOpcoes();
-  const [saved, setSaved]                                     = useState(false);
-  const loading                                               = loadingRegs || loadingOpts;
-  const [privacyAccepted, acceptPrivacy]                      = usePrivacyAccepted();
-  const [dpoCfg, setDpoCfg]                                   = useState<{ nome: string; email: string }>({ nome: "", email: "" });
-  const [isAdmin, setIsAdmin]                                 = useState(false);
-  const [isModerator, setIsModerator]                         = useState(false);
-  const [turnosConfig, setTurnosConfig]                       = useState<TurnoConfig[]>([]);
-  const [diariasConfig, setDiariasConfig]                     = useState<DiariaConfig[]>([]);
-  const [waTemplate, setWaTemplate]                           = useState<WhatsAppTemplate>(WA_DEFAULT_TEMPLATE);
+  const [tab, setTab]                             = useState<TabId>("lancamentos");
+  const [registros, setRegistros, loadingRegs]    = useStorage();
+  const [opcoes, setOpcoes, loadingOpts]           = useOpcoes();
+  const [saved, setSaved]                         = useState(false);
+  const loading                                   = loadingRegs || loadingOpts;
+  const [privacyAccepted, acceptPrivacy]          = usePrivacyAccepted();
+  const [dpoCfg, setDpoCfg]                       = useState<{ nome: string; email: string }>({ nome: "", email: "" });
+  const [isAdmin, setIsAdmin]                     = useState(false);
+  const isAdminOrMod                              = isAdmin;
+  const [waTemplate, setWaTemplate]               = useState<WhatsAppTemplate>(WA_DEFAULT_TEMPLATE);
+  const [turnosConfig, setTurnosConfig]           = useState<TurnoConfig[]>([]);
 
-  // Carrega configs de turnos e diárias
   useEffect(() => {
-    const loadConfigs = async () => {
-      const [tcResult, dcResult] = await Promise.all([
-        supabase.from("turnos_config").select("*").order("turno"),
-        supabase.from("diarias_config").select("*"),
-      ]);
-      if (tcResult.error) console.error("Erro ao carregar turnos_config:", tcResult.error.message);
-      if (tcResult.data) setTurnosConfig(tcResult.data.map(dbToTurnoConfig));
-      if (dcResult.error) console.error("Erro ao carregar diarias_config:", dcResult.error.message);
-      if (dcResult.data) setDiariasConfig(dcResult.data.map(dbToDiariaConfig));
-    };
-
-    loadConfigs();
+    authReady.then(async () => {
+      const { data: tcData } = await supabase.from("turnos_config").select("*").order("turno");
+      if (tcData) setTurnosConfig(tcData.map(dbToTurnoConfig));
+    });
   }, []);
 
-  // Carrega DPO config, WhatsApp template e verifica admin/moderator
   useEffect(() => {
-    if (!session) return;
+    authReady.then(() => {
+      supabase.from("opcoes").select("chave,valor")
+        .in("chave", ["dpo_nome", "dpo_email"])
+        .then(({ data }) => {
+          if (!data) return;
+          const m: Record<string, string> = {};
+          data.forEach((r: { chave: string; valor: string }) => { m[r.chave] = r.valor; });
+          setDpoCfg({ nome: m["dpo_nome"] ?? "", email: m["dpo_email"] ?? "" });
+        });
+      supabase.from("profiles").select("is_admin").maybeSingle()
+        .then(({ data }) => { if (data?.is_admin) setIsAdmin(true); });
+    });
+  }, []);
 
-    const loadUserConfig = async () => {
-      // DPO config
-      const { data: dpoData } = await supabase.from("opcoes").select("chave,valor")
-        .in("chave", ["dpo_nome", "dpo_email"]);
-      if (dpoData) {
-        const m: Record<string, string> = {};
-        dpoData.forEach((r: { chave: string; valor: string }) => { m[r.chave] = r.valor; });
-        setDpoCfg({ nome: m["dpo_nome"] ?? "", email: m["dpo_email"] ?? "" });
-      }
-
-      // WhatsApp template
-      const { data: waData } = await supabase.from("opcoes").select("valor").eq("chave", "whatsapp_template").maybeSingle();
-      if (waData?.valor) {
-        try {
-          const parsed = JSON.parse(waData.valor) as { header?: string; campos?: WhatsAppField[] };
-          if (parsed.header && Array.isArray(parsed.campos) && parsed.campos.length > 0) {
-            setWaTemplate({ header: parsed.header, campos: parsed.campos });
-          }
-        } catch { /* ignore bad JSON */ }
-      }
-
-      // Admin check — usa RPC is_admin() (SECURITY DEFINER)
-      const { data: isAdminResult, error: adminErr } = await supabase.rpc('is_admin');
-      if (adminErr) console.error("Erro ao verificar admin:", adminErr.message);
-      else if (isAdminResult) setIsAdmin(true);
-
-      // Moderator check — via user_roles
-      const { data: roleData, error: roleErr } = await supabase
-        .from("user_roles").select("role").eq("user_id", session.user.id).maybeSingle();
-      if (roleErr) console.error("Erro ao verificar role:", roleErr.message);
-      else if (roleData?.role === "moderator") setIsModerator(true);
-    };
-
-    loadUserConfig();
-  }, [session]);
-
-  const isAdminOrMod = isAdmin || isModerator;
-
-  // ── Tour guiado ────────────────────────────────────────────────────────
-  const { active: tourActive, step: tourStep, start: tourStart, finish: tourFinish, next: tourNext, prev: tourPrev } = useTour("tour_done");
-
-  const tourSteps = useMemo<TourStep[]>(() =>
-    ALL_STEPS.filter(s => !s.adminOnly || isAdminOrMod),
-    [isAdminOrMod]
-  );
-
-  const handleTourNext = useCallback(() => {
-    const nextIndex = tourStep + 1;
-    const nextStep = tourSteps[nextIndex];
-    if (nextStep?.tabBefore) {
-      setTab(nextStep.tabBefore);
-      setTimeout(() => tourNext(tourSteps.length), 150);
-    } else {
-      tourNext(tourSteps.length);
-    }
-  }, [tourStep, tourSteps, tourNext]);
-
-  const handleTourStart = useCallback(() => {
-    const idx = tourSteps.findIndex(s => s.tabBefore === tab);
-    tourStart(idx >= 0 ? idx : 0);
-  }, [tab, tourSteps, tourStart]);
-
-  // Guard: se tab restrita e user sem permissão, volta para lancamentos
-  useEffect(() => {
-    if (!isAdminOrMod && (tab === "projecao" || tab === "fechamento")) setTab("lancamentos");
-  }, [isAdminOrMod, tab]);
-
-  const wrap = (fn: (val: Parameters<typeof setRegistros>[0]) => void) => (val: Parameters<typeof setRegistros>[0]) => {
+  const wrap = (fn: (val: Registro[]) => void) => (val: Registro[]) => {
     fn(val); setSaved(true); setTimeout(() => setSaved(false), 2000);
   };
 
@@ -162,8 +1878,8 @@ const Index = () => {
   const NAV: NavItem[] = [
     { id: "dashboard",      label: t("nav_tab_dashboard"), icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" },
     { id: "lancamentos",    label: t("nav_tab_lanc"),      icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" },
-    ...(isAdminOrMod ? [{ id: "projecao" as TabId,   label: t("nav_tab_proj"), icon: "M2 20h20M5 20V10l3-7 3 7v10M15 20V6l3-4 3 4v14" }] : []),
-    ...(isAdminOrMod ? [{ id: "fechamento" as TabId, label: t("nav_tab_fech"), icon: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" }] : []),
+    { id: "projecao",       label: t("nav_tab_proj"),      icon: "M2 20h20M5 20V10l3-7 3 7v10M15 20V6l3-4 3 4v14" },
+    { id: "fechamento",     label: t("nav_tab_fech"),      icon: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" },
     { id: "configuracoes",  label: t("nav_tab_cfg"),       icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.94 11a8 8 0 0 0-15.88 0H2v2h2.06a8 8 0 0 0 15.88 0H22v-2h-2.06z" },
   ];
 
@@ -172,27 +1888,29 @@ const Index = () => {
       {!privacyAccepted && (
         <PrivacyNotice dpoNome={dpoCfg.nome} dpoEmail={dpoCfg.email} onAccept={acceptPrivacy} />
       )}
-    <div style={{ minHeight:"100vh", background:"#FAF9FB", fontFamily:"'DM Sans',system-ui,sans-serif", display:"flex", flexDirection:"column" }}>
+    <div style={{ minHeight:"100vh", background:"#F0F2F5", fontFamily:"'DM Sans',system-ui,sans-serif", display:"flex", flexDirection:"column" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
       `}</style>
 
-      <header className="rsp-header" style={{ background:"#212B36", borderBottom:"1px solid #2E3B4A", height:58, display:"flex", alignItems:"center", padding:"0 24px", gap:0, position:"sticky", top:0, zIndex:200 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10, paddingRight:28, borderRight:"1px solid #2E3B4A", marginRight:20 }}>
-          <img src="/logo.png" alt="Controle de Terceiros" style={{ width:34, height:34, borderRadius:9, objectFit:"cover" }} />
+      <header className="rsp-header" style={{ background:"#0B1628", borderBottom:"1px solid #1E293B", height:58, display:"flex", alignItems:"center", padding:"0 24px", gap:0, position:"sticky", top:0, zIndex:200 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, paddingRight:28, borderRight:"1px solid #1E293B", marginRight:20 }}>
+          <div style={{ width:34, height:34, background:"linear-gradient(135deg,#1A56DB,#3B82F6)", borderRadius:9, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <Icon d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8zM5.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM18.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" size={18} />
+          </div>
           <div>
             <div style={{ color:"#F8FAFC", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Controle de</div>
-            <div style={{ color:"#F37E38", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Terceiros</div>
+            <div style={{ color:"#3B82F6", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Terceiros</div>
           </div>
         </div>
 
-        <nav id="tour-nav" style={{ display:"flex", gap:2, flex:1 }}>
+        <nav style={{ display:"flex", gap:2, flex:1 }}>
           {NAV.map(n => (
-            <button id={`tour-nav-${n.id}`} key={n.id} onClick={() => setTab(n.id)} style={{
+            <button key={n.id} onClick={() => setTab(n.id)} style={{
               display:"flex", alignItems:"center", gap:7, padding:"7px 15px", borderRadius:8, border:"none", cursor:"pointer",
               fontFamily:"inherit", fontWeight:600, fontSize:13,
-              background: tab === n.id ? "#F37E38" : "transparent",
-              color: tab === n.id ? "#fff" : "#9898B0",
+              background: tab === n.id ? "#1A56DB" : "transparent",
+              color: tab === n.id ? "#fff" : "#64748B",
             }}>
               <Icon d={n.icon} size={15} /><span className="rsp-nav-label">{n.label}</span>
             </button>
@@ -201,11 +1919,11 @@ const Index = () => {
 
         <div className="rsp-header-right" style={{ display:"flex", alignItems:"center", gap:16 }}>
           <div className="rsp-header-stats" style={{ display:"flex", gap:12, fontSize:11 }}>
-            <div style={{ color:"#9898B0" }}>{t("nav_hoje")} <strong style={{ color:"#F8FAFC" }}>{hoje_}</strong></div>
-            <div style={{ color:"#9898B0" }}>{t("nav_mes")} <strong style={{ color:"#F8FAFC" }}>{mes_}</strong></div>
+            <div style={{ color:"#64748B" }}>{t("nav_hoje")} <strong style={{ color:"#F8FAFC" }}>{hoje_}</strong></div>
+            <div style={{ color:"#64748B" }}>{t("nav_mes")} <strong style={{ color:"#F8FAFC" }}>{mes_}</strong></div>
           </div>
           {loading && (
-            <div style={{ display:"flex", alignItems:"center", gap:6, background:"#F37E3818", border:"1px solid #F37E3833", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#F37E38", fontWeight:600 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6, background:"#1A56DB18", border:"1px solid #1A56DB33", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#1A56DB", fontWeight:600 }}>
               <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
               {t("nav_loading")}
             </div>
@@ -215,35 +1933,7 @@ const Index = () => {
               <Icon d="M5 13l4 4L19 7" size={12} /> {t("nav_saved")}
             </div>
           )}
-          {!isOnline && (
-            <div style={{ display:"flex", alignItems:"center", gap:6, background:"#EF444422", border:"1px solid #EF444444", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#EF4444", fontWeight:600 }}>
-              <Icon d="M12 18v-6m0 0a3 3 0 11-6 0 3 3 0 016 0zm0 0c0-1.1.9-2 2-2h2a2 2 0 012 2m-6 6h6" size={12} />
-              {t("nav_offline")}
-            </div>
-          )}
-          {pendingCount > 0 && isOnline && (
-            <button
-              onClick={retryPending}
-              title={`${pendingCount} operação(ões) pendente(s) de sincronização`}
-              style={{ display:"flex", alignItems:"center", gap:6, background:"#F59E0B22", border:"1px solid #F59E0B44", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#F59E0B", fontWeight:600, cursor:"pointer" }}
-            >
-              <Icon d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" size={12} />
-              {t("nav_pending").replace("{n}", pendingCount.toString())}
-            </button>
-          )}
-          {isSyncing && (
-            <div style={{ display:"flex", alignItems:"center", gap:6, background:"#3B82F622", border:"1px solid #3B82F644", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#3B82F6", fontWeight:600 }}>
-              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} style={{ animation:"spin 1s linear infinite" }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-              {t("nav_syncing")}
-            </div>
-          )}
-          {syncError && (
-            <div style={{ display:"flex", alignItems:"center", gap:6, background:"#EF444422", border:"1px solid #EF444444", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#EF4444", fontWeight:600 }} title={syncError}>
-              <Icon d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" size={12} />
-              {t("nav_sync_error")}
-            </div>
-          )}
-          <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"#9898B0", fontFamily:"'DM Mono',monospace" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"#475569", fontFamily:"'DM Mono',monospace" }}>
             <div style={{ width:7, height:7, borderRadius:"50%", background:"#0E9F6E", boxShadow:"0 0 0 3px #0E9F6E30" }} />
             {new Date().toLocaleTimeString(lang, { hour:"2-digit", minute:"2-digit" })}
           </div>
@@ -251,7 +1941,7 @@ const Index = () => {
             <button
               onClick={() => navigate("/admin")}
               title="Painel de administração"
-              style={{ display:"flex", alignItems:"center", gap:5, background:"#F37E3818", border:"1px solid #F37E3844", borderRadius:8, padding:"4px 10px", cursor:"pointer", color:"#F37E38", fontSize:11, fontFamily:"inherit", fontWeight:600 }}
+              style={{ display:"flex", alignItems:"center", gap:5, background:"#1A56DB18", border:"1px solid #1A56DB44", borderRadius:8, padding:"4px 10px", cursor:"pointer", color:"#1A56DB", fontSize:11, fontFamily:"inherit", fontWeight:600 }}
             >
               <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               {t("nav_admin")}
@@ -260,56 +1950,31 @@ const Index = () => {
           <button
             onClick={() => supabase.auth.signOut()}
             title="Sair do sistema"
-            style={{ display:"flex", alignItems:"center", gap:5, background:"transparent", border:"1px solid #2E3B4A", borderRadius:8, padding:"4px 10px", cursor:"pointer", color:"#9898B0", fontSize:11, fontFamily:"inherit", fontWeight:600 }}
+            style={{ display:"flex", alignItems:"center", gap:5, background:"transparent", border:"1px solid #1E293B", borderRadius:8, padding:"4px 10px", cursor:"pointer", color:"#64748B", fontSize:11, fontFamily:"inherit", fontWeight:600 }}
           >
             <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
             {t("nav_logout")}
-          </button>
-        </div>
+          </button>        </div>
       </header>
 
       <main className="rsp-main" style={{ flex:1, padding:"24px", maxWidth:1440, width:"100%", margin:"0 auto" }}>
         {loading ? (
           <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"60vh", gap:16 }}>
-            <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="#F37E38" strokeWidth={2} style={{ animation:"spin 1s linear infinite" }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-            <div style={{ fontSize:14, color:"#9898B0", fontWeight:600 }}>{t("nav_loading_data")}</div>
+            <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="#1A56DB" strokeWidth={2} style={{ animation:"spin 1s linear infinite" }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            <div style={{ fontSize:14, color:"#64748B", fontWeight:600 }}>{t("nav_loading_data")}</div>
             <style>{"@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}"}</style>
           </div>
         ) : (
           <>
-            {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} diariasConfig={diariasConfig} isAdminOrMod={isAdminOrMod} />}
-            {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} turnosConfig={turnosConfig} isAdmin={isAdmin} waTemplate={waTemplate} />}
-            {tab === "projecao"      && isAdminOrMod && <ProjecaoPage  registros={registros} opcoes={opcoes} />}
-            {tab === "fechamento"    && isAdminOrMod && <FechamentoTab registros={registros} opcoes={opcoes} />}
+            {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} />}
+            {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} turnosConfig={turnosConfig} isAdmin={isAdmin} />}
+            {tab === "projecao"      && <ProjecaoPage  registros={registros} opcoes={opcoes} />}
+            {tab === "fechamento"    && <FechamentoTab registros={registros} opcoes={opcoes} />}
             {tab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} registros={registros} setRegistros={setRegistros} isAdmin={isAdmin} isAdminOrMod={isAdminOrMod} setWaTemplate={setWaTemplate} />}
           </>
         )}
       </main>
     </div>
-
-    {/* Botão FAB para abrir o tour */}
-    <button
-      onClick={handleTourStart}
-      title="Ver tutorial do sistema"
-      style={{
-        position:"fixed", bottom:24, right:24, zIndex:1000,
-        width:44, height:44, borderRadius:"50%",
-        background:"#212B36", border:"1px solid #334155",
-        color:"#9898B0", fontSize:20, fontWeight:700,
-        cursor:"pointer", boxShadow:"0 4px 16px rgba(0,0,0,0.35)",
-        display:"flex", alignItems:"center", justifyContent:"center",
-        fontFamily:"inherit",
-      }}
-    >?</button>
-
-    <GuidedTour
-      steps={tourSteps}
-      active={tourActive}
-      step={tourStep}
-      onNext={handleTourNext}
-      onPrev={tourPrev}
-      onFinish={tourFinish}
-    />
     </>
   );
 };

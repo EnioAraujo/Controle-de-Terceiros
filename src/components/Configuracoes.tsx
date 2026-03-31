@@ -107,21 +107,22 @@ export const Configuracoes = ({
       });
       setNewDiaria({ fornecedor: "", turno: "", valor: "250" });
     } else if (error) {
-      console.error("Erro ao salvar diária:", error.message);
+      if (import.meta.env.DEV) console.error("Erro ao salvar diária:", error.message);
     }
   };
 
   const removeDiaria = async (d: DiariaConfig) => {
     if (!d.id) return;
     const { error } = await supabase.from("diarias_config").delete().eq("id", d.id);
-    if (error) { console.error("Erro ao remover diária:", error.message); return; }
+    if (error) { if (import.meta.env.DEV) console.error("Erro ao remover diária:", error.message); return; }
     setDiariasConfig(prev => prev.filter(x => x.id !== d.id));
   };
 
   // ── WhatsApp Template ──
   const [waHeader, setWaHeader] = useState(WA_DEFAULT_TEMPLATE.header);
   const [waCampos, setWaCampos] = useState<WhatsAppField[]>(WA_DEFAULT_TEMPLATE.campos);
-  const [waSaved, setWaSaved]   = useState(false);
+  const [waSaved, setWaSaved]       = useState(false);
+  const [waSaveError, setWaSaveError] = useState("");
   const [waDragOver, setWaDragOver] = useState<WhatsAppField | null>(null);
 
   useEffect(() => {
@@ -134,13 +135,17 @@ export const Configuracoes = ({
           if (Array.isArray(parsed.campos) && parsed.campos.length > 0) setWaCampos(parsed.campos);
         } catch { /* ignore bad JSON */ }
       }
-    }).catch((err: unknown) => console.error("Erro ao carregar WA template:", err));
+    }).catch((err: unknown) => { if (import.meta.env.DEV) console.error("Erro ao carregar WA template:", err); });
   }, []);
 
   const saveWaTemplate = async () => {
     const payload: WhatsAppTemplate = { header: waHeader.trim() || WA_DEFAULT_TEMPLATE.header, campos: waCampos };
-    await supabase.from("opcoes")
-      .upsert({ chave: "whatsapp_template", valor: JSON.stringify(payload) }, { onConflict: "chave" });
+    const valor = JSON.stringify(payload);
+    setWaSaveError("");
+    const { error: delErr } = await supabase.from("opcoes").delete().eq("chave", "whatsapp_template");
+    if (delErr) { setWaSaveError("Erro ao salvar. Tente novamente."); return; }
+    const { error: insErr } = await supabase.from("opcoes").insert({ chave: "whatsapp_template", valor });
+    if (insErr) { setWaSaveError("Erro ao salvar. Tente novamente."); return; }
     setWaTemplate(payload);
     setWaSaved(true);
     setTimeout(() => setWaSaved(false), 2500);
@@ -166,7 +171,7 @@ export const Configuracoes = ({
         .from("opcoes")
         .select("chave, valor")
         .in("chave", ["dpo_nome", "dpo_email", "dpo_telefone"]);
-      if (error) { console.error("Erro ao carregar DPO:", error.message); return; }
+      if (error) { if (import.meta.env.DEV) console.error("Erro ao carregar DPO:", error.message); return; }
       if (data) {
         data.forEach((row: { chave: string; valor: string }) => {
           if (row.chave === "dpo_nome")      setDpoNome(row.valor);
@@ -174,7 +179,7 @@ export const Configuracoes = ({
           if (row.chave === "dpo_telefone")  setDpoTelefone(row.valor);
         });
       }
-    }).catch((err: unknown) => console.error("Erro ao carregar DPO:", err));
+    }).catch((err: unknown) => { if (import.meta.env.DEV) console.error("Erro ao carregar DPO:", err); });
   }, []);
 
   const saveDpo = async () => {
@@ -184,11 +189,8 @@ export const Configuracoes = ({
       { chave: "dpo_telefone",  valor: dpoTelefone.trim() },
     ];
     for (const f of fields) {
-      if (f.valor) {
-        await supabase.from("opcoes").upsert({ chave: f.chave, valor: f.valor }, { onConflict: "chave" });
-      } else {
-        await supabase.from("opcoes").delete().eq("chave", f.chave);
-      }
+      await supabase.from("opcoes").delete().eq("chave", f.chave);
+      if (f.valor) await supabase.from("opcoes").insert({ chave: f.chave, valor: f.valor });
     }
     setDpoSaved(true);
     setTimeout(() => setDpoSaved(false), 2500);
@@ -664,6 +666,7 @@ export const Configuracoes = ({
             Salvar Template
           </button>
           {waSaved && <span style={{ fontSize:12, color:"#0E9F6E", fontWeight:600 }}>✓ Salvo!</span>}
+          {waSaveError && <span style={{ fontSize:12, color:"#E02424", fontWeight:600 }}>{waSaveError}</span>}
         </div>
         <div style={{ fontSize:11, color:"#94A3B8", marginTop:10 }}>
           Configure quais campos aparecem na mensagem do WhatsApp ao compartilhar registros.
