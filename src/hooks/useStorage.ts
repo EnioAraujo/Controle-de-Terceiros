@@ -173,7 +173,7 @@ export const useStorage = (): [
       return;
     }
 
-    console.debug(`[OFFLINE_QUEUE] Processando ${queue.operations.length} operações pendentes`);
+    if (import.meta.env.DEV) console.debug(`[OFFLINE_QUEUE] Processando ${queue.operations.length} operações pendentes`);
 
     setIsSyncing(true);
     setSyncError(null);
@@ -236,7 +236,7 @@ export const useStorage = (): [
       }
 
       if (errors.length > 0) {
-        console.error(`[OFFLINE_QUEUE] Erros: ${errors.join("; ")}`);
+        if (import.meta.env.DEV) console.error(`[OFFLINE_QUEUE] Erros: ${errors.join("; ")}`);
       }
     }
 
@@ -248,14 +248,14 @@ export const useStorage = (): [
     if (remainingOperations.length > 0) {
       setSyncError(`${remainingOperations.length} operação(ões) falharam. Tentando novamente...`);
     } else {
-      console.debug("[OFFLINE_QUEUE] Todas as operações pendentes sincronizadas");
+      if (import.meta.env.DEV) console.debug("[OFFLINE_QUEUE] Todas as operações pendentes sincronizadas");
     }
   }, [isSyncing]);
 
   // Listeners de online/offline e processamento da fila
   useEffect(() => {
     const handleOnline = () => {
-      console.debug("[OFFLINE_QUEUE] Conexão restaurada");
+      if (import.meta.env.DEV) console.debug("[OFFLINE_QUEUE] Conexão restaurada");
       queueRef.current.isOnline = true;
       setPendingQueue((prev) => ({ ...prev, isOnline: true }));
       // Tenta processar fila quando conexão volta
@@ -263,7 +263,7 @@ export const useStorage = (): [
     };
 
     const handleOffline = () => {
-      console.debug("[OFFLINE_QUEUE] Conexão perdida");
+      if (import.meta.env.DEV) console.debug("[OFFLINE_QUEUE] Conexão perdida");
       queueRef.current.isOnline = false;
       setPendingQueue((prev) => ({ ...prev, isOnline: false }));
     };
@@ -297,7 +297,7 @@ export const useStorage = (): [
         if (!isMounted) return;
 
         if (error) {
-          console.error("Erro ao carregar registros:", error.message);
+          if (import.meta.env.DEV) console.error("Erro ao carregar registros:", error.message);
           setSyncError(`Falha ao carregar: ${error.message}`);
         } else if (rows && rows.length > 0) {
           const parsed = (rows as DbRegistro[]).map(dbToRegistro);
@@ -318,7 +318,7 @@ export const useStorage = (): [
         if (!isMounted) return;
 
         if (pe) {
-          console.error("Erro ao purgar registros antigos:", pe.message);
+          if (import.meta.env.DEV) console.error("Erro ao purgar registros antigos:", pe.message);
           logAudit("PURGE_ERROR", "registros", undefined, {
             motivo: `Falha na retenção LGPD`,
             error: pe.message,
@@ -335,7 +335,7 @@ export const useStorage = (): [
         if (!isMounted) return;
 
         const errorMessage = err instanceof Error ? err.message : String(err);
-        console.error("Erro no carregamento de registros:", errorMessage);
+        if (import.meta.env.DEV) console.error("Erro no carregamento de registros:", errorMessage);
         setSyncError(`Erro crítico: ${errorMessage}`);
         setLoading(false);
       }
@@ -376,7 +376,7 @@ export const useStorage = (): [
 
     // Se offline, adiciona operações à fila e retorna
     if (!isOnline) {
-      console.debug("[OFFLINE_QUEUE] Offline - adicionando operações à fila");
+      if (import.meta.env.DEV) console.debug("[OFFLINE_QUEUE] Offline - adicionando operações à fila");
 
       const newOperations: SyncOperation[] = [];
 
@@ -493,7 +493,7 @@ export const useStorage = (): [
     if (errors.length > 0) {
       const combinedError = errors.join("; ");
       setSyncError(combinedError);
-      console.error("[SYNC_ERRORS]", combinedError);
+      if (import.meta.env.DEV) console.error("[SYNC_ERRORS]", combinedError);
     }
   }, []);
 
@@ -502,11 +502,11 @@ export const useStorage = (): [
    */
   const retryPending = useCallback(async () => {
     if (queueRef.current.operations.length === 0) {
-      console.debug("[OFFLINE_QUEUE] Nenhuma operação pendente");
+      if (import.meta.env.DEV) console.debug("[OFFLINE_QUEUE] Nenhuma operação pendente");
       return;
     }
 
-    console.debug(`[OFFLINE_QUEUE] Tentando sincronizar ${queueRef.current.operations.length} operações`);
+    if (import.meta.env.DEV) console.debug(`[OFFLINE_QUEUE] Tentando sincronizar ${queueRef.current.operations.length} operações`);
     await processPendingQueue();
   }, [processPendingQueue]);
 

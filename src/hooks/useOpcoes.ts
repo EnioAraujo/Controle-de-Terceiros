@@ -18,12 +18,12 @@ async function syncList(
   if (toAdd.length > 0) {
     for (let i = 0; i < toAdd.length; i += CHUNK) {
       const { error } = await upsert(toAdd.slice(i, i + CHUNK));
-      if (error) { console.error(`Erro ao inserir ${label}:`, error.message); break; }
+      if (error) { if (import.meta.env.DEV) console.error(`Erro ao inserir ${label}:`, error.message); break; }
     }
   }
   if (toRemove.length > 0) {
     const { error } = await remove(toRemove);
-    if (error) console.error(`Erro ao remover ${label}:`, error.message);
+    if (error) if (import.meta.env.DEV) console.error(`Erro ao remover ${label}:`, error.message);
   }
 }
 
@@ -42,11 +42,11 @@ export const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
 
       // Limpeza: remove nomes residuais da tabela opcoes (devem estar apenas em terceiros)
       supabase.from("opcoes").delete().eq("chave", "nomes")
-        .then(({ error }) => { if (error) console.error("Erro ao limpar nomes residuais:", error.message); })
-        .catch((err: unknown) => console.error("Erro ao limpar nomes residuais:", err));
+        .then(({ error }) => { if (error) if (import.meta.env.DEV) console.error("Erro ao limpar nomes residuais:", error.message); })
+        .catch((err: unknown) => { if (import.meta.env.DEV) console.error("Erro ao limpar nomes residuais:", err); });
 
-      if (opcoesRes.error) console.error("Erro ao carregar opções:", opcoesRes.error.message);
-      if (nomesRes.error)  console.error("Erro ao carregar nomes:", nomesRes.error.message);
+      if (opcoesRes.error) if (import.meta.env.DEV) console.error("Erro ao carregar opções:", opcoesRes.error.message);
+      if (nomesRes.error)  if (import.meta.env.DEV) console.error("Erro ao carregar nomes:", nomesRes.error.message);
 
       const rows  = opcoesRes.data ?? [];
       const nomes = (nomesRes.data ?? []).map((r: { nome: string }) => r.nome);
@@ -69,7 +69,7 @@ export const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
       prevRef.current = built;
       setLoading(false);
     }).catch((err: unknown) => {
-      console.error("Erro ao carregar opções:", err);
+      if (import.meta.env.DEV) console.error("Erro ao carregar opções:", err);
       setLoading(false);
     });
   }, []);
@@ -88,7 +88,7 @@ export const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
         batch => supabase.from("opcoes").upsert(batch.map(valor => ({ chave: key, valor })), { onConflict: "chave,valor", ignoreDuplicates: true }),
         items  => supabase.from("opcoes").delete().eq("chave", key).in("valor", items),
         `opcoes[${key}]`,
-      ).catch((err: unknown) => console.error(`Erro ao sincronizar opcoes[${key}]:`, err));
+      ).catch((err: unknown) => { if (import.meta.env.DEV) console.error(`Erro ao sincronizar opcoes[${key}]:`, err); });
     }
 
     // ── Salva nomes na tabela terceiros ──
@@ -98,7 +98,7 @@ export const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
       batch => supabase.from("terceiros").upsert(batch.map(nome => ({ nome })), { onConflict: "nome", ignoreDuplicates: true }),
       items  => supabase.from("terceiros").delete().in("nome", items),
       "nomes",
-    ).catch((err: unknown) => console.error("Erro ao sincronizar nomes:", err));
+    ).catch((err: unknown) => { if (import.meta.env.DEV) console.error("Erro ao sincronizar nomes:", err); });
   }, []);
 
   return [data, save, loading];

@@ -48,6 +48,9 @@ type UserWithRole = {
 
 type ModalMode = "create" | "edit" | "delete" | null;
 
+// Centraliza o tamanho mínimo de senha para consistência entre criação e troca de senha
+const MIN_PASSWORD_LENGTH = 8;
+
 // ── Permissões disponíveis no sistema ─────────────────────────────
 const availablePermissions = [
   {
@@ -153,6 +156,10 @@ export default function AdminPage() {
   const [mfaCode,       setMfaCode]       = useState("");
   const [mfaLoading,    setMfaLoading]    = useState(false);
   const [mfaMsg,        setMfaMsg]        = useState<{ ok: boolean; text: string } | null>(null);
+  // Unenroll MFA: requer confirmação de senha antes de remover (OWASP A04)
+  const [isUnenrollOpen,      setIsUnenrollOpen]      = useState(false);
+  const [unenrollFactorId,    setUnenrollFactorId]    = useState("");
+  const [unenrollConfirmPass, setUnenrollConfirmPass] = useState("");
 
   // Reset feedback
   const [resetFeedback, setResetFeedback] = useState<Record<string, { text: string; ok: boolean }>>({});
@@ -240,23 +247,46 @@ export default function AdminPage() {
     }
   };
 
-  const handleMfaUnenroll = async (factorId: string) => {
+  // Abre o dialog de confirmação de senha antes de remover MFA
+  const openUnenrollDialog = (factorId: string) => {
+    setUnenrollFactorId(factorId);
+    setUnenrollConfirmPass("");
+    setMfaMsg(null);
+    setIsUnenrollOpen(true);
+  };
+
+  const handleMfaUnenroll = async () => {
+    if (!unenrollConfirmPass.trim()) {
+      setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Informe sua senha atual." : "Enter your current password." });
+      return;
+    }
     setMfaLoading(true);
     setMfaMsg(null);
     try {
-    const { error } = await supabase.auth.mfa.unenroll({ factorId });
-    if (error) {
-      setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Erro ao remover MFA." : "Error removing MFA." });
-      return;
-    }
-    setMfaMsg({ ok: true, text: lang === "pt-BR" ? "MFA removido." : "MFA removed." });
-    setMfaEnrollStep("idle");
-    await loadMfaFactors();
-    } catch (err) {
-      console.error("Erro ao remover MFA:", err);
+      // Reautentica para confirmar identidade antes de remover MFA (OWASP A04)
+      const { error: reAuthErr } = await supabase.auth.signInWithPassword({
+        email: myEmail,
+        password: unenrollConfirmPass,
+      });
+      if (reAuthErr) {
+        setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Senha incorreta." : "Incorrect password." });
+        setUnenrollConfirmPass("");
+        return;
+      }
+      const { error } = await supabase.auth.mfa.unenroll({ factorId: unenrollFactorId });
+      if (error) {
+        setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Erro ao remover MFA." : "Error removing MFA." });
+        return;
+      }
+      setMfaMsg({ ok: true, text: lang === "pt-BR" ? "MFA removido." : "MFA removed." });
+      setMfaEnrollStep("idle");
+      setIsUnenrollOpen(false);
+      await loadMfaFactors();
+    } catch {
       setMfaMsg({ ok: false, text: lang === "pt-BR" ? "Erro ao remover MFA." : "Error removing MFA." });
     } finally {
       setMfaLoading(false);
+      setUnenrollConfirmPass("");
     }
   };
 
@@ -410,7 +440,7 @@ export default function AdminPage() {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPass !== confirmPass) { setPassMsg({ ok: false, text: t("admin_pass_mismatch") }); return; }
-    if (newPass.length < 8)     { setPassMsg({ ok: false, text: t("admin_pass_short") });    return; }
+    if (newPass.length < MIN_PASSWORD_LENGTH) { setPassMsg({ ok: false, text: t("admin_pass_short") }); return; }
     setPassLoading(true);
     const { error } = await supabase.auth.updateUser({ password: newPass });
     setPassLoading(false);
@@ -806,7 +836,7 @@ export default function AdminPage() {
                             size="sm"
                             className="w-full"
                             disabled={mfaLoading}
-                            onClick={() => handleMfaUnenroll(f.id)}
+                            onClick={() => openUnenrollDialog(f.id)}
                           >
                             {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldOff className="h-4 w-4 mr-2" />}
                             {lang === "pt-BR" ? "Desativar MFA" : "Disable MFA"}
@@ -872,6 +902,49 @@ export default function AdminPage() {
         </Tabs>
       </main>
 
+      {/* AlertDialog: Confirmar remoção de MFA */}
+      <AlertDialog open={isUnenrollOpen} onOpenChange={v => { if (!mfaLoading) setIsUnenrollOpen(v); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {lang === "pt-BR" ? "Confirmar desativação do MFA" : "Confirm MFA deactivation"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {lang === "pt-BR"
+                ? "Esta ação removerá a autenticação em duas etapas da sua conta. Confirme sua senha atual para continuar."
+                : "This will remove two-factor authentication from your account. Enter your current password to continue."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2 space-y-2">
+            <Input
+              type="password"
+              placeholder={lang === "pt-BR" ? "Senha atual" : "Current password"}
+              value={unenrollConfirmPass}
+              onChange={e => setUnenrollConfirmPass(e.target.value)}
+              autoFocus
+              autoComplete="current-password"
+            />
+            {mfaMsg && !mfaMsg.ok && (
+              <p className="text-sm text-red-600">{mfaMsg.text}</p>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={mfaLoading}>
+              {lang === "pt-BR" ? "Cancelar" : "Cancel"}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMfaUnenroll}
+              disabled={mfaLoading || !unenrollConfirmPass.trim()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {mfaLoading
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{lang === "pt-BR" ? "Removendo..." : "Removing..."}</>
+                : <><ShieldOff className="h-4 w-4 mr-2" />{lang === "pt-BR" ? "Desativar MFA" : "Disable MFA"}</>}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* AlertDialog: Excluir */}
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
@@ -919,7 +992,7 @@ export default function AdminPage() {
             <AlertDialogAction
               onClick={() => {
                 if (!newEmail.trim()) { setCreateError(t("admin_err_email_required")); return; }
-                if (newPassword.length < 6) { setCreateError(t("admin_err_pwd_short")); return; }
+                if (newPassword.length < MIN_PASSWORD_LENGTH) { setCreateError(t("admin_err_pwd_short")); return; }
                 createMutation.mutate({ email: newEmail.trim(), password: newPassword, is_admin: newIsAdmin });
               }}
               disabled={createMutation.isPending}

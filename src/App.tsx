@@ -99,11 +99,7 @@ const AppRoutes = () => {
 
         if (hasVerifiedFactor) {
           try {
-            const jwtPayload = JSON.parse(
-              atob(session.access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
-            ) as { aal?: string };
-
-            if (jwtPayload.aal === "aal1") {
+            if (decodeSessionAal(session) === "aal1") {
               // MFA pendente: não redireciona
               return;
             }
