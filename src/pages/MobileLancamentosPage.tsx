@@ -350,6 +350,10 @@ const MobileLancamentosPage = () => {
   const [sheet, setSheet] = useState<null | Registro | Registro[]>(null);
   const [confirm, setConfirm] = useState<string[] | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<"lancamentos" | "configuracoes">("lancamentos");
+  const [cfgFornInput, setCfgFornInput] = useState("");
+  const [cfgNomeInput, setCfgNomeInput] = useState("");
+  const [cfgNomeBusca, setCfgNomeBusca] = useState("");
 
   // ── Carregar registros ──
   useEffect(() => {
@@ -548,6 +552,33 @@ const MobileLancamentosPage = () => {
     navigate("/", { replace: true });
   };
 
+  // ── Helpers de configurações ──
+  const addOpcao = async (key: keyof Opcoes, valor: string) => {
+    const v = sanitize(valor.trim()).toUpperCase();
+    if (!v || opcoes[key].includes(v)) return;
+    await authReady;
+    if (key === "nomes") {
+      await supabase.from("terceiros").upsert({ nome: v }, { onConflict: "nome", ignoreDuplicates: true });
+      logAudit("INSERT", "terceiros", undefined, { nome: v });
+    } else {
+      await supabase.from("opcoes").upsert({ chave: key, valor: v }, { onConflict: "chave,valor", ignoreDuplicates: true });
+      logAudit("INSERT", "opcoes", undefined, { chave: key, valor: v });
+    }
+    setOpcoes(prev => ({ ...prev, [key]: [...prev[key], v] }));
+  };
+
+  const removeOpcao = async (key: keyof Opcoes, valor: string) => {
+    await authReady;
+    if (key === "nomes") {
+      await supabase.from("terceiros").delete().eq("nome", valor);
+      logAudit("DELETE", "terceiros", undefined, { nome: valor });
+    } else {
+      await supabase.from("opcoes").delete().eq("chave", key).eq("valor", valor);
+      logAudit("DELETE", "opcoes", undefined, { chave: key, valor });
+    }
+    setOpcoes(prev => ({ ...prev, [key]: prev[key].filter(v => v !== valor) }));
+  };
+
   // ── Título do modal ──
   const modalTitle = () => {
     if (modal === "new") return "Novo Lançamento";
@@ -622,8 +653,8 @@ const MobileLancamentosPage = () => {
       </div>
 
       {/* ═══ CONTEÚDO ═══ */}
-      <div style={{ padding: "16px 12px 120px" }}>
-
+      <div style={{ padding: "16px 12px 144px" }}>
+        {activeTab === "lancamentos" && <>
         {/* Botão de filtros */}
         <button
           onClick={() => setShowFiltros(f => !f)}
@@ -777,13 +808,121 @@ const MobileLancamentosPage = () => {
             )}
           </>
         )}
+        </>}
+
+        {activeTab === "configuracoes" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "4px 0" }}>
+            {/* Card Fornecedores */}
+            <div style={{ background: "#fff", borderRadius: 12, padding: 20, boxShadow: "0 1px 3px #00000010" }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: "#0F1C2E", marginBottom: 14 }}>Fornecedores</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12, minHeight: 32 }}>
+                {opcoes.fornecedores.map(f => (
+                  <span key={f} style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    background: "#F1F5F9", borderRadius: 8,
+                    padding: "5px 10px", fontSize: 13, color: "#334155",
+                  }}>
+                    {f}
+                    <button
+                      onClick={() => void removeOpcao("fornecedores", f)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", fontSize: 16, lineHeight: 1, padding: 0 }}
+                      aria-label={`Remover ${f}`}
+                    >×</button>
+                  </span>
+                ))}
+                {opcoes.fornecedores.length === 0 && (
+                  <span style={{ color: "#CBD5E1", fontSize: 13 }}>Nenhum fornecedor cadastrado</span>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  value={cfgFornInput}
+                  onChange={e => setCfgFornInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { void addOpcao("fornecedores", cfgFornInput); setCfgFornInput(""); } }}
+                  placeholder="Novo fornecedor..."
+                  style={{
+                    flex: 1, border: "1.5px solid #E8E8EA", borderRadius: 8,
+                    padding: "9px 12px", fontSize: 14, fontFamily: "inherit",
+                    color: "#0F1C2E", background: "#FAFAFA",
+                  }}
+                />
+                <button
+                  onClick={() => { void addOpcao("fornecedores", cfgFornInput); setCfgFornInput(""); }}
+                  style={{
+                    background: "#F37E38", border: "none", borderRadius: 8,
+                    padding: "9px 16px", color: "#fff",
+                    fontWeight: 700, fontSize: 14, fontFamily: "inherit", cursor: "pointer",
+                  }}
+                >+</button>
+              </div>
+            </div>
+
+            {/* Card Base de Colaboradores */}
+            <div style={{ background: "#fff", borderRadius: 12, padding: 20, boxShadow: "0 1px 3px #00000010" }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: "#0F1C2E", marginBottom: 14 }}>Base de Colaboradores</div>
+              <input
+                value={cfgNomeBusca}
+                onChange={e => setCfgNomeBusca(e.target.value)}
+                placeholder="Buscar colaborador..."
+                style={{
+                  width: "100%", border: "1.5px solid #E8E8EA", borderRadius: 8,
+                  padding: "9px 12px", fontSize: 14, fontFamily: "inherit",
+                  color: "#0F1C2E", background: "#FAFAFA", boxSizing: "border-box",
+                  marginBottom: 10,
+                }}
+              />
+              <div style={{ maxHeight: 200, overflowY: "auto", marginBottom: 12 }}>
+                {opcoes.nomes
+                  .filter(n => !cfgNomeBusca || n.toLowerCase().includes(cfgNomeBusca.toLowerCase()))
+                  .map(n => (
+                    <div key={n} style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "7px 0", borderBottom: "1px solid #F1F5F9", fontSize: 13, color: "#334155",
+                    }}>
+                      {n}
+                      <button
+                        onClick={() => void removeOpcao("nomes", n)}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", fontSize: 16, lineHeight: 1, padding: "0 4px" }}
+                        aria-label={`Remover ${n}`}
+                      >×</button>
+                    </div>
+                  ))}
+                {opcoes.nomes.filter(n => !cfgNomeBusca || n.toLowerCase().includes(cfgNomeBusca.toLowerCase())).length === 0 && (
+                  <div style={{ color: "#CBD5E1", fontSize: 13, padding: "8px 0" }}>Nenhum colaborador encontrado</div>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  value={cfgNomeInput}
+                  onChange={e => setCfgNomeInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { void addOpcao("nomes", cfgNomeInput); setCfgNomeInput(""); } }}
+                  placeholder="Novo colaborador..."
+                  style={{
+                    flex: 1, border: "1.5px solid #E8E8EA", borderRadius: 8,
+                    padding: "9px 12px", fontSize: 14, fontFamily: "inherit",
+                    color: "#0F1C2E", background: "#FAFAFA",
+                  }}
+                />
+                <button
+                  onClick={() => { void addOpcao("nomes", cfgNomeInput); setCfgNomeInput(""); }}
+                  style={{
+                    background: "#F37E38", border: "none", borderRadius: 8,
+                    padding: "9px 16px", color: "#fff",
+                    fontWeight: 700, fontSize: 14, fontFamily: "inherit", cursor: "pointer",
+                  }}
+                >+</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ═══ FAB ═══ */}
+      {activeTab === "lancamentos" && (
       <button
         onClick={() => setModal("new")}
         style={{
-          position: "fixed", bottom: 24, right: 20, zIndex: 150,
+          position: "fixed", bottom: 88, right: 20, zIndex: 150,
           width: 56, height: 56, borderRadius: 99,
           background: "#F37E38", border: "none",
           boxShadow: "0 4px 16px rgba(243,126,56,0.45)",
@@ -795,6 +934,7 @@ const MobileLancamentosPage = () => {
       >
         <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 5v14M5 12h14" /></svg>
       </button>
+      )}
 
       {/* ═══ BOTTOM SHEET ═══ */}
       <BottomSheet
@@ -835,6 +975,28 @@ const MobileLancamentosPage = () => {
           />
         </MobileModal>
       )}
+      {/* ═══ TAB BAR ═══ */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, height: 64,
+        background: "#212B36", zIndex: 150,
+        display: "flex", borderTop: "1px solid #2E3B4A",
+      }}>
+        {(["lancamentos", "configuracoes"] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              flex: 1, background: "none", border: "none", cursor: "pointer",
+              color: activeTab === tab ? "#F37E38" : "#64748B",
+              borderTop: activeTab === tab ? "2px solid #F37E38" : "2px solid transparent",
+              fontWeight: activeTab === tab ? 700 : 500,
+              fontSize: 12, fontFamily: "inherit",
+            }}
+          >
+            {tab === "lancamentos" ? "Lançamentos" : "Configurações"}
+          </button>
+        ))}
+      </div>
     </div>
   );
 };
