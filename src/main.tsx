@@ -19,10 +19,8 @@ if (missingEnv) {
         </div>
         <div style="font-size:20px;font-weight:800;color:#0F1C2E;margin-bottom:8px">Configuração ausente</div>
         <div style="font-size:13px;color:#64748B;line-height:1.6">
-          As variáveis de ambiente do Supabase não estão configuradas.<br/><br/>
-          Configure <code style="background:#F1F5F9;padding:2px 6px;border-radius:4px">VITE_SUPABASE_URL</code> e
-          <code style="background:#F1F5F9;padding:2px 6px;border-radius:4px">VITE_SUPABASE_ANON_KEY</code>
-          no painel do Vercel em <strong>Settings → Environment Variables</strong> e faça um novo deploy.
+          Variáveis de ambiente obrigatórias não estão configuradas.<br/><br/>
+          Contate o administrador do sistema para configurar o ambiente de implantação.
         </div>
       </div>
     </div>

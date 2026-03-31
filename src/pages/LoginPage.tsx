@@ -27,14 +27,14 @@ async function computeMfaCodeHash(code: string, factorId: string): Promise<strin
 
 function getReplayGuard(): { hash: string; ts: number } | null {
   try {
-    const raw = localStorage.getItem(MFA_REPLAY_KEY);
+    const raw = sessionStorage.getItem(MFA_REPLAY_KEY);
     return raw ? (JSON.parse(raw) as { hash: string; ts: number }) : null;
   } catch { return null; }
 }
 
 function setReplayGuard(hash: string): void {
   try {
-    localStorage.setItem(MFA_REPLAY_KEY, JSON.stringify({ hash, ts: Date.now() }));
+    sessionStorage.setItem(MFA_REPLAY_KEY, JSON.stringify({ hash, ts: Date.now() }));
   } catch { /* fail open */ }
 }
 // ─────────────────────────────────────────────────────────────────────────────

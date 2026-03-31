@@ -73,7 +73,7 @@ async function executeWithRetry<T>(
       const errorMessage = error instanceof Error ? error.message : String(error);
 
       // Log de tentativa falha para debugging
-      console.warn(
+      if (import.meta.env.DEV) console.warn(
         `[SYNC_RETRY] Tentativa ${attempt}/${MAX_RETRIES} falhou para ${operationName}:`,
         errorMessage,
         ids?.length ? `IDs: ${ids.length}` : ""
@@ -88,7 +88,7 @@ async function executeWithRetry<T>(
       const errorMessage =
         unexpectedError instanceof Error ? unexpectedError.message : String(unexpectedError);
 
-      console.warn(
+      if (import.meta.env.DEV) console.warn(
         `[SYNC_RETRY] Exceção inesperada na tentativa ${attempt}/${MAX_RETRIES} para ${operationName}:`,
         errorMessage
       );
@@ -101,7 +101,7 @@ async function executeWithRetry<T>(
 
   // Todas as tentativas falharam - fail closed
   const finalErrorMessage = lastError instanceof Error ? lastError.message : String(lastError);
-  console.error(
+  if (import.meta.env.DEV) console.error(
     `[SYNC_FAIL] Operação ${operationName} falhou após ${MAX_RETRIES} tentativas`,
     ids?.length ? `IDs afetados: ${ids.length}` : ""
   );

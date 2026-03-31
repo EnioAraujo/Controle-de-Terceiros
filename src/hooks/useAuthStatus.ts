@@ -74,7 +74,7 @@ export const useAuthStatus = (): AuthStatus => {
     if (timeUntilExpiry < 300) {
       // Token expirando em breve - dispara refresh preventivo
       setTokenExpired(true);
-      console.debug("[AUTH] Token expirando em breve, refresh preventivo");
+      if (import.meta.env.DEV) console.debug("[AUTH] Token expirando em breve, refresh preventivo");
     } else {
       setTokenExpired(false);
     }
@@ -95,7 +95,7 @@ export const useAuthStatus = (): AuthStatus => {
       setError(null);
     } catch (err: unknown) {
       const errorMessage = (err as { message?: string })?.message ?? String(err);
-      console.error("[AUTH] Erro ao carregar sessão:", errorMessage);
+      if (import.meta.env.DEV) console.error("[AUTH] Erro ao carregar sessão:", errorMessage);
       setError(errorMessage);
       setSession(null);
       setUser(null);
@@ -121,7 +121,7 @@ export const useAuthStatus = (): AuthStatus => {
       setTokenExpired(false);
     } catch (err: unknown) {
       const errorMessage = (err as { message?: string })?.message ?? String(err);
-      console.error("[AUTH] Falha no refresh do token:", errorMessage);
+      if (import.meta.env.DEV) console.error("[AUTH] Falha no refresh do token:", errorMessage);
       setError(errorMessage);
       setTokenExpired(false);
 
@@ -157,8 +157,7 @@ export const useAuthStatus = (): AuthStatus => {
     // Subscribe a mudanças de auth state
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        console.debug("[AUTH] Evento:", event);
-
+        if (import.meta.env.DEV) console.debug("[AUTH] Evento:", event);
         switch (event) {
           case "INITIAL_SESSION":
             // Sessão restaurada do localStorage ao carregar a página.

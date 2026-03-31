@@ -56,7 +56,7 @@ export async function executeWithAuthRetry<T>(
       }
 
       // Erro 401/403 - tenta refresh do token
-      console.warn(
+      if (import.meta.env.DEV) console.warn(
         `[AUTH_RETRY] Tentativa ${attempt}/${maxRetries}: erro ${error.status} - ${error.message}`
       );
 
@@ -65,12 +65,12 @@ export async function executeWithAuthRetry<T>(
         const { error: refreshError } = await supabase.auth.refreshSession();
 
         if (refreshError) {
-          console.error("[AUTH_RETRY] Refresh falhou:", refreshError.message);
+          if (import.meta.env.DEV) console.error("[AUTH_RETRY] Refresh falhou:", refreshError.message);
           // Fail closed: refresh falhou, não continua tentando
           throw new Error(`Falha de autenticação: ${refreshError.message}`);
         }
 
-        console.debug("[AUTH_RETRY] Token refreshado, tentando novamente...");
+        if (import.meta.env.DEV) console.debug("[AUTH_RETRY] Token refreshado, tentando novamente...");
         // Aguarda breve delay antes de retry
         await new Promise((resolve) => setTimeout(resolve, 500));
         continue;
@@ -91,11 +91,11 @@ export async function executeWithAuthRetry<T>(
         const { error: refreshError } = await supabase.auth.refreshSession();
 
         if (refreshError) {
-          console.error("[AUTH_RETRY] Refresh falhou:", refreshError.message);
+          if (import.meta.env.DEV) console.error("[AUTH_RETRY] Refresh falhou:", refreshError.message);
           throw new Error(`Falha de autenticação: ${refreshError.message}`);
         }
 
-        console.debug("[AUTH_RETRY] Token refreshado, tentando novamente...");
+        if (import.meta.env.DEV) console.debug("[AUTH_RETRY] Token refreshado, tentando novamente...");
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }

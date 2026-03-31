@@ -65,6 +65,11 @@ const ChartContainer = React.forwardRef<
 });
 ChartContainer.displayName = "Chart";
 
+// Sanitiza valores usados em CSS gerado dinamicamente para prevenir CSS injection.
+// Apenas caracteres seguros são permitidos em seletores e valores de cor.
+const safeCssId = (val: string) => val.replace(/[^a-zA-Z0-9_-]/g, "");
+const safeCssColor = (val: string) => val.replace(/[^a-zA-Z0-9#(),.\s%]/g, "");
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
     ([_, config]) => config.theme || config.color,
@@ -74,19 +79,23 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null;
   }
 
+  const safeId = safeCssId(id);
+
   return (
     <style
       dangerouslySetInnerHTML={{
         __html: Object.entries(THEMES)
           .map(
             ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+${prefix} [data-chart=${safeId}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
-    const color =
+    const rawColor =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
       itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
+    const color = rawColor ? safeCssColor(rawColor) : null;
+    const safeKey = safeCssId(key);
+    return color ? `  --color-${safeKey}: ${color};` : null;
   })
   .join("\n")}
 }
