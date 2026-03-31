@@ -1842,7 +1842,9 @@ const Index = () => {
   const [privacyAccepted, acceptPrivacy]          = usePrivacyAccepted();
   const [dpoCfg, setDpoCfg]                       = useState<{ nome: string; email: string }>({ nome: "", email: "" });
   const [isAdmin, setIsAdmin]                     = useState(false);
-  const isAdminOrMod                              = isAdmin;
+  // isAdminOrMod=true: seções de opções visíveis a todos os autenticados;
+  // isAdmin guarda apenas DPO, LGPD/titular e "Excluir Todos" (AI_RULES.md)
+  const isAdminOrMod                              = true;
   const [waTemplate, setWaTemplate]               = useState<WhatsAppTemplate>(WA_DEFAULT_TEMPLATE);
   const [turnosConfig, setTurnosConfig]           = useState<TurnoConfig[]>([]);
 
