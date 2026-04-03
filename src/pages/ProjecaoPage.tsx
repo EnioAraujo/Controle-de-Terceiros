@@ -1,23 +1,13 @@
 import { useState, useMemo, useEffect, CSSProperties } from "react";
-import { Registro } from "@/types/attendance";
+import { Registro, type Opcoes } from "@/types/attendance";
 import { supabase, authReady } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
 import { hoje, fmt, mesAtual } from "@/lib/format-utils";
 import { type DiariaConfig, dbToDiariaConfig, resolverDiaria } from "@/lib/fechamento-utils";
-
-// ─── TIPOS ───────────────────────────────────────────────────────
-interface Opcoes {
-  turnos:       string[];
-  unidades:     string[];
-  fornecedores: string[];
-  motivos:      string[];
-  cargos:       string[];
-  ccList:       string[];
-  nomes:        string[];
-}
+import { TURNOS_PROJECAO, gerarDias, calcMediaPorTurno, calcDadosPorDia } from "@/lib/projecao-utils";
 
 // ─── CONSTANTES ──────────────────────────────────────────────────
-const TURNOS_DEMANDA = ["1ª TURNO", "2ª TURNO", "3ª TURNO"];
+const TURNOS_DEMANDA = TURNOS_PROJECAO;
 const TURNO_CORES: Record<string, string> = { "1ª TURNO": "#1A56DB", "2ª TURNO": "#D97706", "3ª TURNO": "#0E9F6E" };
 
 // ─── COMPONENTE PRINCIPAL ────────────────────────────────────────
@@ -66,50 +56,16 @@ const ProjecaoPage = ({ registros, opcoes }: { registros: Registro[]; opcoes: Op
   }, [registros, range, fornFiltro]);
 
   // Gerar todos os dias do range
-  const diasDoRange = useMemo(() => {
-    const dias: string[] = [];
-    const d = new Date(range.inicio + "T00:00:00");
-    const fim = new Date(range.fim + "T00:00:00");
-    while (d <= fim) {
-      dias.push(d.toISOString().slice(0, 10));
-      d.setDate(d.getDate() + 1);
-    }
-    return dias;
-  }, [range]);
+  const diasDoRange = useMemo(() => gerarDias(range.inicio, range.fim), [range]);
 
   // Médias históricas por turno (usa TODOS os registros, não só o mês filtrado)
-  const mediasHistoricas = useMemo(() => {
-    const regsHist = registros.filter(r => {
-      if (fornFiltro && r.fornecedor !== fornFiltro) return false;
-      if (!TURNOS_DEMANDA.includes(r.turno)) return false;
-      return true;
-    });
-    const porTurno: Record<string, number> = { "1ª TURNO": 0, "2ª TURNO": 0, "3ª TURNO": 0 };
-    for (const r of regsHist) {
-      porTurno[r.turno]++;
-    }
-    const diasComDados = new Set(regsHist.map(r => r.data)).size;
-    const medias: Record<string, number> = {};
-    for (const turno of TURNOS_DEMANDA) {
-      medias[turno] = diasComDados > 0 ? porTurno[turno] / diasComDados : 0;
-    }
-    return medias;
-  }, [registros, fornFiltro]);
+  const mediasHistoricas = useMemo(
+    () => calcMediaPorTurno(registros, TURNOS_DEMANDA, fornFiltro),
+    [registros, fornFiltro],
+  );
 
   // Dias de projeção futura (auto-swap se datas invertidas)
-  const diasProjecao = useMemo(() => {
-    if (!projInicio || !projFim) return [];
-    const inicio = projInicio < projFim ? projInicio : projFim;
-    const fimP = projInicio < projFim ? projFim : projInicio;
-    const dias: string[] = [];
-    const d = new Date(inicio + "T00:00:00");
-    const fim = new Date(fimP + "T00:00:00");
-    while (d <= fim) {
-      dias.push(d.toISOString().slice(0, 10));
-      d.setDate(d.getDate() + 1);
-    }
-    return dias;
-  }, [projInicio, projFim]);
+  const diasProjecao = useMemo(() => gerarDias(projInicio, projFim), [projInicio, projFim]);
 
   const diasProjecaoSet = useMemo(() => new Set(diasProjecao), [diasProjecao]);
 
@@ -123,46 +79,13 @@ const ProjecaoPage = ({ registros, opcoes }: { registros: Registro[]; opcoes: Op
   }, [diasDoRange, diasProjecao]);
 
   // Combinar registros reais + projeção automática
-  const dadosPorDia = useMemo(() => {
-    const mapa: Record<string, Record<string, number>> = {};
-    for (const dia of todosDias) {
-      mapa[dia] = { "1ª TURNO": 0, "2ª TURNO": 0, "3ª TURNO": 0 };
-    }
-    for (const r of regsFiltrados) {
-      if (mapa[r.data] && TURNOS_DEMANDA.includes(r.turno)) {
-        mapa[r.data][r.turno]++;
-      }
-    }
-    const totalMediaHist = TURNOS_DEMANDA.reduce((s, t) => s + mediasHistoricas[t], 0);
-    const qtdCustom = projQtdTotal ? parseInt(projQtdTotal, 10) : 0;
-    const usarCustom = qtdCustom > 0 && totalMediaHist > 0;
-
-    for (const dia of diasProjecao) {
-      if (mapa[dia]) {
-        const jaTemDadoReal = TURNOS_DEMANDA.some(t => mapa[dia][t] > 0);
-        if (!jaTemDadoReal) {
-          if (usarCustom) {
-            let distribuido = 0;
-            const proporcoes = TURNOS_DEMANDA.map(t => mediasHistoricas[t] / totalMediaHist);
-            for (let i = 0; i < TURNOS_DEMANDA.length; i++) {
-              if (i === TURNOS_DEMANDA.length - 1) {
-                mapa[dia][TURNOS_DEMANDA[i]] = qtdCustom - distribuido;
-              } else {
-                const v = Math.round(qtdCustom * proporcoes[i]);
-                mapa[dia][TURNOS_DEMANDA[i]] = v;
-                distribuido += v;
-              }
-            }
-          } else {
-            for (const turno of TURNOS_DEMANDA) {
-              mapa[dia][turno] = Math.round(mediasHistoricas[turno]);
-            }
-          }
-        }
-      }
-    }
-    return mapa;
-  }, [todosDias, regsFiltrados, diasProjecao, mediasHistoricas, projQtdTotal]);
+  const dadosPorDia = useMemo(
+    () => calcDadosPorDia(
+      todosDias, regsFiltrados, diasProjecao, mediasHistoricas,
+      projQtdTotal ? parseInt(projQtdTotal, 10) : 0,
+    ),
+    [todosDias, regsFiltrados, diasProjecao, mediasHistoricas, projQtdTotal],
+  );
 
   // Estatísticas
   const stats = useMemo(() => {

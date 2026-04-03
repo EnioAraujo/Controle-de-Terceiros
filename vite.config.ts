@@ -34,7 +34,7 @@ export default defineConfig(() => ({
           // Bibliotecas pesadas em chunks separados
           'charts': ['recharts'],
           'pdf': ['jspdf', 'jspdf-autotable'],
-          'excel': ['xlsx'],
+          'excel': ['exceljs'],
           'utils': ['dompurify', '@supabase/supabase-js'],
         },
       },
@@ -51,6 +51,6 @@ export default defineConfig(() => ({
   // Otimizações para desenvolvimento
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom'],
-    exclude: ['jspdf', 'xlsx'], // Bibliotecas pesadas não pré-otimizar
+    exclude: ['jspdf', 'exceljs'], // Bibliotecas pesadas não pré-otimizar
   },
 }));

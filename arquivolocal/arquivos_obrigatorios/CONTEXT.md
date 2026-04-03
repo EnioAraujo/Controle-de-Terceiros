@@ -77,6 +77,7 @@ src/
 │   ├── supabase.ts          # Client Supabase + authReady promise
 │   ├── format-utils.ts      # Funções puras: calcHoras, fmt, fmtMes (Intl), dbToRegistro, etc.
 │   ├── fechamento-utils.ts  # Lógica de fechamento financeiro
+│   ├── projecao-utils.ts    # Funções puras: gerarDias(), calcMediaPorTurno(), calcDadosPorDia(), TURNOS_PROJECAO
 │   ├── i18n-translations.ts # Traduções pt-BR/en-US + mapSupabaseError()
 │   ├── i18n-context.ts      # React.createContext do sistema i18n
 │   ├── i18n.tsx             # I18nProvider (componente de contexto)
@@ -503,4 +504,8 @@ Resultado da varredura de verbosidade e over-engineering realizada em 2026-03-26
 | 2026-03-26 | Fix 4: findConflitoDeTurno() extraída como helper de módulo em Lancamentos.tsx — substitui inline registros.find() repetido |
 | 2026-03-26 | Fix 6+7: LABEL_STYLE constant + BlockHeader component adicionados a atoms.tsx; Input/Select usam LABEL_STYLE; Dashboard, Lancamentos, FechamentoTab e Configuracoes usam BlockHeader |
 | 2026-03-26 | Fix 9: fmtMes() em format-utils.ts reescrita usando Intl.DateTimeFormat — elimina array manual de meses português; todos os 87 testes passando |
+| 2026-04-03 | Substituída biblioteca xlsx (CVE sem patch) por exceljs 4.4.0; export XLSX em FechamentoTab.tsx migrado para API exceljs (writeBuffer+Blob); vite.config.ts atualizado |
+| 2026-04-03 | ProjecaoPage.tsx: removida interface Opcoes local duplicada; importa tipo compartilhado de @/types/attendance |
+| 2026-04-03 | Extraídas funções puras de projeção para src/lib/projecao-utils.ts: gerarDias(), calcMediaPorTurno(), calcDadosPorDia(), TURNOS_PROJECAO; ProjecaoPage refatorada para usar as funções |
+| 2026-04-03 | Adicionados testes unitários em projecao-utils.test.ts (12 casos) e smoke test em MobileLancamentosPage.test.tsx (3 casos); total: 162 testes passando |
 | 2026-04-01 | Restaurado Index.tsx ao estado slim (~176 linhas) após regressão git: corrigido crash "Algo deu errado" (Dashboard usado sem import → ReferenceError), corrigida regressão visual do header (dark navy #0B1628 → branco #fff, azul → laranja #F37E38), removidos todos os componentes e hooks inline duplicados (useStorage, useOpcoes, PrivacyNotice, atoms, FormLancamento, FechamentoTab), adicionados imports corretos dos módulos externos; 148 testes passando |

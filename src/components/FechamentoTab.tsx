@@ -224,18 +224,32 @@ export const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; op
 
   const exportarXlsx = async () => {
     try {
-      const XLSX = await import("xlsx");
-      const rows = itens.map(i => ({
-        [t("fech_col_data")]: fmt(i.data, lang), [t("fech_col_turno")]: i.turno,
-        [t("fech_col_nome")]: i.nome, [t("fech_col_horas")]: i.horas,
+      const ExcelJS = await import("exceljs");
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Fechamento");
+      const headers = [
+        t("fech_col_data"), t("fech_col_turno"), t("fech_col_nome"), t("fech_col_horas"),
+        t("fech_col_diaria"), t("fech_col_vlr_dia"), t("fech_col_diff"), t("fech_col_obs"),
+      ];
+      ws.columns = headers.map(h => ({ header: h, key: h, width: 18 }));
+      itens.forEach(i => ws.addRow({
+        [t("fech_col_data")]: fmt(i.data, lang),
+        [t("fech_col_turno")]: i.turno,
+        [t("fech_col_nome")]: i.nome,
+        [t("fech_col_horas")]: i.horas,
         [t("fech_col_diaria")]: i.valorDiaria,
-        [t("fech_col_vlr_dia")]: i.valorCalculado, [t("fech_col_diff")]: i.valorCalculado - i.valorDiaria,
-        [t("fech_col_obs")]: i.obs,
+        [t("fech_col_vlr_dia")]: i.valorCalculado,
+        [t("fech_col_diff")]: i.valorCalculado - i.valorDiaria,
+        [t("fech_col_obs")]: i.obs ?? "",
       }));
-      const ws = XLSX.utils.json_to_sheet(rows);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Fechamento");
-      XLSX.writeFile(wb, `fechamento_${fornecedor}_${intervalo.inicio}_${intervalo.fim}.xlsx`);
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `fechamento_${fornecedor}_${intervalo.inicio}_${intervalo.fim}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch (err) { console.error("Erro ao exportar XLSX:", err); }
   };
 
