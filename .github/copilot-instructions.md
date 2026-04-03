@@ -61,7 +61,7 @@ Quando o usuário relatar que um bug **se repetiu após um fix**, **não tente c
 
 ## Regra de Commit
 
-**Após cada alteração no projeto** (incluindo a atualização do `CONTEXT.md`), você **deve realizar um commit** com todos os arquivos modificados.
+**Após cada alteração no projeto** (incluindo a atualização do `CONTEXT.md`), você **deve realizar um commit** somente dos arquivos modificados.
 
 ### Formato da mensagem de commit
 
