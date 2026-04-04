@@ -1,11 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { Registro } from "@/types/attendance";
 import type { Opcoes } from "@/types/attendance";
 import { fmtMes, hoje, mesAtual } from "@/lib/format-utils";
 import { useI18n } from "@/hooks/use-i18n";
 import { BlockHeader } from "@/components/atoms";
-import { resolverDiaria } from "@/lib/fechamento-utils";
+import { resolverDiaria, dbToDiariaConfig } from "@/lib/fechamento-utils";
 import type { DiariaConfig } from "@/lib/fechamento-utils";
+import { supabase, authReady } from "@/lib/supabase";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Legend,
@@ -24,17 +25,25 @@ const fmtBRL = (v: number) =>
 export const Dashboard = ({
   registros,
   opcoes,
-  diariasConfig,
-  isAdminOrMod,
+  isAdminOrMod = true,
 }: {
   registros: Registro[];
   opcoes: Opcoes;
-  diariasConfig: DiariaConfig[];
-  isAdminOrMod: boolean;
+  isAdminOrMod?: boolean;
 }) => {
   const { t, lang } = useI18n();
   const [periodo, setPeriodo] = useState(mesAtual());
   const [barMode, setBarMode] = useState<"stacked" | "grouped">("stacked");
+  const [diariasConfig, setDiariasConfig] = useState<DiariaConfig[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    authReady.then(async () => {
+      const { data } = await supabase.from("diarias_config").select("*").order("fornecedor");
+      if (active && data) setDiariasConfig(data.map(dbToDiariaConfig));
+    });
+    return () => { active = false; };
+  }, []);
 
   // Turnos excluindo "Intermediário"
   const turnos = useMemo(

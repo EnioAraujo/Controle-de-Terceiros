@@ -160,7 +160,7 @@ const Index = () => {
             </div>
           ) : (
             <>
-              {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} />}
+              {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} isAdminOrMod={isAdminOrMod} />}
               {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} turnosConfig={turnosConfig} isAdmin={isAdmin} waTemplate={waTemplate} />}
               {tab === "projecao"      && <ProjecaoPage  registros={registros} opcoes={opcoes} />}
               {tab === "fechamento"    && <FechamentoTab registros={registros} opcoes={opcoes} />}
