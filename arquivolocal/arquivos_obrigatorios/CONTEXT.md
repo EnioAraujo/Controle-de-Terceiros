@@ -13,6 +13,7 @@
 | 2026-04-04 | AdminPage: adicionado logAudit nas mutations approvalMutation, roleMutation, unblockMutation e permsMutation (OWASP A09) |
 | 2026-04-04 | Index: tab inicial alterada de 'lancamentos' para 'dashboard'; botão Mobile adicionado no header |
 | 2026-04-04 | Index: header alinhado com design mobile — background #212B36, page surface #FAF9FB, borders #2E3B4A, texto secundário #9898B0, Sair #EF4444 |
+| 2026-04-04 | Index: verif. admin migrada para rpc('is_admin') (SECURITY DEFINER, fail-closed); ícones PNG no nav (dashboard.png, logo.png, admin.png) |
 # Controle de Terceiros — Contexto do Projeto
 
 > **Última atualização:** 2026-04-04
