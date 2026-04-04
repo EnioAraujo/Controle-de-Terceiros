@@ -25,7 +25,7 @@ interface NavItem { id: TabId; label: string; icon: string; }
 const Index = () => {
   const navigate = useNavigate();
   const { t, lang } = useI18n();
-  const [tab, setTab]                          = useState<TabId>("lancamentos");
+  const [tab, setTab]                          = useState<TabId>("dashboard");
   const [registros, setRegistros, loadingRegs] = useStorage();
   const [opcoes, setOpcoes, loadingOpts]        = useOpcoes();
   const [saved, setSaved]                      = useState(false);
@@ -140,6 +140,14 @@ const Index = () => {
                 {t("nav_admin")}
               </button>
             )}
+            <button
+              onClick={() => { sessionStorage.setItem("deviceMode", "mobile"); navigate("/mobile"); }}
+              title="Mudar para versão mobile"
+              style={{ display:"flex", alignItems:"center", gap:5, background:"transparent", border:"1px solid #E8E8EA", borderRadius:8, padding:"4px 10px", cursor:"pointer", color:"#64748B", fontSize:11, fontFamily:"inherit", fontWeight:600 }}
+            >
+              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+              Mobile
+            </button>
             <button
               onClick={() => supabase.auth.signOut()}
               title="Sair do sistema"
