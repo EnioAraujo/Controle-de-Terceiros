@@ -69,8 +69,8 @@ const Index = () => {
   const mes_  = registros.filter(r => r.data.startsWith(mesAtual())).length;
 
   const NAV: NavItem[] = [
-    { id: "dashboard",     label: t("nav_tab_dashboard"), icon: "/dashboard.png" },
-    { id: "lancamentos",   label: t("nav_tab_lanc"),      icon: "/logo.png" },
+    { id: "dashboard",     label: t("nav_tab_dashboard"), icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" },
+    { id: "lancamentos",   label: t("nav_tab_lanc"),      icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" },
     { id: "projecao",      label: t("nav_tab_proj"),      icon: "M2 20h20M5 20V10l3-7 3 7v10M15 20V6l3-4 3 4v14" },
     { id: "fechamento",    label: t("nav_tab_fech"),      icon: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" },
     { id: "configuracoes", label: t("nav_tab_cfg"),       icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.94 11a8 8 0 0 0-15.88 0H2v2h2.06a8 8 0 0 0 15.88 0H22v-2h-2.06z" },
@@ -88,9 +88,7 @@ const Index = () => {
 
         <header className="rsp-header" style={{ background:"#212B36", borderBottom:"1px solid #2E3B4A", height:58, display:"flex", alignItems:"center", padding:"0 24px", gap:0, position:"sticky", top:0, zIndex:200 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10, paddingRight:28, borderRight:"1px solid #2E3B4A", marginRight:20 }}>
-            <div style={{ width:34, height:34, background:"linear-gradient(135deg,#a04100,#f26f23)", borderRadius:9, display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <Icon d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8zM5.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM18.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" size={18} />
-            </div>
+            <img src={tab === "dashboard" ? "/dashboard.png" : "/logo.png"} width={34} height={34} alt="" style={{borderRadius:9}} />
             <div>
               <div style={{ color:"#F8FAFC", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Controle de</div>
               <div style={{ color:"#F37E38", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Terceiros</div>
@@ -105,7 +103,7 @@ const Index = () => {
                 background: tab === n.id ? "#F37E38" : "rgba(255,255,255,0.04)",
                 color: tab === n.id ? "#fff" : "#9898B0",
               }}>
-                {n.icon.startsWith("/") ? <img src={n.icon} width={15} height={15} alt="" style={{borderRadius:3,opacity:tab===n.id?1:0.6}} /> : <Icon d={n.icon} size={15} />}<span className="rsp-nav-label">{n.label}</span>
+                <Icon d={n.icon} size={15} /><span className="rsp-nav-label">{n.label}</span>
               </button>
             ))}
           </nav>
