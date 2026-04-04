@@ -17,6 +17,7 @@ export const translations = {
     login_err_invalid:  "E-mail ou senha incorretos.",
     login_err_unconfirmed: "E-mail ainda não confirmado. Verifique sua caixa de entrada.",
     login_err_too_many: "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
+    login_err_blocked:  "Usuário bloqueado, contate o administrador.",
     login_err_generic:  "Ocorreu um erro. Tente novamente.",
 
     // Reset password
@@ -472,6 +473,7 @@ export const translations = {
     login_err_invalid:  "Incorrect e-mail or password.",
     login_err_unconfirmed: "E-mail not yet confirmed. Please check your inbox.",
     login_err_too_many: "Too many attempts. Please wait a few minutes and try again.",
+    login_err_blocked:  "Account locked. Contact your administrator.",
     login_err_generic:  "An error occurred. Please try again.",
 
     // Reset password

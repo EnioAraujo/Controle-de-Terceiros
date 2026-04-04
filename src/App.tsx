@@ -72,7 +72,7 @@ function getPostLoginRoute(): string {
 
 const AppRoutes = () => {
   const navigate = useNavigate();
-  const { session, loading, isAuthenticated, tokenExpired } = useAuthStatus();
+  const { session, loading, isAuthenticated, tokenExpired, isBlocked, signOut } = useAuthStatus();
   const prevSessionRef = useRef<Session | null>(null);
 
   useEffect(() => {
@@ -140,6 +140,25 @@ const AppRoutes = () => {
       <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif", flexDirection: "column", gap: 16 }}>
         <div style={{ fontSize: 16, color: "#EF4444", fontWeight: 700 }}>Sessão expirada</div>
         <div style={{ fontSize: 14, color: "#64748B" }}>Redirecionando para login…</div>
+      </div>
+    );
+  }
+
+  // Usuário bloqueado — bloqueia todas as rotas autenticadas
+  if (session && isBlocked) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif", padding: 24 }}>
+        <div style={{ textAlign: "center", maxWidth: 360 }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🚫</div>
+          <div style={{ fontSize: 20, color: "#EF4444", fontWeight: 800, marginBottom: 8 }}>Usuário bloqueado</div>
+          <div style={{ fontSize: 14, color: "#64748B", marginBottom: 24 }}>Você foi bloqueado após múltiplas tentativas de login incorretas. Contate o administrador do sistema.</div>
+          <button
+            onClick={() => signOut()}
+            style={{ background: "#F37E38", color: "#fff", fontWeight: 700, fontSize: 14, border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer" }}
+          >
+            Voltar ao login
+          </button>
+        </div>
       </div>
     );
   }

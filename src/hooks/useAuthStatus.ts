@@ -16,6 +16,8 @@ export interface AuthStatus {
   tokenExpired: boolean;
   /** True se o usuário estiver autenticado */
   isAuthenticated: boolean;
+  /** True se o usuário estiver bloqueado por excesso de tentativas */
+  isBlocked: boolean;
   /** Erro de autenticação (se houver) */
   error: string | null;
   /** Força refresh do token */
@@ -49,6 +51,7 @@ export const useAuthStatus = (): AuthStatus => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [tokenExpired, setTokenExpired] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -62,6 +65,7 @@ export const useAuthStatus = (): AuthStatus => {
     if (!newSession) {
       // Usuário deslogado
       setTokenExpired(false);
+      setIsBlocked(false);
       setError(null);
       return;
     }
@@ -77,6 +81,18 @@ export const useAuthStatus = (): AuthStatus => {
       if (import.meta.env.DEV) console.debug("[AUTH] Token expirando em breve, refresh preventivo");
     } else {
       setTokenExpired(false);
+    }
+
+    // Verifica bloqueio no banco (não confia em estado local)
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("is_blocked")
+        .eq("id", newSession.user.id)
+        .single();
+      setIsBlocked(data?.is_blocked === true);
+    } catch {
+      setIsBlocked(false);
     }
   }, []);
 
@@ -217,6 +233,7 @@ export const useAuthStatus = (): AuthStatus => {
     loading,
     tokenExpired,
     isAuthenticated,
+    isBlocked,
     error,
     refreshSession,
     signOut,

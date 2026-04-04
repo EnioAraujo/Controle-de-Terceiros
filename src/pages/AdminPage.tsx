@@ -41,6 +41,8 @@ type UserWithRole = {
   email: string;
   is_admin: boolean;
   is_approved: boolean;
+  is_blocked: boolean;
+  login_attempts: number;
   created_at: string;
   custom_permissions: string[] | null;
   role: AppRole;
@@ -337,6 +339,8 @@ export default function AdminPage() {
         email:               p.email,
         is_admin:            p.is_admin ?? false,
         is_approved:         p.is_approved ?? true,
+        is_blocked:          p.is_blocked ?? false,
+        login_attempts:      p.login_attempts ?? 0,
         created_at:          p.created_at,
         custom_permissions:  p.custom_permissions ?? [],
         role:                rolesMap.get(p.id) ?? (p.is_admin ? "admin" : "user"),
@@ -402,6 +406,20 @@ export default function AdminPage() {
       setNewEmail(""); setNewPassword(""); setNewIsAdmin(false); setCreateError("");
     },
     onError: (e: Error) => setCreateError(e.message),
+  });
+
+  // ── Mutation: desbloquear usuário ─────────────────────────────────
+  const unblockMutation = useMutation({
+    mutationFn: async ({ userId, email }: { userId: string; email: string }) => {
+      const { error } = await supabase.rpc("admin_unblock_user", { p_user_id: userId });
+      if (error) throw error;
+      await handleResetPassword(email, userId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-usuarios"] });
+      toast({ title: "Usuário desbloqueado. E-mail de redefinição enviado." });
+    },
+    onError: (e: Error) => toast({ title: "Erro ao desbloquear", description: e.message, variant: "destructive" }),
   });
 
   // ── Mutation: salvar permissões ───────────────────────────────────
@@ -599,6 +617,7 @@ export default function AdminPage() {
                         {getRoleIcon(user.role)}
                         <Badge variant={getRoleBadgeVariant(user.role)}>{getRoleLabel(user.role)}</Badge>
                         {user.id === myId && <span className="text-xs font-bold" style={{ color:"#F37E38" }}>{t("admin_you")}</span>}
+                        {user.is_blocked && <Badge variant="destructive" className="text-xs">Bloqueado</Badge>}
                       </div>
                       <div className="space-y-2" style={{ borderTop:"1px solid rgba(26,28,29,0.08)", paddingTop:8, marginTop:8 }}>
                         <div className="flex items-center justify-between">
@@ -621,9 +640,15 @@ export default function AdminPage() {
                       <div style={{ fontSize:11, color:"#9898B0" }}>Criado em: {new Date(user.created_at).toLocaleDateString(lang)}</div>
                       {user.id !== myId && (
                         <div className="flex gap-2" style={{ borderTop:"1px solid rgba(26,28,29,0.08)", paddingTop:8, marginTop:4 }}>
-                          <Button variant="ghost" size="sm" className="h-8 text-orange-600 hover:text-orange-600 hover:bg-orange-50 flex-1" onClick={() => handleResetPassword(user.email, user.id)} title={t("admin_tooltip_reset")}>
-                            <KeyRound className="h-4 w-4 mr-1" />{t("admin_reset_pwd_btn")}
-                          </Button>
+                          {user.is_blocked ? (
+                            <Button variant="ghost" size="sm" className="h-8 text-red-600 hover:text-red-600 hover:bg-red-50 flex-1" onClick={() => unblockMutation.mutate({ userId: user.id, email: user.email })} disabled={unblockMutation.isPending}>
+                              <ShieldOff className="h-4 w-4 mr-1" />Desbloquear
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="sm" className="h-8 text-orange-600 hover:text-orange-600 hover:bg-orange-50 flex-1" onClick={() => handleResetPassword(user.email, user.id)} title={t("admin_tooltip_reset")}>
+                              <KeyRound className="h-4 w-4 mr-1" />{t("admin_reset_pwd_btn")}
+                            </Button>
+                          )}
                           <Button variant="ghost" size="sm" className="h-8 text-red-600 hover:text-red-600 hover:bg-red-50" onClick={() => { setUserToDelete(user); setIsDeleteOpen(true); }}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -651,6 +676,7 @@ export default function AdminPage() {
                       <User className="h-4 w-4 shrink-0" style={{ color:"#9898B0" }} />
                       <span className="truncate">{user.email}</span>
                       {user.id === myId && <span className="text-xs font-bold shrink-0" style={{ color:"#F37E38" }}>{t("admin_you")}</span>}
+                      {user.is_blocked && <Badge variant="destructive" className="text-xs shrink-0">Bloqueado</Badge>}
                     </div>
                     <div>
                       <Select value={user.role} onValueChange={(v: AppRole) => roleMutation.mutate({ userId: user.id, role: v })} disabled={roleMutation.isPending || user.id === myId}>
@@ -667,9 +693,15 @@ export default function AdminPage() {
                     <div className="flex items-center gap-1">
                       {user.id !== myId ? (
                         <>
-                          <Button variant="ghost" size="sm" className="h-8 text-orange-600 hover:text-orange-600 hover:bg-orange-50" onClick={() => handleResetPassword(user.email, user.id)} title={t("admin_tooltip_reset")}>
-                            <KeyRound className="h-4 w-4" />
-                          </Button>
+                          {user.is_blocked ? (
+                            <Button variant="ghost" size="sm" className="h-8 text-red-600 hover:text-red-600 hover:bg-red-50" onClick={() => unblockMutation.mutate({ userId: user.id, email: user.email })} disabled={unblockMutation.isPending}>
+                              <ShieldOff className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="sm" className="h-8 text-orange-600 hover:text-orange-600 hover:bg-orange-50" onClick={() => handleResetPassword(user.email, user.id)} title={t("admin_tooltip_reset")}>
+                              <KeyRound className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="sm" className="h-8 text-red-600 hover:text-red-600 hover:bg-red-50" onClick={() => { setUserToDelete(user); setIsDeleteOpen(true); }}>
                             <Trash2 className="h-4 w-4" />
                           </Button>

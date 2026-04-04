@@ -49,7 +49,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading]   = useState(false);
   const [erro, setErro]         = useState("");
-  const [failCount, setFailCount] = useState(0);
   const [deviceChoice, setDeviceChoice] = useState<DeviceChoice>(null);
 
   // MFA challenge state
@@ -72,20 +71,23 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // Verifica bloqueio antes de tentar autenticar
+      const { data: blocked } = await supabase.rpc("check_user_blocked", { p_email: email });
+      if (blocked) {
+        setLoading(false);
+        setErro(t("login_err_blocked"));
+        return;
+      }
+
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (loginCancelledRef.current) { setLoading(false); return; }
       if (error) {
         if (import.meta.env.DEV) console.warn("[LOGIN_FAILURE]", { error: error.message });
-        const newCount = failCount + 1;
-        setFailCount(newCount);
+        // Registra falha no banco e re-verifica bloqueio
+        await supabase.rpc("record_failed_login", { p_email: email });
+        const { data: nowBlocked } = await supabase.rpc("check_user_blocked", { p_email: email });
         setLoading(false);
-        const baseMsg = mapSupabaseError(error.message, lang);
-        const hint = newCount >= 3
-          ? (lang === "pt-BR"
-            ? " Muitas tentativas? Verifique sua conexão ou aguarde alguns minutos."
-            : " Too many attempts? Check your connection or wait a few minutes.")
-          : "";
-        setErro(baseMsg + hint);
+        setErro(nowBlocked ? t("login_err_blocked") : mapSupabaseError(error.message, lang));
         return;
       }
 
