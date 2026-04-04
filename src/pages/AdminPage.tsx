@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
 import { useToast } from "@/hooks/use-toast";
 import { mapSupabaseError } from "@/lib/i18n-translations";
+import { logAudit } from "@/lib/audit";
 
 // shadcn/ui
 import { Button } from "@/components/ui/button";
@@ -357,9 +358,10 @@ export default function AdminPage() {
         .eq("id", userId);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-usuarios"] });
       toast({ title: "Status de aprovação atualizado" });
+      logAudit("UPDATE", "profiles", variables.userId, { is_approved: variables.isApproved });
     },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
@@ -372,9 +374,10 @@ export default function AdminPage() {
         .upsert({ user_id: userId, role }, { onConflict: "user_id" });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-usuarios"] });
       toast({ title: "Papel do usuário atualizado" });
+      logAudit("UPDATE", "user_roles", variables.userId, { role: variables.role });
     },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
@@ -415,9 +418,10 @@ export default function AdminPage() {
       if (error) throw error;
       await handleResetPassword(email, userId);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-usuarios"] });
       toast({ title: "Usuário desbloqueado. E-mail de redefinição enviado." });
+      logAudit("UPDATE", "profiles", variables.userId, { action: "unblock" });
     },
     onError: (e: Error) => toast({ title: "Erro ao desbloquear", description: e.message, variant: "destructive" }),
   });
@@ -431,9 +435,10 @@ export default function AdminPage() {
         .eq("id", userId);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-usuarios"] });
       toast({ title: "Permissões salvas com sucesso" });
+      logAudit("UPDATE", "profiles", variables.userId, { custom_permissions: variables.perms });
     },
     onError: (e: Error) => toast({ title: "Erro ao salvar permissões", description: e.message, variant: "destructive" }),
   });
