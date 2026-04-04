@@ -623,6 +623,21 @@ const MobileLancamentosPage = () => {
               <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="2" y="3" width="20" height="14" rx="2" /><polyline points="8 21 12 17 16 21" /></svg>
               Desktop
             </button>
+            {/* Botão Sair */}
+            <button
+              onClick={() => supabase.auth.signOut()}
+              style={{
+                border: "1px solid #2E3B4A",
+                background: "rgba(255,255,255,0.04)",
+                borderRadius: 8, padding: "8px 12px",
+                color: "#EF4444", fontSize: 12, fontWeight: 600,
+                fontFamily: "inherit", cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 6,
+              }}
+            >
+              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Sair
+            </button>
           </div>
         </div>
       </div>
