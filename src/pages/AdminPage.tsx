@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
@@ -496,16 +496,7 @@ export default function AdminPage() {
   }
 
   if (!isAdmin) {
-    return (
-      <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#FAF9FB", padding:24 }}>
-        <div className="text-center">
-          <ShieldOff className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h1 style={{ fontSize:22, fontWeight:800, color:"#212B36", marginBottom:8 }}>{t("admin_access_denied")}</h1>
-          <p style={{ color:"#9898B0", marginBottom:24 }}>{t("admin_access_denied_desc")}</p>
-          <Button onClick={() => navigate("/")}>{t("admin_back_home")}</Button>
-        </div>
-      </div>
-    );
+    return <Navigate to="/" replace />;
   }
 
   const totalAdmins = users.filter(u => u.role === "admin").length;
