@@ -16,6 +16,7 @@
 | 2026-04-04 | Index: verif. admin migrada para rpc('is_admin') (SECURITY DEFINER, fail-closed); ícones PNG no nav (dashboard.png, logo.png, admin.png) |
 | 2026-04-04 | Index: PNG contextual no branding (quadrado logo) — dashboard.png na aba dashboard, logo.png nas demais; nav tabs voltam a usar SVG |
 | 2026-04-04 | Index: carrega whatsapp_template do banco ao iniciar (junto com dpo_nome/dpo_email); fix: template configurado pelo admin agora é aplicado sem precisar abrir Configurações |
+| 2026-04-04 | ErrorBoundary: console.error protegido com guarda DEV para evitar vazamento de stack trace em produção (OWASP A05) |
 # Controle de Terceiros — Contexto do Projeto
 
 > **Última atualização:** 2026-04-04
