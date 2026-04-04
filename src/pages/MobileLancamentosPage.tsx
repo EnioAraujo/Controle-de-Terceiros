@@ -15,13 +15,6 @@ import type { TurnoConfig } from "@/lib/fechamento-utils";
 import { FormLancamento } from "@/components/FormLancamento";
 import type { Opcoes } from "@/types/attendance";
 import { useI18n } from "@/hooks/use-i18n";
-import type { Lang } from "@/lib/i18n-translations";
-
-const LANGS: { value: Lang; label: string }[] = [
-  { value: "pt-BR", label: "PT" },
-  { value: "en-US", label: "EN" },
-];
-
 // ─── CONSTANTES ─────────────────────────────────────────────────
 const OPCOES_DEFAULT: Opcoes = {
   turnos: [], unidades: [], fornecedores: [], motivos: [], cargos: [], ccList: [], nomes: [],
@@ -331,7 +324,7 @@ const MobileModal = ({ title, onClose, children }: { title: string; onClose: () 
 // ─── PÁGINA PRINCIPAL ────────────────────────────────────────────
 const MobileLancamentosPage = () => {
   const navigate = useNavigate();
-  const { lang, setLang } = useI18n();
+  const { lang } = useI18n();
 
   // ── Estado dos dados ──
   const [registros, setRegistrosState] = useState<Registro[]>([]);
@@ -615,24 +608,6 @@ const MobileLancamentosPage = () => {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-            {/* Toggle de idioma */}
-            {LANGS.map(l => (
-              <button
-                key={l.value}
-                onClick={() => setLang(l.value)}
-                style={{
-                  border: lang === l.value ? "1.5px solid #F37E38" : "1px solid #2E3B4A",
-                  background: lang === l.value ? "#F37E3818" : "rgba(255,255,255,0.04)",
-                  borderRadius: 6, padding: "5px 9px",
-                  color: lang === l.value ? "#F37E38" : "#9898B0",
-                  fontSize: 11, fontWeight: 700,
-                  fontFamily: "inherit", cursor: "pointer",
-                  letterSpacing: 0.5,
-                }}
-              >
-                {l.label}
-              </button>
-            ))}
             {/* Botão Desktop */}
             <button
               onClick={irParaDesktop}
