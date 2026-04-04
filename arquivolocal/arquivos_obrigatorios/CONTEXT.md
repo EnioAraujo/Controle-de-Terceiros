@@ -8,9 +8,13 @@
 | 2026-03-15 | Importação de Excel: horaEntrada/horaSaida agora sempre no formato hh:mm:ss (sem data/timezone) na pré-visualização e persistência |
 | 2026-03-15 | Tela principal: agrupamento por loteId removido, cada registro é exibido individualmente (inclusive importados do Excel) |
 | 2026-03-16 | Adicionado botão 'Excluir TODOS' (admin-only) na tela principal, com modal de confirmação, log de auditoria e exclusão em massa dos registros. |
+| 2026-04-04 | MobileLancamentosPage: adicionado botão 'Sair' no header (vermelho, chama supabase.auth.signOut()) |
+| 2026-04-04 | AdminPage: usuários sem role admin redirecionados para / em vez de exibir tela 'Access Denied' (fix segurança A01) |
+| 2026-04-04 | AdminPage: adicionado logAudit nas mutations approvalMutation, roleMutation, unblockMutation e permsMutation (OWASP A09) |
+| 2026-04-04 | Index: tab inicial alterada de 'lancamentos' para 'dashboard'; botão Mobile adicionado no header |
 # Controle de Terceiros — Contexto do Projeto
 
-> **Última atualização:** 2026-03-25
+> **Última atualização:** 2026-04-04
 > **Branch:** Main-terceiros
 
 ---
