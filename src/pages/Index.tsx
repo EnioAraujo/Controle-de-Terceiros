@@ -49,12 +49,18 @@ const Index = () => {
   useEffect(() => {
     authReady.then(() => {
       supabase.from("opcoes").select("chave,valor")
-        .in("chave", ["dpo_nome", "dpo_email"])
+        .in("chave", ["dpo_nome", "dpo_email", "whatsapp_template"])
         .then(({ data }) => {
           if (!data) return;
           const m: Record<string, string> = {};
           data.forEach((r: { chave: string; valor: string }) => { m[r.chave] = r.valor; });
           setDpoCfg({ nome: m["dpo_nome"] ?? "", email: m["dpo_email"] ?? "" });
+          if (m["whatsapp_template"]) {
+            try {
+              const p = JSON.parse(m["whatsapp_template"]);
+              if (p.header && Array.isArray(p.campos) && p.campos.length > 0) setWaTemplate(p);
+            } catch { /* ignore bad JSON */ }
+          }
         });
       supabase.rpc('is_admin')
         .then(({ data }) => { if (data) setIsAdmin(true); });
