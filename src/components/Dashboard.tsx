@@ -123,11 +123,11 @@ export const Dashboard = ({
   }, [doMes, turnos, periodLabels, diariasConfig]);
 
   // ── Helpers de navegação ──────────────────────────────────────────────────
-  const navMes = (delta: number) => {
-    const d = new Date(periodo + "-01");
-    d.setMonth(d.getMonth() + delta);
-    setPeriodo(d.toISOString().slice(0, 7));
-  };
+ const navMes = (delta: number) => {
+    const [y, m] = periodo.split("-").map(Number);
+    const d = new Date(y, m - 1 + delta, 1); // construtor local
+    setPeriodo(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+};
 
   // ── Tooltip customizado para gráfico diário ───────────────────────────────
   const TooltipDiario = ({ active, payload, label }: { active?: boolean; payload?: { dataKey: string; value: number; color: string }[]; label?: number }) => {
