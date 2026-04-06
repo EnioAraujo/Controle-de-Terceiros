@@ -1,9 +1,25 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { logAudit } from "@/lib/audit";
 import { useI18n } from "@/hooks/use-i18n";
 
-type SetupStep = "loading" | "qr" | "verify" | "done" | "error";
+type SetupStep = "loading" | "qr" | "verify" | "backup" | "error";
+
+async function genBackupCodes(userId: string): Promise<string[]> {
+  const plain: string[] = [];
+  const rows: { user_id: string; code_hash: string }[] = [];
+  for (let i = 0; i < 10; i++) {
+    const bytes = crypto.getRandomValues(new Uint8Array(5));
+    const c = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("").toUpperCase();
+    plain.push(c);
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${userId}:${c}`));
+    rows.push({ user_id: userId, code_hash: btoa(String.fromCharCode(...new Uint8Array(buf))) });
+  }
+  await supabase.from("backup_codes").delete().eq("user_id", userId);
+  await supabase.from("backup_codes").insert(rows);
+  return plain;
+}
 
 export default function MfaSetupPage() {
   const navigate = useNavigate();
@@ -16,6 +32,7 @@ export default function MfaSetupPage() {
   const [code, setCode]         = useState("");
   const [loading, setLoading]   = useState(false);
   const [erro, setErro]         = useState("");
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
 
   const t = (pt: string, en: string) => lang === "pt-BR" ? pt : en;
 
@@ -55,6 +72,7 @@ export default function MfaSetupPage() {
       setFactorId(data.id);
       setQrUrl(data.totp.qr_code);
       setSecret(data.totp.secret);
+      logAudit("MFA_ENROLL", "mfa", data.id);
       if (!cancelled) setStep("qr");
     }
 
@@ -88,15 +106,20 @@ export default function MfaSetupPage() {
       return;
     }
 
-    setStep("done");
-    setTimeout(() => navigate("/", { replace: true }), 2000);
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (s?.user?.id) {
+      const codes = await genBackupCodes(s.user.id);
+      setBackupCodes(codes);
+    }
+    logAudit("MFA_VERIFY", "mfa", factorId);
+    setStep("backup");
   };
 
   const handleSkip = () => {
-    // Só faz unenroll em fator recém-criado (passo "qr") — nunca em fator já verificado (SEV-005)
     if (factorId && step === "qr") {
       supabase.auth.mfa.unenroll({ factorId }).catch(() => undefined);
     }
+    logAudit("MFA_SKIP", "mfa", factorId || undefined);
     navigate("/", { replace: true });
   };
 
@@ -138,17 +161,55 @@ export default function MfaSetupPage() {
     );
   }
 
-  if (step === "done") {
+  if (step === "backup") {
     return (
       <div style={containerStyle}>
-        <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", boxShadow: "0 4px 24px rgba(0,0,0,.08)", maxWidth: 420, width: "100%", textAlign: "center" }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>&#x2705;</div>
+        <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", boxShadow: "0 4px 24px rgba(0,0,0,.08)", maxWidth: 440, width: "100%", textAlign: "center" }}>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>🔐</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: "#212B36" }}>
-            {t("Autenticação ativada!", "Authentication enabled!")}
+            {t("Códigos de Recuperação", "Recovery Codes")}
           </div>
-          <div style={{ fontSize: 13, color: "#9898B0", marginTop: 8 }}>
-            {t("Redirecionando para o sistema...", "Redirecting to the app...")}
+          <div style={{ fontSize: 12, color: "#9898B0", lineHeight: 1.6, margin: "8px 0 16px", maxWidth: 360, marginInline: "auto" }}>
+            {t(
+              "Salve estes códigos em local seguro. Cada código pode ser usado uma única vez caso perca acesso ao app autenticador.",
+              "Save these codes in a safe place. Each code can be used once if you lose access to your authenticator app."
+            )}
           </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+            {backupCodes.map((c, i) => (
+              <div key={i} style={{ fontFamily: "monospace", fontSize: 14, background: "#F8FAFC", borderRadius: 6, padding: "8px 12px", letterSpacing: 1, color: "#212B36" }}>
+                {c}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <button
+              type="button"
+              onClick={() => navigator.clipboard.writeText(backupCodes.join("\n")).catch(() => undefined)}
+              style={{ flex: 1, background: "#F8FAFC", border: "1.5px solid #E8E8EA", borderRadius: 8, padding: "10px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#212B36", fontFamily: "inherit" }}
+            >
+              {t("Copiar todos", "Copy all")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(new Blob([backupCodes.join("\n")], { type: "text/plain" }));
+                a.download = "backup-codes.txt";
+                a.click();
+                URL.revokeObjectURL(a.href);
+              }}
+              style={{ flex: 1, background: "#F8FAFC", border: "1.5px solid #E8E8EA", borderRadius: 8, padding: "10px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#212B36", fontFamily: "inherit" }}
+            >
+              {t("Baixar .txt", "Download .txt")}
+            </button>
+          </div>
+          <button
+            onClick={() => navigate("/", { replace: true })}
+            style={{ background: "#F37E38", border: "none", borderRadius: 10, padding: "13px 24px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: "inherit", width: "100%" }}
+          >
+            {t("Confirmo que salvei os códigos", "I confirm I saved the codes")}
+          </button>
         </div>
       </div>
     );
@@ -251,7 +312,8 @@ export default function MfaSetupPage() {
                     type="text"
                     inputMode="numeric"
                     autoComplete="one-time-code"
-                    placeholder="000000"
+                    placeholder="000 000"
+                    aria-label={t("Código de verificação de 6 dígitos", "6-digit verification code")}
                     value={code}
                     onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     required

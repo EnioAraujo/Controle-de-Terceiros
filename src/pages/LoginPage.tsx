@@ -1,6 +1,7 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { logAudit } from "@/lib/audit";
 import { useI18n } from "@/hooks/use-i18n";
 import type { Lang } from "@/lib/i18n-translations";
 import { mapSupabaseError } from "@/lib/i18n-translations";
@@ -39,7 +40,40 @@ function setReplayGuard(hash: string): void {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Step = "login" | "mfa";
+// ─── TOTP RATE LIMIT ─────────────────────────────────────────────────────────
+const TOTP_RATE_KEY = "totp_rate";
+const TOTP_MAX_ATTEMPTS = 5;
+const TOTP_COOLDOWN_MS = 60_000;
+
+function recordTotpFail(): number {
+  const now = Date.now();
+  try {
+    const raw = sessionStorage.getItem(TOTP_RATE_KEY);
+    const s = raw ? JSON.parse(raw) : null;
+    if (s?.bu && now < s.bu) return Math.ceil((s.bu - now) / 1000);
+    let c = 1, ws = now;
+    if (s && !s.bu && now - s.ws < TOTP_COOLDOWN_MS) { c = (s.c || 0) + 1; ws = s.ws; }
+    if (c >= TOTP_MAX_ATTEMPTS) {
+      const bu = now + TOTP_COOLDOWN_MS;
+      sessionStorage.setItem(TOTP_RATE_KEY, JSON.stringify({ c, ws, bu }));
+      return Math.ceil(TOTP_COOLDOWN_MS / 1000);
+    }
+    sessionStorage.setItem(TOTP_RATE_KEY, JSON.stringify({ c, ws }));
+    return 0;
+  } catch { return 0; }
+}
+
+function getTotpBlock(): number {
+  try {
+    const raw = sessionStorage.getItem(TOTP_RATE_KEY);
+    if (!raw) return 0;
+    const s = JSON.parse(raw);
+    return s.bu && Date.now() < s.bu ? Math.ceil((s.bu - Date.now()) / 1000) : 0;
+  } catch { return 0; }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+type Step = "login" | "mfa" | "recovery";
 type DeviceChoice = "mobile" | "desktop" | null;
 
 export default function LoginPage() {
@@ -56,8 +90,16 @@ export default function LoginPage() {
   const [mfaCode, setMfaCode]       = useState("");
   const [factorId, setFactorId]     = useState("");
   const [challengeId, setChallengeId] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [totpBlock, setTotpBlock]   = useState(() => getTotpBlock());
   // Cancela handleLogin em progresso quando usuário clica "Voltar"
   const loginCancelledRef = useRef(false);
+
+  useEffect(() => {
+    if (totpBlock <= 0) return;
+    const timer = setTimeout(() => setTotpBlock(s => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [totpBlock]);
 
   const chooseDevice = (choice: "mobile" | "desktop") => {
     sessionStorage.setItem("deviceMode", choice);
@@ -182,16 +224,23 @@ export default function LoginPage() {
         const { data: aalPost } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
         if (aalPost?.currentLevel === "aal2") {
           setReplayGuard(codeHash);
+          logAudit("MFA_VERIFY", "mfa", factorId);
           const dest = sessionStorage.getItem("deviceMode") === "mobile" ? "/mobile" : "/";
           navigate(dest, { replace: true });
           return;
         }
 
+        const block = recordTotpFail();
+        if (block > 0) setTotpBlock(block);
+        logAudit("MFA_VERIFY_FAIL", "mfa", factorId);
         setErro(lang === "pt-BR" ? "Código inválido. Tente novamente." : "Invalid code. Please try again.");
         return;
       }
 
       setReplayGuard(codeHash);
+      logAudit("MFA_VERIFY", "mfa", factorId);
+      const dest = sessionStorage.getItem("deviceMode") === "mobile" ? "/mobile" : "/";
+      navigate(dest, { replace: true });
     } catch (err) {
       if (import.meta.env.DEV) console.error("[MFA_VERIFY_UNEXPECTED_ERROR]", err);
       setErro(lang === "pt-BR" ? "Erro ao verificar código. Tente novamente." : "Error verifying code. Please try again.");
@@ -206,8 +255,37 @@ export default function LoginPage() {
     setStep("login");
     setErro("");
     setMfaCode("");
+    setRecoveryCode("");
     setFactorId("");
     setChallengeId("");
+    setTotpBlock(0);
+    sessionStorage.removeItem(TOTP_RATE_KEY);
+  };
+
+  const handleRecoveryVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErro("");
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) { setErro(lang === "pt-BR" ? "Sessão expirada." : "Session expired."); return; }
+      const raw = recoveryCode.replace(/\s/g, "").toUpperCase();
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${userId}:${raw}`));
+      const hash = btoa(String.fromCharCode(...new Uint8Array(buf)));
+      const { data: valid, error } = await supabase.rpc("use_backup_code", { p_code_hash: hash });
+      if (error || !valid) {
+        setErro(lang === "pt-BR" ? "Código de recuperação inválido." : "Invalid recovery code.");
+        return;
+      }
+      logAudit("BACKUP_CODE_USED", "backup_codes", userId);
+      await supabase.auth.mfa.unenroll({ factorId }).catch(() => undefined);
+      navigate("/mfa-setup", { replace: true });
+    } catch {
+      setErro(lang === "pt-BR" ? "Erro ao verificar código." : "Error verifying code.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -282,13 +360,15 @@ export default function LoginPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-lg font-bold">
-                    {step === "mfa"
+                    {step === "mfa" || step === "recovery"
                       ? (lang === "pt-BR" ? "Verificação em duas etapas" : "Two-step verification")
                       : t("login_title")}
                   </CardTitle>
                   <CardDescription className="text-slate-300 text-xs mt-1">
                     {step === "mfa"
                       ? (lang === "pt-BR" ? "Digite o código do seu aplicativo autenticador" : "Enter the code from your authenticator app")
+                      : step === "recovery"
+                      ? (lang === "pt-BR" ? "Insira um código de recuperação salvo" : "Enter a saved recovery code")
                       : t("login_subtitle")}
                   </CardDescription>
                 </div>
@@ -312,7 +392,8 @@ export default function LoginPage() {
                     type="text"
                     inputMode="numeric"
                     autoComplete="one-time-code"
-                    placeholder="000000"
+                    placeholder="000 000"
+                    aria-label={lang === "pt-BR" ? "Código de verificação de 6 dígitos" : "6-digit verification code"}
                     value={mfaCode}
                     onChange={e => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     required
@@ -331,10 +412,12 @@ export default function LoginPage() {
 
                 <Button 
                   type="submit" 
-                  disabled={loading || mfaCode.length !== 6}
+                  disabled={loading || mfaCode.length !== 6 || totpBlock > 0}
                   className="w-full font-bold"
                 >
-                  {loading ? (lang === "pt-BR" ? "Verificando…" : "Verifying…") : (lang === "pt-BR" ? "Verificar" : "Verify")}
+                  {totpBlock > 0
+                    ? (lang === "pt-BR" ? `Bloqueado (${totpBlock}s)` : `Blocked (${totpBlock}s)`)
+                    : loading ? (lang === "pt-BR" ? "Verificando…" : "Verifying…") : (lang === "pt-BR" ? "Verificar" : "Verify")}
                 </Button>
 
                 <Button 
@@ -344,6 +427,52 @@ export default function LoginPage() {
                   className="text-gray-400 text-xs"
                 >
                   {lang === "pt-BR" ? "← Voltar ao login" : "← Back to login"}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="link"
+                  onClick={() => { setStep("recovery"); setErro(""); }}
+                  className="text-gray-400 text-[11px] -mt-2"
+                >
+                  {lang === "pt-BR" ? "Usar código de recuperação" : "Use a recovery code"}
+                </Button>
+              </form>
+            ) : step === "recovery" ? (
+              <form onSubmit={handleRecoveryVerify} className="p-7 flex flex-col gap-4">
+                <div className="text-center text-sm text-gray-500">
+                  {lang === "pt-BR"
+                    ? "Insira um dos códigos de recuperação que você salvou ao configurar a autenticação."
+                    : "Enter one of the recovery codes you saved when setting up authentication."}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="recovery-code" className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider">
+                    {lang === "pt-BR" ? "Código de recuperação" : "Recovery code"}
+                  </Label>
+                  <Input
+                    id="recovery-code"
+                    type="text"
+                    placeholder="A1B2C3D4E5"
+                    value={recoveryCode}
+                    onChange={e => setRecoveryCode(e.target.value.replace(/[^a-fA-F0-9]/g, "").slice(0, 10))}
+                    required
+                    autoFocus
+                    aria-label={lang === "pt-BR" ? "Código de recuperação de 10 caracteres" : "10-character recovery code"}
+                    className="text-[18px] font-mono tracking-[4px] text-center bg-gray-50"
+                  />
+                </div>
+
+                {erro && (
+                  <Alert variant="destructive" className="bg-red-50 border-red-200">
+                    <AlertDescription className="text-[13px] font-medium text-red-600">{erro}</AlertDescription>
+                  </Alert>
+                )}
+
+                <Button type="submit" disabled={loading || recoveryCode.length !== 10} className="w-full font-bold">
+                  {loading ? (lang === "pt-BR" ? "Verificando…" : "Verifying…") : (lang === "pt-BR" ? "Usar código" : "Use code")}
+                </Button>
+                <Button type="button" variant="link" onClick={() => { setStep("mfa"); setErro(""); setRecoveryCode(""); }} className="text-gray-400 text-xs">
+                  {lang === "pt-BR" ? "← Voltar para código TOTP" : "← Back to TOTP code"}
                 </Button>
               </form>
             ) : (
