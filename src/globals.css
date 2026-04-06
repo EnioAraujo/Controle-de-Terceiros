@@ -34,6 +34,20 @@
 
     --radius: 0.5rem;
 
+    /* ── Surface tokens (DESIGN.md) ── */
+    --surface: 270 5% 98%;                 /* #faf9fb */
+    --surface-container-low: 270 4% 96%;   /* #f4f3f5 */
+    --surface-container-lowest: 0 0% 100%; /* #ffffff */
+    --surface-container-high: 240 4% 91%;  /* #e8e8ea */
+    --on-surface: 210 24% 17%;             /* #212B36 */
+    --on-surface-variant: 215 16% 47%;     /* #64748B */
+    --muted-text: 215 19% 62%;             /* #94A3B8 */
+
+    /* ── Font families (DESIGN.md) ── */
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-label: 'Inter', system-ui, sans-serif;
+
     --sidebar-background: 0 0% 98%;
 
     --sidebar-foreground: 240 5.3% 26.1%;

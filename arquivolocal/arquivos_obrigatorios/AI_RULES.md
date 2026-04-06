@@ -8,6 +8,8 @@
 4. **Ler `skill_tdd.md` completo** - contém regras de TDD
 5. **Ler `skill_seguranca-webapp` completo** - contém regras de segurança
 
+6. **Ler `README.md`
+
 ## Processo a cada alteração
 
 1. **Ler o arquivo inteiro** antes de editar qualquer trecho (nunca editar com leitura parcial)
