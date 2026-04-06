@@ -1,0 +1,74 @@
+utils-OmOu2L6c.js:27 @supabase/gotrue-js: Lock "lock:sb-jwleobxfonmdhfnvbkuf-auth-token" was not released within 5000ms. This may indicate an orphaned lock from a component unmount (e.g., React Strict Mode). Forcefully acquiring the lock to recover.
+Ki	@	utils-OmOu2L6c.js:27
+await in Ki		
+_acquireLock	@	utils-OmOu2L6c.js:43
+getUser	@	utils-OmOu2L6c.js:43
+await in getUser		
+_listFactors	@	utils-OmOu2L6c.js:43
+(anônimo)	@	AdminPage-DrqOjL5O.js:117
+(anônimo)	@	AdminPage-DrqOjL5O.js:117
+wl	@	react-vendor-CWmSFvAF.js:32
+Dn	@	react-vendor-CWmSFvAF.js:32
+(anônimo)	@	react-vendor-CWmSFvAF.js:32
+Oe	@	react-vendor-CWmSFvAF.js:17
+ft	@	react-vendor-CWmSFvAF.js:17
+utils-OmOu2L6c.js:43 
+ POST https://jwleobxfonmdhfnvbkuf.supabase.co/rest/v1/audit_log 400 (Bad Request)
+(anônimo)	@	utils-OmOu2L6c.js:43
+(anônimo)	@	utils-OmOu2L6c.js:43
+await in (anônimo)		
+then	@	utils-OmOu2L6c.js:1
+(anônimo)	@	audit-CjM3Ahgd.js:1
+Promise.then		
+I	@	audit-CjM3Ahgd.js:1
+ae	@	LoginPage-jDwJomYn.js:1
+await in ae		
+dc	@	react-vendor-CWmSFvAF.js:29
+hc	@	react-vendor-CWmSFvAF.js:29
+mc	@	react-vendor-CWmSFvAF.js:29
+Zo	@	react-vendor-CWmSFvAF.js:29
+Jo	@	react-vendor-CWmSFvAF.js:29
+(anônimo)	@	react-vendor-CWmSFvAF.js:29
+Si	@	react-vendor-CWmSFvAF.js:32
+no	@	react-vendor-CWmSFvAF.js:29
+Su	@	react-vendor-CWmSFvAF.js:29
+nu	@	react-vendor-CWmSFvAF.js:29
+Tc	@	react-vendor-CWmSFvAF.js:29
+audit-CjM3Ahgd.js:1 [AUDIT_LOG_ERROR] 
+{operation: 'MFA_VERIFY', table: 'mfa', requestId: 'ce4b8a1c-7311-4bb2-9a8e-016f7b44c934', error: 'new row for relation "audit_log" violates check constraint "audit_log_operacao_check"'}
+error
+: 
+"new row for relation \"audit_log\" violates check constraint \"audit_log_operacao_check\""
+operation
+: 
+"MFA_VERIFY"
+requestId
+: 
+"ce4b8a1c-7311-4bb2-9a8e-016f7b44c934"
+table
+: 
+"mfa"
+[[Prototype]]
+: 
+Object
+(anônimo)	@	audit-CjM3Ahgd.js:1
+Promise.then		
+then	@	utils-OmOu2L6c.js:4
+(anônimo)	@	audit-CjM3Ahgd.js:1
+Promise.then		
+I	@	audit-CjM3Ahgd.js:1
+ae	@	LoginPage-jDwJomYn.js:1
+await in ae		
+dc	@	react-vendor-CWmSFvAF.js:29
+hc	@	react-vendor-CWmSFvAF.js:29
+mc	@	react-vendor-CWmSFvAF.js:29
+Zo	@	react-vendor-CWmSFvAF.js:29
+Jo	@	react-vendor-CWmSFvAF.js:29
+(anônimo)	@	react-vendor-CWmSFvAF.js:29
+Si	@	react-vendor-CWmSFvAF.js:32
+no	@	react-vendor-CWmSFvAF.js:29
+Su	@	react-vendor-CWmSFvAF.js:29
+nu	@	react-vendor-CWmSFvAF.js:29
+Tc	@	react-vendor-CWmSFvAF.js:29
+﻿
+
