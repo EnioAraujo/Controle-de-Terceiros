@@ -50,7 +50,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
-    "dompurify": "^3.3.3",
+    "dompurify": "^3.4.0",
     "embla-carousel-react": "^8.3.0",
     "exceljs": "^4.4.0",
     "input-otp": "^1.2.4",
@@ -94,7 +94,7 @@
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
-    "vite": "^6.3.6",
+    "vite": "^6.4.2",
     "vitest": "^4.1.0"
   },
   "pnpm": {
