@@ -8,6 +8,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { I18nProvider } from "@/lib/i18n";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AdminRoute } from "@/components/AdminRoute";
 import { useAuthStatus } from "@/hooks/useAuthStatus";
 
 const queryClient = new QueryClient();
@@ -72,7 +73,7 @@ function getPostLoginRoute(): string {
 
 const AppRoutes = () => {
   const navigate = useNavigate();
-  const { session, loading, isAuthenticated, tokenExpired, isBlocked, signOut } = useAuthStatus();
+  const { session, loading, isAuthenticated, tokenExpired, isBlocked, isApproved, signOut } = useAuthStatus();
   const prevSessionRef = useRef<Session | null>(null);
 
   useEffect(() => {
@@ -163,6 +164,25 @@ const AppRoutes = () => {
     );
   }
 
+  // Conta aguardando aprovação do administrador
+  if (session && !isApproved) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif", padding: 24 }}>
+        <div style={{ textAlign: "center", maxWidth: 360 }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+          <div style={{ fontSize: 20, color: "#F37E38", fontWeight: 800, marginBottom: 8 }}>Aguardando aprovação</div>
+          <div style={{ fontSize: 14, color: "#64748B", marginBottom: 24 }}>Sua conta ainda não foi aprovada por um administrador. Você receberá acesso em breve.</div>
+          <button
+            onClick={() => signOut()}
+            style={{ background: "#EF4444", color: "#fff", fontWeight: 700, fontSize: 14, border: "none", borderRadius: 8, padding: "10px 24px", cursor: "pointer" }}
+          >
+            Sair
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Routes>
       <Route path="/login" element={
@@ -179,7 +199,9 @@ const AppRoutes = () => {
       } />
       <Route path="/admin" element={
         <Suspense fallback={<PageLoading />}>
-          {session && !hasMfaPending(session) ? <AdminPage /> : <Navigate to="/login" replace />}
+          {session && !hasMfaPending(session)
+            ? <AdminRoute><AdminPage /></AdminRoute>
+            : <Navigate to="/login" replace />}
         </Suspense>
       } />
       <Route path="/mobile" element={

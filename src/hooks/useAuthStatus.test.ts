@@ -12,6 +12,7 @@ vi.mock("@/lib/supabase", () => ({
       refreshSession: vi.fn(),
       signOut: vi.fn(),
     },
+    from: vi.fn(),
   },
 }));
 
@@ -19,6 +20,7 @@ const mockGetSession = vi.mocked(supabase.auth.getSession);
 const mockOnAuthStateChange = vi.mocked(supabase.auth.onAuthStateChange);
 const mockRefreshSession = vi.mocked(supabase.auth.refreshSession);
 const mockSignOut = vi.mocked(supabase.auth.signOut);
+const mockFrom = vi.mocked(supabase.from);
 
 function createMockSession(overrides = {}) {
   return {
@@ -45,6 +47,15 @@ describe("useAuthStatus", () => {
     mockOnAuthStateChange.mockReturnValue({
       data: { subscription: { unsubscribe: mockUnsubscribe } },
     });
+    // Fluent mock para supabase.from("profiles").select().eq().single()
+    // Padrão: usuário aprovado e não bloqueado
+    const mockSingle = vi.fn().mockResolvedValue({
+      data: { is_blocked: false, is_approved: true },
+      error: null,
+    });
+    const mockEq = vi.fn(() => ({ single: mockSingle }));
+    const mockSelect = vi.fn(() => ({ eq: mockEq }));
+    mockFrom.mockReturnValue({ select: mockSelect } as ReturnType<typeof supabase.from>);
   });
 
   afterEach(() => {
@@ -393,6 +404,65 @@ describe("useAuthStatus", () => {
 
       expect(result.current.isAuthenticated).toBe(false);
       expect(result.current.tokenExpired).toBe(false);
+    });
+  });
+
+  describe("isApproved", () => {
+    it("deve retornar isApproved=false quando conta aguarda aprovação", async () => {
+      const mockSession = createMockSession();
+      mockGetSession.mockResolvedValue({ data: { session: mockSession }, error: null });
+
+      // Sobrescreve o default: is_approved = false
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: { is_blocked: false, is_approved: false },
+        error: null,
+      });
+      const mockEq = vi.fn(() => ({ single: mockSingle }));
+      const mockSelect = vi.fn(() => ({ eq: mockEq }));
+      mockFrom.mockReturnValue({ select: mockSelect } as ReturnType<typeof supabase.from>);
+
+      const { result } = renderHook(() => useAuthStatus());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.isApproved).toBe(false);
+    });
+
+    it("deve retornar isApproved=true quando conta está aprovada", async () => {
+      const mockSession = createMockSession();
+      mockGetSession.mockResolvedValue({ data: { session: mockSession }, error: null });
+
+      const { result } = renderHook(() => useAuthStatus());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.isApproved).toBe(true);
+    });
+
+    it("deve resetar isApproved para true ao fazer logout", async () => {
+      const mockSession = createMockSession();
+      mockGetSession.mockResolvedValue({ data: { session: mockSession }, error: null });
+
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: { is_blocked: false, is_approved: false },
+        error: null,
+      });
+      const mockEq = vi.fn(() => ({ single: mockSingle }));
+      const mockSelect = vi.fn(() => ({ eq: mockEq }));
+      mockFrom.mockReturnValue({ select: mockSelect } as ReturnType<typeof supabase.from>);
+
+      let authChangeCallback: ((event: string, session: unknown) => Promise<void>) | null = null;
+      mockOnAuthStateChange.mockImplementation((callback) => {
+        authChangeCallback = callback as typeof authChangeCallback;
+        return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
+      });
+
+      const { result } = renderHook(() => useAuthStatus());
+      await waitFor(() => expect(result.current.isApproved).toBe(false));
+
+      await act(async () => {
+        await authChangeCallback?.("SIGNED_OUT", null);
+      });
+
+      expect(result.current.isApproved).toBe(true);
     });
   });
 });

@@ -18,6 +18,8 @@ export interface AuthStatus {
   isAuthenticated: boolean;
   /** True se o usuário estiver bloqueado por excesso de tentativas */
   isBlocked: boolean;
+  /** True se a conta do usuário foi aprovada por um administrador */
+  isApproved: boolean;
   /** Erro de autenticação (se houver) */
   error: string | null;
   /** Força refresh do token */
@@ -52,6 +54,7 @@ export const useAuthStatus = (): AuthStatus => {
   const [loading, setLoading] = useState(true);
   const [tokenExpired, setTokenExpired] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [isApproved, setIsApproved] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -66,6 +69,7 @@ export const useAuthStatus = (): AuthStatus => {
       // Usuário deslogado
       setTokenExpired(false);
       setIsBlocked(false);
+      setIsApproved(true);
       setError(null);
       return;
     }
@@ -87,12 +91,15 @@ export const useAuthStatus = (): AuthStatus => {
     try {
       const { data } = await supabase
         .from("profiles")
-        .select("is_blocked")
+        .select("is_blocked, is_approved")
         .eq("id", newSession.user.id)
         .single();
       setIsBlocked(data?.is_blocked === true);
+      // fail-open em is_approved: se profile não existir ou der erro, assume aprovado
+      setIsApproved(data?.is_approved !== false);
     } catch {
       setIsBlocked(false);
+      setIsApproved(true);
     }
   }, []);
 
@@ -234,6 +241,7 @@ export const useAuthStatus = (): AuthStatus => {
     tokenExpired,
     isAuthenticated,
     isBlocked,
+    isApproved,
     error,
     refreshSession,
     signOut,

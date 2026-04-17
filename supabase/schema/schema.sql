@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id                  UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email               TEXT        NOT NULL DEFAULT '',
   is_admin            BOOLEAN     NOT NULL DEFAULT false,
-  is_approved         BOOLEAN     NOT NULL DEFAULT true,
+  is_approved         BOOLEAN     NOT NULL DEFAULT false,
   custom_permissions  TEXT[]               DEFAULT '{}',
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

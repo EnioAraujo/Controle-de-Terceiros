@@ -14,6 +14,15 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 
+function isStrongPassword(password: string): boolean {
+  return (
+    password.length >= 8 &&
+    /[A-Z]/.test(password) &&
+    /[0-9]/.test(password) &&
+    /[^A-Za-z0-9]/.test(password)
+  );
+}
+
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? "";
 
 function getCorsOrigin(origin: string): string {
@@ -115,10 +124,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res
           .status(400)
           .json({ error: "Formato de e-mail inválido." });
-      if (password.length < 8)
+      if (!isStrongPassword(password))
         return res
           .status(400)
-          .json({ error: "A senha deve ter no mínimo 8 caracteres." });
+          .json({ error: "Senha fraca. Mínimo: 8 caracteres, 1 maiúscula, 1 número, 1 símbolo." });
 
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -149,10 +158,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { userId, email, password } = body;
       if (!userId)
         return res.status(400).json({ error: "userId é obrigatório." });
-      if (password && password.length < 8)
+      if (password && !isStrongPassword(password))
         return res
           .status(400)
-          .json({ error: "A senha deve ter no mínimo 8 caracteres." });
+          .json({ error: "Senha fraca. Mínimo: 8 caracteres, 1 maiúscula, 1 número, 1 símbolo." });
 
       const updateData: { email?: string; password?: string } = {};
       if (email) updateData.email = email;
