@@ -1,13 +1,63 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(() => ({
   server: {
     host: "::",
     port: 8080,
   },
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: "autoUpdate",
+      // Cacheia todos os assets estáticos gerados pelo build
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        runtimeCaching: [
+          {
+            // Google Fonts — CacheFirst (mudam raramente)
+            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "google-fonts",
+              expiration: { maxEntries: 10, maxAgeSeconds: 365 * 24 * 60 * 60 },
+            },
+          },
+          {
+            // Supabase — NetworkOnly (LGPD: nenhum dado pessoal no cache do SW)
+            // Cobre auth, REST/PostgREST, realtime e storage
+            urlPattern: /^https:\/\/.*\.supabase\.(co|in)\/.*/i,
+            handler: "NetworkOnly",
+          },
+        ],
+      },
+      manifest: {
+        name: "Controle de Terceiros",
+        short_name: "Controlli",
+        description: "Controle de presença de trabalhadores terceirizados",
+        theme_color: "#212B36",
+        background_color: "#212B36",
+        display: "standalone",
+        scope: "/",
+        start_url: "/",
+        icons: [
+          {
+            src: "/logo-192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
+          {
+            src: "/logo-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any maskable",
+          },
+        ],
+      },
+    }),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

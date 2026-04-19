@@ -15,6 +15,7 @@
 | 2026-04-04 | Index: header alinhado com design mobile — background #212B36, page surface #FAF9FB, borders #2E3B4A, texto secundário #9898B0, Sair #EF4444 |
 | 2026-04-04 | Index: verif. admin migrada para rpc('is_admin') (SECURITY DEFINER, fail-closed); ícones PNG no nav (dashboard.png, logo.png, admin.png) |
 | 2026-04-04 | Index: PNG contextual no branding (quadrado logo) — dashboard.png na aba dashboard, logo.png nas demais; nav tabs voltam a usar SVG |
+| 2026-04-19 | PWA: adicionado vite-plugin-pwa + Workbox; manifest gerado com ícones 192/512; SW cacheia assets estáticos + NetworkOnly para Supabase (LGPD); CSP atualizada com worker-src 'self' no vercel.json |
 | 2026-04-04 | Index: carrega whatsapp_template do banco ao iniciar (junto com dpo_nome/dpo_email); fix: template configurado pelo admin agora é aplicado sem precisar abrir Configurações |
 | 2026-04-04 | ErrorBoundary: console.error protegido com guarda DEV para evitar vazamento de stack trace em produção (OWASP A05) |
 # Controle de Terceiros — Contexto do Projeto
@@ -53,6 +54,7 @@ Sistema web para **controle de presença e gestão de trabalhadores terceirizado
 | Estilo | Tailwind CSS + inline styles (páginas principais) |
 | Backend/DB | Supabase (PostgreSQL + Auth + RLS) |
 | Deploy | Vercel |
+| PWA | vite-plugin-pwa + Workbox (Service Worker, manifest, cache de assets) |
 | Ícones | lucide-react |
 | Sanitização | DOMPurify |
 
@@ -115,6 +117,9 @@ supabase/
 supabase/functions/
 └── admin-users/
     └── index.ts             # Edge Function: criar, editar, excluir usuários
+arquivolocal/
+├── TOTP_MELHORES_PRATICAS.md        # Boas práticas de TOTP e backup codes
+└── GUIA_IMPLEMENTACAO_MFA_SUPABASE.md # Guia reutilizável para implementar MFA com Supabase
 ```
 
 ---
@@ -518,6 +523,7 @@ Resultado da varredura de verbosidade e over-engineering realizada em 2026-03-26
 | 2026-04-03 | Extraídas funções puras de projeção para src/lib/projecao-utils.ts: gerarDias(), calcMediaPorTurno(), calcDadosPorDia(), TURNOS_PROJECAO; ProjecaoPage refatorada para usar as funções |
 | 2026-04-03 | Adicionados testes unitários em projecao-utils.test.ts (12 casos) e smoke test em MobileLancamentosPage.test.tsx (3 casos); total: 162 testes passando |
 | 2026-04-01 | Restaurado Index.tsx ao estado slim (~176 linhas) após regressão git: corrigido crash "Algo deu errado" (Dashboard usado sem import → ReferenceError), corrigida regressão visual do header (dark navy #0B1628 → branco #fff, azul → laranja #F37E38), removidos todos os componentes e hooks inline duplicados (useStorage, useOpcoes, PrivacyNotice, atoms, FormLancamento, FechamentoTab), adicionados imports corretos dos módulos externos; 148 testes passando |
+| 2026-04-18 | Adicionado guia reutilizável arquivolocal/GUIA_IMPLEMENTACAO_MFA_SUPABASE.md com setup de MFA TOTP em Supabase, cobrindo enrollment, login MFA, backup codes, AAL2 em RLS e checklist de produção |
 | 2026-04-06 | Dashboard.tsx alinhado ao DESIGN.md: removidos borders proibidos (No-Line Rule), cores mapeadas para CSS variables de surface, fontes Space Grotesk/Plus Jakarta Sans/Inter, padding 6rem, elevação tonal com ambient shadow; tokens adicionados em globals.css e tailwind.config.ts; Google Fonts preload em index.html |
 | 2026-04-06 | Conformidade TOTP: migration backup_codes.sql (tabela + RLS + RPC use_backup_code); MfaSetupPage exibe 10 backup codes após enrollment (copiar/baixar); LoginPage com rate limit TOTP (5 falhas/60s), fluxo de recuperação por backup code, logAudit em 5 eventos MFA, aria-label e placeholder corrigidos; tipos MFA adicionados em audit.ts |
 | 2026-04-06 | fix_audit_log_constraint.sql: adicionados 5 tipos MFA na constraint CHECK (MFA_ENROLL, MFA_VERIFY, MFA_SKIP, MFA_VERIFY_FAIL, BACKUP_CODE_USED) — corrige 400 Bad Request no audit_log |
