@@ -15,6 +15,7 @@
 | 2026-04-04 | Index: header alinhado com design mobile — background #212B36, page surface #FAF9FB, borders #2E3B4A, texto secundário #9898B0, Sair #EF4444 |
 | 2026-04-04 | Index: verif. admin migrada para rpc('is_admin') (SECURITY DEFINER, fail-closed); ícones PNG no nav (dashboard.png, logo.png, admin.png) |
 | 2026-04-04 | Index: PNG contextual no branding (quadrado logo) — dashboard.png na aba dashboard, logo.png nas demais; nav tabs voltam a usar SVG |
+| 2026-04-19 | Ícones: favicon.png substituído pelo novo ícone (pessoa + laranja); dashboard.png criado (estava ausente, causava imagem quebrada no header) |
 | 2026-04-19 | PWA: adicionado vite-plugin-pwa + Workbox; manifest gerado com ícones 192/512; SW cacheia assets estáticos + NetworkOnly para Supabase (LGPD); CSP atualizada com worker-src 'self' no vercel.json |
 | 2026-04-04 | Index: carrega whatsapp_template do banco ao iniciar (junto com dpo_nome/dpo_email); fix: template configurado pelo admin agora é aplicado sem precisar abrir Configurações |
 | 2026-04-04 | ErrorBoundary: console.error protegido com guarda DEV para evitar vazamento de stack trace em produção (OWASP A05) |
