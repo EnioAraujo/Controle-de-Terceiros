@@ -138,7 +138,7 @@ DROP POLICY IF EXISTS "aal2_profiles_update"  ON public.profiles;
 DROP POLICY IF EXISTS "profiles_update_admin" ON public.profiles;
 CREATE POLICY "profiles_select"         ON public.profiles FOR SELECT TO authenticated USING (auth.uid() = id OR public.is_admin());
 CREATE POLICY "aal2_profiles_update"    ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id AND public.is_aal2()) WITH CHECK (auth.uid() = id AND public.is_aal2());
-CREATE POLICY "profiles_update_admin"   ON public.profiles FOR UPDATE TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "profiles_update_admin"   ON public.profiles FOR UPDATE TO authenticated USING (public.is_admin() AND public.is_aal2()) WITH CHECK (public.is_admin() AND public.is_aal2());
 
 -- ============================================================
 -- 4. TABELA user_roles
@@ -175,16 +175,20 @@ CREATE TABLE IF NOT EXISTS public.audit_log (
 
   CONSTRAINT audit_log_operacao_check CHECK (operacao IN (
     'INSERT', 'UPDATE', 'DELETE', 'PURGE', 'EXCLUSAO_TITULAR',
-    'DELETE_ERROR', 'UPSERT_ERROR', 'PURGE_ERROR', 'INSERT_ERROR', 'UPDATE_ERROR'
+    'DELETE_ERROR', 'UPSERT_ERROR', 'PURGE_ERROR', 'INSERT_ERROR', 'UPDATE_ERROR',
+    'MFA_ENROLL', 'MFA_VERIFY', 'MFA_SKIP', 'MFA_VERIFY_FAIL', 'BACKUP_CODE_USED',
+    'LOGIN_SUCCESS', 'LOGIN_FAILURE'
   ))
 );
 
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
--- RLS: audit_log — apenas escrita AAL2; sem SELECT (imutável, restrito ao backend)
+-- RLS: audit_log — escrita AAL2; leitura restrita a admins
 DROP POLICY IF EXISTS "aal2_insert_audit_log"    ON public.audit_log;
 DROP POLICY IF EXISTS "authed_select_audit_log"  ON public.audit_log;
-CREATE POLICY "aal2_insert_audit_log" ON public.audit_log FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL AND public.is_aal2());
+DROP POLICY IF EXISTS "admin_select_audit_log"   ON public.audit_log;
+CREATE POLICY "aal2_insert_audit_log"  ON public.audit_log FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL AND public.is_aal2());
+CREATE POLICY "admin_select_audit_log" ON public.audit_log FOR SELECT TO authenticated USING (public.is_admin());
 
 -- ============================================================
 -- 6. TABELA terceiros

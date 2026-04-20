@@ -129,6 +129,7 @@ export default function LoginPage() {
         // Registra falha no banco e re-verifica bloqueio
         await supabase.rpc("record_failed_login", { p_email: email });
         const { data: nowBlocked } = await supabase.rpc("check_user_blocked", { p_email: email });
+        logAudit("LOGIN_FAILURE", "auth");
         setLoading(false);
         setErro(nowBlocked ? t("login_err_blocked") : mapSupabaseError(error.message, lang));
         return;
@@ -226,6 +227,7 @@ export default function LoginPage() {
         if (aalPost?.currentLevel === "aal2") {
           setReplayGuard(codeHash);
           logAudit("MFA_VERIFY", "mfa", factorId);
+          logAudit("LOGIN_SUCCESS", "auth");
           const dest = sessionStorage.getItem("deviceMode") === "mobile" ? "/mobile" : "/";
           navigate(dest, { replace: true });
           return;
@@ -240,6 +242,7 @@ export default function LoginPage() {
 
       setReplayGuard(codeHash);
       logAudit("MFA_VERIFY", "mfa", factorId);
+      logAudit("LOGIN_SUCCESS", "auth");
       const dest = sessionStorage.getItem("deviceMode") === "mobile" ? "/mobile" : "/";
       navigate(dest, { replace: true });
     } catch (err) {

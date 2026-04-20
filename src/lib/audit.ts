@@ -41,7 +41,8 @@ const getSecurityMetadata = () => {
 export const logAudit = (
   operacao: "INSERT" | "UPDATE" | "DELETE" | "PURGE" | "EXCLUSAO_TITULAR"
           | "DELETE_ERROR" | "UPSERT_ERROR" | "PURGE_ERROR" | "INSERT_ERROR" | "UPDATE_ERROR"
-          | "MFA_ENROLL" | "MFA_VERIFY" | "MFA_SKIP" | "MFA_VERIFY_FAIL" | "BACKUP_CODE_USED",
+          | "MFA_ENROLL" | "MFA_VERIFY" | "MFA_SKIP" | "MFA_VERIFY_FAIL" | "BACKUP_CODE_USED"
+          | "LOGIN_SUCCESS" | "LOGIN_FAILURE",
   tabela: string,
   registroId?: string,
   dados?: unknown
