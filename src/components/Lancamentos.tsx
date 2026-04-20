@@ -202,14 +202,14 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
                     onChange={e => setSelectedIds(e.target.checked ? filtered.map(r => r.id) : [])}
                   />
                 </th>
-                {[t("lanc_col_data"),t("lanc_col_turno"),t("lanc_col_nome"),"Excedente",t("lanc_col_cargo"),t("lanc_col_forn"),t("lanc_col_unidade"),t("lanc_col_entrada"),t("lanc_col_saida"),t("lanc_col_horas"),t("lanc_col_motivo"),t("lanc_col_acoes")].map(h => (
+                {[t("lanc_col_data"),t("lanc_col_turno"),t("lanc_col_nome"),"Excedente",t("lanc_col_forn"),t("lanc_col_unidade"),t("lanc_col_entrada"),t("lanc_col_saida"),t("lanc_col_horas"),t("lanc_col_motivo"),t("lanc_col_acoes")].map(h => (
                   <th key={h} style={{ padding:"10px 12px", textAlign:"left", color:"#64748B", fontWeight:700, fontSize:10, textTransform:"uppercase", letterSpacing:.7, whiteSpace:"nowrap", borderBottom:"2px solid #E2E6EC" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {grupos.length === 0 && (
-                <tr><td colSpan={13} style={{ textAlign:"center", padding:48, color:"#94A3B8" }}>
+                <tr><td colSpan={12} style={{ textAlign:"center", padding:48, color:"#94A3B8" }}>
                   <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
                   {t("lanc_empty")}
                 </td></tr>
@@ -253,7 +253,6 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
                         return <span style={{ color:"#0E9F6E", fontSize:11, fontWeight:700 }}>✓</span>;
                       })()}
                     </td>
-                    <td style={{ padding:"10px 12px", color:"#475569", maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.cargo}</td>
                     <td style={{ padding:"10px 12px" }}><Chip label={r.fornecedor} color={fornCor(r.fornecedor, opcoes.fornecedores)} /></td>
                     <td style={{ padding:"10px 12px" }}><Chip label={r.unidade} color="#0E9F6E" /></td>
                     <td style={{ padding:"10px 12px", fontFamily:"monospace", color:"#475569" }}>{r.horaEntrada}</td>
