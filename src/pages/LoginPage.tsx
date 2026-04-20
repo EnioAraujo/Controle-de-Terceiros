@@ -92,6 +92,7 @@ export default function LoginPage() {
   const [challengeId, setChallengeId] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
   const [totpBlock, setTotpBlock]   = useState(() => getTotpBlock());
+  const [forgotMode, setForgotMode] = useState(false);
   // Cancela handleLogin em progresso quando usuário clica "Voltar"
   const loginCancelledRef = useRef(false);
 
@@ -259,6 +260,7 @@ export default function LoginPage() {
     setFactorId("");
     setChallengeId("");
     setTotpBlock(0);
+    setForgotMode(false);
     sessionStorage.removeItem(TOTP_RATE_KEY);
   };
 
@@ -521,6 +523,29 @@ export default function LoginPage() {
                   {loading ? t("login_btn_loading") : t("login_btn")}
                 </Button>
 
+                {forgotMode ? (
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex flex-col gap-1.5">
+                    <p className="text-[12px] font-semibold text-amber-700 text-center">{t("login_forgot_msg")}</p>
+                    <Button
+                      type="button"
+                      variant="link"
+                      onClick={() => setForgotMode(false)}
+                      className="text-amber-600 text-[11px] h-auto p-0"
+                    >
+                      {lang === "pt-BR" ? "← Voltar" : "← Back"}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="link"
+                    onClick={() => setForgotMode(true)}
+                    className="text-gray-400 text-[11px] -mt-1 h-auto"
+                  >
+                    {t("login_forgot_link")}
+                  </Button>
+                )}
+
                 <p className="text-center text-xs text-gray-400 -mt-1">
                   {t("login_no_account")}
                 </p>
@@ -528,7 +553,7 @@ export default function LoginPage() {
                 <Button 
                   type="button" 
                   variant="link" 
-                  onClick={() => { setDeviceChoice(null); sessionStorage.removeItem("deviceMode"); setErro(""); }}
+                  onClick={() => { setDeviceChoice(null); sessionStorage.removeItem("deviceMode"); setErro(""); setForgotMode(false); }}
                   className="text-gray-400 text-[11px] -mt-2"
                 >
                   {lang === "pt-BR" ? "← Trocar tipo de acesso" : "← Change access type"}
