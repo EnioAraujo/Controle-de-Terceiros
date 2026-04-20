@@ -16,13 +16,14 @@
 | 2026-04-04 | Index: verif. admin migrada para rpc('is_admin') (SECURITY DEFINER, fail-closed); ícones PNG no nav (dashboard.png, logo.png, admin.png) |
 | 2026-04-04 | Index: PNG contextual no branding (quadrado logo) — dashboard.png na aba dashboard, logo.png nas demais; nav tabs voltam a usar SVG |
 | 2026-04-20 | Ícones: todos os arquivos PNG em public/ substituídos por logo_terceiros.png ("C" laranja em círculo escuro); logo-192.png e logo-512.png regenerados nos tamanhos PWA |
+| 2026-04-20 | feat(excedente): nova tabela turnos_capacidade; coluna Excedente na tela de lançamentos; seção Capacidade por Turno em Configurações (admin-only); botão Excedentes XLSX no fechamento |
 | 2026-04-19 | Ícones: favicon.png substituído pelo novo ícone (pessoa + laranja); dashboard.png criado (estava ausente, causava imagem quebrada no header) |
 | 2026-04-19 | PWA: adicionado vite-plugin-pwa + Workbox; manifest gerado com ícones 192/512; SW cacheia assets estáticos + NetworkOnly para Supabase (LGPD); CSP atualizada com worker-src 'self' no vercel.json |
 | 2026-04-04 | Index: carrega whatsapp_template do banco ao iniciar (junto com dpo_nome/dpo_email); fix: template configurado pelo admin agora é aplicado sem precisar abrir Configurações |
 | 2026-04-04 | ErrorBoundary: console.error protegido com guarda DEV para evitar vazamento de stack trace em produção (OWASP A05) |
 # Controle de Terceiros — Contexto do Projeto
 
-> **Última atualização:** 2026-04-04
+> **Última atualização:** 2026-04-20
 > **Branch:** Main-terceiros
 
 ---
@@ -89,7 +90,8 @@ src/
 │   ├── audit.ts             # uuid(), sanitize(), logAudit() — centralizados
 │   ├── supabase.ts          # Client Supabase + authReady promise
 │   ├── format-utils.ts      # Funções puras: calcHoras, fmt, fmtMes (Intl), dbToRegistro, etc.
-│   ├── fechamento-utils.ts  # Lógica de fechamento financeiro
+│   ├── fechamento-utils.ts  # Lógica de fechamento financeiro; inclui TurnoCapacidade + mappers
+│   ├── excedente-utils.ts   # Funções puras: resolverCapacidade, calcExcedentePorTurnoDia, gerarDadosRelatorioExcedentes
 │   ├── projecao-utils.ts    # Funções puras: gerarDias(), calcMediaPorTurno(), calcDadosPorDia(), TURNOS_PROJECAO
 │   ├── i18n-translations.ts # Traduções pt-BR/en-US + mapSupabaseError()
 │   ├── i18n-context.ts      # React.createContext do sistema i18n
@@ -138,6 +140,7 @@ arquivolocal/
 | `profiles` | Perfis de usuário com is_admin, is_approved e custom_permissions |
 | `user_roles` | Role RBAC por usuário (admin/moderator/user) |
 | `audit_log` | Trilha de auditoria de operações |
+| `turnos_capacidade` | Capacidade padrão por turno com período de vigência (admin-only write, authenticated read) |
 
 ### Schema `registros`
 

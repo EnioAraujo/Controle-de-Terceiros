@@ -319,6 +319,32 @@ export const dbToTurnoConfig = (row: DbRow): TurnoConfig => ({
   horaPadrao: row.hora_padrao as string,
 });
 
+// ─── CAPACIDADE POR TURNO ────────────────────────────────────
+
+export interface TurnoCapacidade {
+  id?: string;
+  turno: string;
+  qtdPadrao: number;
+  vigenciaInicio: string; // YYYY-MM-DD
+  vigenciaFim: string;    // YYYY-MM-DD
+}
+
+export const dbToTurnoCapacidade = (row: DbRow): TurnoCapacidade => ({
+  id:             row.id as string,
+  turno:          row.turno as string,
+  qtdPadrao:      Number(row.qtd_padrao),
+  vigenciaInicio: row.vigencia_inicio as string,
+  vigenciaFim:    row.vigencia_fim as string,
+});
+
+export const turnoCapacidadeToDb = (c: TurnoCapacidade) => ({
+  ...(c.id ? { id: c.id } : {}),
+  turno:           c.turno,
+  qtd_padrao:      c.qtdPadrao,
+  vigencia_inicio: c.vigenciaInicio,
+  vigencia_fim:    c.vigenciaFim,
+});
+
 // ─── STATUS LABELS ──────────────────────────────────────────
 
 export const STATUS_COLORS: Record<FechamentoStatus, string> = {

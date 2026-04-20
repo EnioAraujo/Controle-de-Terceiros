@@ -5,6 +5,8 @@ import { sanitize, logAudit } from "@/lib/audit";
 import { hoje, fmt, fornCor, buildWhatsAppMessage } from "@/lib/format-utils";
 import type { WhatsAppTemplate } from "@/lib/format-utils";
 import type { TurnoConfig } from "@/lib/fechamento-utils";
+import type { TurnoCapacidade } from "@/lib/fechamento-utils";
+import { calcExcedentePorTurnoDia } from "@/lib/excedente-utils";
 import { useI18n } from "@/hooks/use-i18n";
 import { Icon, Chip, Btn, Modal, Input, Select, BlockHeader } from "@/components/atoms";
 import { FormLancamento } from "@/components/FormLancamento";
@@ -29,11 +31,12 @@ interface LancamentosProps {
   setRegistros: (val: Registro[]) => void;
   opcoes: Opcoes;
   turnosConfig: TurnoConfig[];
+  capacidadeConfig: TurnoCapacidade[];
   isAdmin: boolean;
   waTemplate: WhatsAppTemplate;
 }
 
-export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isAdmin, waTemplate }: LancamentosProps) => {
+export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, capacidadeConfig, isAdmin, waTemplate }: LancamentosProps) => {
   const { t, lang } = useI18n();
   const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", busca: "" });
   const [modal, setModal]     = useState<null | "new" | Registro | Registro[]>(null);
@@ -43,6 +46,12 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isA
   const [conflito, setConflito] = useState<{ novos: Registro[]; nomes: string[]; justificativa: string } | null>(null);
 
   const set = (k: keyof Filtros, v: string) => setFiltros(f => ({ ...f, [k]: v }));
+
+  // Usa TODOS os registros (não filtrados) para refletir a contagem real por data+turno
+  const excedenteMap = useMemo(
+    () => calcExcedentePorTurnoDia(registros, capacidadeConfig),
+    [registros, capacidadeConfig],
+  );
 
   const filtered = useMemo(() => registros.filter(r => {
     if (filtros.data       && r.data !== filtros.data)               return false;
@@ -193,14 +202,14 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isA
                     onChange={e => setSelectedIds(e.target.checked ? filtered.map(r => r.id) : [])}
                   />
                 </th>
-                {[t("lanc_col_data"),t("lanc_col_turno"),t("lanc_col_nome"),t("lanc_col_cargo"),t("lanc_col_forn"),t("lanc_col_unidade"),t("lanc_col_entrada"),t("lanc_col_saida"),t("lanc_col_horas"),t("lanc_col_motivo"),t("lanc_col_acoes")].map(h => (
+                {[t("lanc_col_data"),t("lanc_col_turno"),t("lanc_col_nome"),"Excedente",t("lanc_col_cargo"),t("lanc_col_forn"),t("lanc_col_unidade"),t("lanc_col_entrada"),t("lanc_col_saida"),t("lanc_col_horas"),t("lanc_col_motivo"),t("lanc_col_acoes")].map(h => (
                   <th key={h} style={{ padding:"10px 12px", textAlign:"left", color:"#64748B", fontWeight:700, fontSize:10, textTransform:"uppercase", letterSpacing:.7, whiteSpace:"nowrap", borderBottom:"2px solid #E2E6EC" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {grupos.length === 0 && (
-                <tr><td colSpan={12} style={{ textAlign:"center", padding:48, color:"#94A3B8" }}>
+                <tr><td colSpan={13} style={{ textAlign:"center", padding:48, color:"#94A3B8" }}>
                   <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
                   {t("lanc_empty")}
                 </td></tr>
@@ -233,6 +242,16 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, isA
                         {isLote && <span style={{ background:"#1A56DB", color:"#fff", borderRadius:99, padding:"1px 7px", fontSize:10, fontWeight:800, flexShrink:0 }}>{count}×</span>}
                       </div>
                       {isLote && <div style={{ fontSize:10, color:"#94A3B8", marginTop:2 }}>{item.slice(1, 3).map(x => x.nome).join(", ")}{count > 3 ? ` +${count - 3}` : ""}</div>}
+                    </td>
+                    <td style={{ padding:"10px 12px", textAlign:"center" }}>
+                      {(() => {
+                        const info = excedenteMap.get(`${r.data}|${r.turno}`);
+                        if (!info || info.limite === null) return <span style={{ color:"#CBD5E1", fontSize:11 }}>—</span>;
+                        if (info.excedente > 0) return (
+                          <span style={{ background:"#FEE2E2", color:"#E02424", borderRadius:99, padding:"2px 8px", fontSize:11, fontWeight:800 }}>+{info.excedente}</span>
+                        );
+                        return <span style={{ color:"#0E9F6E", fontSize:11, fontWeight:700 }}>✓</span>;
+                      })()}
                     </td>
                     <td style={{ padding:"10px 12px", color:"#475569", maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.cargo}</td>
                     <td style={{ padding:"10px 12px" }}><Chip label={r.fornecedor} color={fornCor(r.fornecedor, opcoes.fornecedores)} /></td>

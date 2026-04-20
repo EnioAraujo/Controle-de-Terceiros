@@ -5,7 +5,7 @@ import { supabase, authReady } from "@/lib/supabase";
 import { useI18n } from "@/hooks/use-i18n";
 import { hoje, mesAtual, WA_DEFAULT_TEMPLATE } from "@/lib/format-utils";
 import type { WhatsAppTemplate } from "@/lib/format-utils";
-import { type TurnoConfig, dbToTurnoConfig } from "@/lib/fechamento-utils";
+import { type TurnoConfig, dbToTurnoConfig, type TurnoCapacidade, dbToTurnoCapacidade } from "@/lib/fechamento-utils";
 import ProjecaoPage from "@/pages/ProjecaoPage";
 import { Configuracoes } from "@/components/Configuracoes";
 import { Lancamentos } from "@/components/Lancamentos";
@@ -38,11 +38,14 @@ const Index = () => {
   const isAdminOrMod                           = true;
   const [waTemplate, setWaTemplate]            = useState<WhatsAppTemplate>(WA_DEFAULT_TEMPLATE);
   const [turnosConfig, setTurnosConfig]        = useState<TurnoConfig[]>([]);
+  const [capacidadeConfig, setCapacidadeConfig] = useState<TurnoCapacidade[]>([]);
 
   useEffect(() => {
     authReady.then(async () => {
       const { data: tcData } = await supabase.from("turnos_config").select("*").order("turno");
       if (tcData) setTurnosConfig(tcData.map(dbToTurnoConfig));
+      const { data: capData } = await supabase.from("turnos_capacidade").select("*").order("turno");
+      if (capData) setCapacidadeConfig(capData.map(dbToTurnoCapacidade));
     });
   }, []);
 
@@ -173,10 +176,10 @@ const Index = () => {
           ) : (
             <>
               {tab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} isAdminOrMod={isAdminOrMod} />}
-              {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} turnosConfig={turnosConfig} isAdmin={isAdmin} waTemplate={waTemplate} />}
+              {tab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} turnosConfig={turnosConfig} capacidadeConfig={capacidadeConfig} isAdmin={isAdmin} waTemplate={waTemplate} />}
               {tab === "projecao"      && <ProjecaoPage  registros={registros} opcoes={opcoes} />}
-              {tab === "fechamento"    && <FechamentoTab registros={registros} opcoes={opcoes} />}
-              {tab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} registros={registros} setRegistros={setRegistros} isAdmin={isAdmin} isAdminOrMod={isAdminOrMod} setWaTemplate={setWaTemplate} />}
+              {tab === "fechamento"    && <FechamentoTab registros={registros} opcoes={opcoes} capacidadeConfig={capacidadeConfig} />}
+              {tab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} registros={registros} setRegistros={setRegistros} isAdmin={isAdmin} isAdminOrMod={isAdminOrMod} setWaTemplate={setWaTemplate} capacidadeConfig={capacidadeConfig} setCapacidadeConfig={setCapacidadeConfig} />}
             </>
           )}
         </main>

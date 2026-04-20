@@ -7,7 +7,7 @@ import type { TranslationKey } from "@/lib/i18n-translations";
 import { fmt, mesAtual } from "@/lib/format-utils";
 import {
   type TurnoConfig, type DiariaConfig, type FechamentoItem, type Fechamento,
-  type FechamentoStatus, type ResumoPessoa,
+  type FechamentoStatus, type ResumoPessoa, type TurnoCapacidade,
   dbToTurnoConfig, dbToDiariaConfig,
   dbToFechamento, fechamentoToDb,
   dbToFechamentoItem, fechamentoItemToDb,
@@ -15,6 +15,7 @@ import {
   periodosPadrao,
   STATUS_COLORS, NEXT_STATUS,
 } from "@/lib/fechamento-utils";
+import { gerarDadosRelatorioExcedentes } from "@/lib/excedente-utils";
 import { useI18n } from "@/hooks/use-i18n";
 import { BlockHeader } from "@/components/atoms";
 
@@ -25,7 +26,7 @@ const STATUS_LABEL_KEY: Record<FechamentoStatus, TranslationKey> = {
   aprovado: "fech_status_aprovado",
 };
 
-export const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; opcoes: Opcoes }) => {
+export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registros: Registro[]; opcoes: Opcoes; capacidadeConfig: TurnoCapacidade[] }) => {
   const { t, lang } = useI18n();
 
   // ── Filtros ──
@@ -253,6 +254,41 @@ export const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; op
     } catch (err) { console.error("Erro ao exportar XLSX:", err); }
   };
 
+  const exportarExcedentesXlsx = async () => {
+    try {
+      const regs = registros.filter(r =>
+        r.data >= intervalo.inicio && r.data <= intervalo.fim,
+      );
+      const linhas = gerarDadosRelatorioExcedentes(regs, capacidadeConfig);
+      if (linhas.length === 0) return;
+      const ExcelJS = await import("exceljs");
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Excedentes");
+      ws.columns = [
+        { header: "Data",         key: "data",       width: 14 },
+        { header: "Turno",        key: "turno",      width: 14 },
+        { header: "Capacidade",   key: "capacidade", width: 14 },
+        { header: "Total Pessoas",key: "total",      width: 16 },
+        { header: "Excedente",    key: "excedente",  width: 14 },
+      ];
+      linhas.forEach(l => ws.addRow({
+        data:       fmt(l.data, lang),
+        turno:      l.turno,
+        capacidade: l.capacidade ?? "—",
+        total:      l.total,
+        excedente:  l.excedente,
+      }));
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `excedentes_${intervalo.inicio}_${intervalo.fim}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) { console.error("Erro ao exportar excedentes XLSX:", err); }
+  };
+
   const fmtCurrency = (v: number) => v.toLocaleString(lang, { style: "currency", currency: "BRL" });
 
   // suprimir warning de resumoPessoas não usado — o dado existe para extensões futuras
@@ -421,6 +457,11 @@ export const FechamentoTab = ({ registros, opcoes }: { registros: Registro[]; op
                 )}
                 <button onClick={exportarXlsx} style={{ background: "#0E9F6E", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
                   {t("fech_exportar_xlsx")}
+                </button>
+                <button onClick={exportarExcedentesXlsx} disabled={capacidadeConfig.length === 0}
+                  title={capacidadeConfig.length === 0 ? "Configure a capacidade por turno em Configurações" : "Exportar relatório de excedentes por turno/dia"}
+                  style={{ background: "#6C63FF", border: "none", borderRadius: 8, padding: "8px 16px", cursor: capacidadeConfig.length === 0 ? "not-allowed" : "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit", opacity: capacidadeConfig.length === 0 ? 0.5 : 1 }}>
+                  Excedentes XLSX
                 </button>
                 <button onClick={exportarPdf} style={{ background: "#E02424", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
                   {t("fech_exportar_pdf")}
