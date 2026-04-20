@@ -87,7 +87,7 @@ export const Dashboard = ({
     const map = new Map<string, { presencas: number; totalCusto: number }>();
     doMes.forEach(r => {
       const forn = r.fornecedor || "—";
-      const custo = resolverDiaria(r.fornecedor, r.turno, diariasConfig);
+      const custo = resolverDiaria(r.fornecedor, r.turno, diariasConfig, r.data);
       const entry = map.get(forn) ?? { presencas: 0, totalCusto: 0 };
       entry.presencas += 1;
       entry.totalCusto += custo;
@@ -132,7 +132,7 @@ export const Dashboard = ({
       const ponto: Record<string, number | string> = { periodo: periodLabels[idx] };
       turnos.forEach(tr => { ponto[tr] = regs.filter(r => r.turno === tr).length; });
       ponto._total = regs.length;
-      ponto._custo = regs.reduce((s, r) => s + resolverDiaria(r.fornecedor, r.turno, diariasConfig), 0);
+      ponto._custo = regs.reduce((s, r) => s + resolverDiaria(r.fornecedor, r.turno, diariasConfig, r.data), 0);
       return ponto;
     });
   }, [doMes, turnos, periodLabels, diariasConfig]);

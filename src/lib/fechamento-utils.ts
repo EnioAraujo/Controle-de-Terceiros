@@ -21,6 +21,8 @@ export interface DiariaConfig {
   fornecedor: string;
   turno: string | null;  // null = fallback para qualquer turno
   valorDiaria: number;
+  vigenciaInicio?: string | null; // YYYY-MM-DD; null = sem restrição de período
+  vigenciaFim?: string | null;   // YYYY-MM-DD; null = sem restrição de período
 }
 
 export interface FechamentoItem {
@@ -94,27 +96,53 @@ export const periodosPadrao = (ym: string): Periodo[] => {
 
 const VALOR_PADRAO = 250;
 
+/** Verifica se uma config está vigente na data informada (YYYY-MM-DD). */
+const dentroVigencia = (c: DiariaConfig, data?: string): boolean => {
+  if (c.vigenciaInicio == null) return true;   // sem restrição de período, sempre válido
+  if (!data) return false;                       // tem restrição mas sem data para verificar
+  if (data < c.vigenciaInicio) return false;
+  if (c.vigenciaFim != null && data > c.vigenciaFim) return false;
+  return true;
+};
+
 /**
  * Resolve o valor da diária para (fornecedor, turno) a partir da configuração.
+ *
  * Prioridade:
- *   1. Match exato (fornecedor + turno)
- *   2. Fallback do fornecedor (turno = null)
- *   3. Valor padrão global (R$ 250)
+ *   1. Match exato com vigência (fornecedor + turno + data dentro do período)
+ *   2. Match exato sem restrição de período (vigenciaInicio = null)
+ *   3. Fallback do fornecedor com vigência (turno = null + data dentro do período)
+ *   4. Fallback do fornecedor sem restrição de período (turno = null + vigenciaInicio = null)
+ *   5. Valor padrão global (R$ 250)
+ *
+ * Se `data` não for fornecida, configs com vigência nunca são selecionadas — apenas
+ * configs sem restrição de período (vigenciaInicio = null) são consideradas.
  */
 export const resolverDiaria = (
   fornecedor: string,
   turno: string,
   configs: DiariaConfig[],
+  data?: string,
 ): number => {
-  const exact = configs.find(
-    c => c.fornecedor === fornecedor && c.turno === turno,
-  );
-  if (exact) return exact.valorDiaria;
+  const exatas = configs.filter(c => c.fornecedor === fornecedor && c.turno === turno);
 
-  const fallback = configs.find(
-    c => c.fornecedor === fornecedor && c.turno === null,
-  );
-  if (fallback) return fallback.valorDiaria;
+  // 1. exato + dentro da vigência
+  const exactVig = exatas.find(c => c.vigenciaInicio != null && dentroVigencia(c, data));
+  if (exactVig) return exactVig.valorDiaria;
+
+  // 2. exato sem período (sempre válido)
+  const exactSem = exatas.find(c => c.vigenciaInicio == null);
+  if (exactSem) return exactSem.valorDiaria;
+
+  const fallbacks = configs.filter(c => c.fornecedor === fornecedor && c.turno === null);
+
+  // 3. fallback + dentro da vigência
+  const fallVig = fallbacks.find(c => c.vigenciaInicio != null && dentroVigencia(c, data));
+  if (fallVig) return fallVig.valorDiaria;
+
+  // 4. fallback sem período
+  const fallSem = fallbacks.find(c => c.vigenciaInicio == null);
+  if (fallSem) return fallSem.valorDiaria;
 
   return VALOR_PADRAO;
 };
@@ -152,8 +180,9 @@ export const calcularValorDia = (
   fornecedor: string,
   diariasConfig: DiariaConfig[],
   turnosConfig: TurnoConfig[],
+  data?: string,             // YYYY-MM-DD — para resolução de vigência
 ): CalcDiaResult => {
-  const valorDiaria = resolverDiaria(fornecedor, turno, diariasConfig);
+  const valorDiaria = resolverDiaria(fornecedor, turno, diariasConfig, data);
   const horaPadrao = resolverHoraPadrao(turno, turnosConfig);
   const hPadraoDec = horasToDecimal(horaPadrao);
   const hTrabDec = horasToDecimal(horasTrabalhadas);
@@ -202,6 +231,7 @@ export const gerarItensFechamento = (
       r.fornecedor,
       diariasConfig,
       turnosConfig,
+      r.data,  // passa a data para resolução de vigência
     );
     return {
       registroId: r.id,
@@ -306,10 +336,12 @@ export const fechamentoItemToDb = (i: FechamentoItem, fechamentoId: string) => (
 });
 
 export const dbToDiariaConfig = (row: DbRow): DiariaConfig => ({
-  id:          row.id as string,
-  fornecedor:  row.fornecedor as string,
-  turno:       (row.turno as string | null) ?? null,
-  valorDiaria: Number(row.valor_diaria),
+  id:             row.id as string,
+  fornecedor:     row.fornecedor as string,
+  turno:          (row.turno as string | null) ?? null,
+  valorDiaria:    Number(row.valor_diaria),
+  vigenciaInicio: (row.vigencia_inicio as string | null) ?? null,
+  vigenciaFim:    (row.vigencia_fim    as string | null) ?? null,
 });
 
 export const dbToTurnoConfig = (row: DbRow): TurnoConfig => ({

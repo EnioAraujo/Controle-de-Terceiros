@@ -248,7 +248,7 @@ const ProjecaoPage = ({ registros, opcoes }: { registros: Registro[]; opcoes: Op
               if (row && fornFiltro) {
                 for (const turno of TURNOS_DEMANDA) {
                   if (row[turno] > 0) {
-                    valorDia += row[turno] * resolverDiaria(fornFiltro, turno, diariasConfig);
+                    valorDia += row[turno] * resolverDiaria(fornFiltro, turno, diariasConfig, dia);
                   }
                 }
               } else if (row) {

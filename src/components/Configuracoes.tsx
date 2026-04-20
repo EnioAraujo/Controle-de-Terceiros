@@ -65,7 +65,7 @@ export const Configuracoes = ({
 
   // ── Config de Diárias ──
   const [diariasConfig, setDiariasConfig] = useState<DiariaConfig[]>([]);
-  const [newDiaria, setNewDiaria] = useState({ fornecedor: "", turno: "", valor: "250" });
+  const [newDiaria, setNewDiaria] = useState({ fornecedor: "", turno: "", valor: "250", vigenciaInicio: "", vigenciaFim: "" });
 
   // ── Capacidade por Turno ──
   const [newCapacidade, setNewCapacidade] = useState({ turno: "", qtdPadrao: "10", vigenciaInicio: "", vigenciaFim: "" });
@@ -103,17 +103,19 @@ export const Configuracoes = ({
     const forn = newDiaria.fornecedor.trim();
     const turno = newDiaria.turno.trim() || null;
     const valor = parseFloat(newDiaria.valor);
+    const vigIni = newDiaria.vigenciaInicio.trim() || null;
+    const vigFim = newDiaria.vigenciaFim.trim() || null;
     if (!forn || isNaN(valor)) return;
+    if (vigIni && vigFim && vigFim < vigIni) return;
     const { data, error } = await supabase.from("diarias_config")
-      .upsert({ fornecedor: forn, turno, valor_diaria: valor }, { onConflict: "fornecedor,turno" })
+      .insert({ fornecedor: forn, turno, valor_diaria: valor, vigencia_inicio: vigIni, vigencia_fim: vigFim })
       .select();
     if (!error && data) {
       const updated = data.map(dbToDiariaConfig);
-      setDiariasConfig(prev => {
-        const filtered = prev.filter(d => !(d.fornecedor === forn && d.turno === turno));
-        return [...filtered, ...updated].sort((a, b) => a.fornecedor.localeCompare(b.fornecedor));
-      });
-      setNewDiaria({ fornecedor: "", turno: "", valor: "250" });
+      setDiariasConfig(prev =>
+        [...prev, ...updated].sort((a, b) => a.fornecedor.localeCompare(b.fornecedor)),
+      );
+      setNewDiaria({ fornecedor: "", turno: "", valor: "250", vigenciaInicio: "", vigenciaFim: "" });
     } else if (error) {
       if (import.meta.env.DEV) console.error("Erro ao salvar diária:", error.message);
     }
@@ -562,6 +564,7 @@ export const Configuracoes = ({
                   <th style={{ textAlign:"left", padding:"8px 10px", fontWeight:700, color:"#475569" }}>{t("cfg_diarias_forn")}</th>
                   <th style={{ textAlign:"left", padding:"8px 10px", fontWeight:700, color:"#475569" }}>{t("cfg_diarias_turno")}</th>
                   <th style={{ textAlign:"right", padding:"8px 10px", fontWeight:700, color:"#475569" }}>{t("cfg_diarias_valor")}</th>
+                  <th style={{ textAlign:"center", padding:"8px 10px", fontWeight:700, color:"#475569" }}>Vigência</th>
                   <th style={{ width:40 }} />
                 </tr>
               </thead>
@@ -573,6 +576,11 @@ export const Configuracoes = ({
                     <td style={{ padding:"6px 10px", textAlign:"right", fontFamily:"'DM Mono',monospace", fontWeight:700, color:"#0E9F6E" }}>
                       R$ {d.valorDiaria.toFixed(2)}
                     </td>
+                    <td style={{ padding:"6px 10px", textAlign:"center", fontFamily:"'DM Mono',monospace", fontSize:11, color:"#475569", whiteSpace:"nowrap" }}>
+                      {d.vigenciaInicio
+                        ? `${d.vigenciaInicio} → ${d.vigenciaFim ?? "…"}`
+                        : <span style={{ color:"#CBD5E1" }}>—</span>}
+                    </td>
                     <td style={{ padding:"6px 4px", textAlign:"center" }}>
                       <button onClick={() => removeDiaria(d)} title="Remover" style={{ background:"none", border:"none", cursor:"pointer", color:"#E02424", fontSize:14, lineHeight:1 }}>×</button>
                     </td>
@@ -583,7 +591,7 @@ export const Configuracoes = ({
           </div>
         )}
 
-        <div className="rsp-grid-4" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 100px auto", gap:8, alignItems:"end" }}>
+        <div className="rsp-grid-4" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 100px 130px 130px auto", gap:8, alignItems:"end" }}>
           <div>
             <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, marginBottom:4 }}>{t("cfg_diarias_forn")}</div>
             <select value={newDiaria.fornecedor} onChange={e => setNewDiaria(p => ({ ...p, fornecedor: e.target.value }))}
@@ -605,6 +613,18 @@ export const Configuracoes = ({
             <input type="number" min="0" step="0.01" value={newDiaria.valor}
               onChange={e => setNewDiaria(p => ({ ...p, valor: e.target.value }))}
               style={{ width:"100%", border:"1.5px solid #E2E6EC", borderRadius:7, padding:"8px 10px", fontSize:13, fontFamily:"'DM Mono',monospace", background:"#FAFBFC" }} />
+          </div>
+          <div>
+            <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, marginBottom:4 }}>De (opcional)</div>
+            <input type="date" value={newDiaria.vigenciaInicio}
+              onChange={e => setNewDiaria(p => ({ ...p, vigenciaInicio: e.target.value }))}
+              style={{ width:"100%", border:"1.5px solid #E2E6EC", borderRadius:7, padding:"8px 10px", fontSize:13, fontFamily:"inherit", background:"#FAFBFC" }} />
+          </div>
+          <div>
+            <div style={{ fontSize:11, color:"#94A3B8", fontWeight:600, marginBottom:4 }}>Até (opcional)</div>
+            <input type="date" value={newDiaria.vigenciaFim}
+              onChange={e => setNewDiaria(p => ({ ...p, vigenciaFim: e.target.value }))}
+              style={{ width:"100%", border:"1.5px solid #E2E6EC", borderRadius:7, padding:"8px 10px", fontSize:13, fontFamily:"inherit", background:"#FAFBFC" }} />
           </div>
           <button onClick={addDiaria} style={{ background:"#D97706", border:"none", borderRadius:8, padding:"9px 18px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit", alignSelf:"end" }}>
             {t("cfg_diarias_add")}

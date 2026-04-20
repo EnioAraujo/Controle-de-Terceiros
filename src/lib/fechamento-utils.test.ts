@@ -110,6 +110,65 @@ describe("resolverDiaria", () => {
   });
 });
 
+// ─── resolverDiaria — vigência ───────────────────────────────
+
+describe("resolverDiaria — vigência", () => {
+  it("config com vigência válida é selecionada quando data está no período", () => {
+    const cfgs: DiariaConfig[] = [
+      { fornecedor: "JSS", turno: "1ª TURNO", valorDiaria: 300, vigenciaInicio: "2026-01-01", vigenciaFim: "2026-06-30" },
+    ];
+    expect(resolverDiaria("JSS", "1ª TURNO", cfgs, "2026-03-15")).toBe(300);
+  });
+
+  it("config com vigência NÃO é selecionada quando data está fora do período", () => {
+    const cfgs: DiariaConfig[] = [
+      { fornecedor: "JSS", turno: "1ª TURNO", valorDiaria: 300, vigenciaInicio: "2026-01-01", vigenciaFim: "2026-06-30" },
+    ];
+    // fora do período → cai no padrão global
+    expect(resolverDiaria("JSS", "1ª TURNO", cfgs, "2026-08-01")).toBe(250);
+  });
+
+  it("config sem vigência (null) tem menor prioridade que config com vigência dentro do período", () => {
+    const cfgs: DiariaConfig[] = [
+      { fornecedor: "JSS", turno: "1ª TURNO", valorDiaria: 200, vigenciaInicio: null, vigenciaFim: null },
+      { fornecedor: "JSS", turno: "1ª TURNO", valorDiaria: 350, vigenciaInicio: "2026-01-01", vigenciaFim: "2026-12-31" },
+    ];
+    expect(resolverDiaria("JSS", "1ª TURNO", cfgs, "2026-03-15")).toBe(350);
+  });
+
+  it("config sem vigência é usada como fallback quando nenhuma vigência cobre a data", () => {
+    const cfgs: DiariaConfig[] = [
+      { fornecedor: "JSS", turno: "1ª TURNO", valorDiaria: 200, vigenciaInicio: null, vigenciaFim: null },
+      { fornecedor: "JSS", turno: "1ª TURNO", valorDiaria: 350, vigenciaInicio: "2026-01-01", vigenciaFim: "2026-06-30" },
+    ];
+    // data fora da vigência específica → usa a config sem vigência
+    expect(resolverDiaria("JSS", "1ª TURNO", cfgs, "2026-08-01")).toBe(200);
+  });
+
+  it("fallback de fornecedor com vigência tem prioridade sobre fallback sem vigência", () => {
+    const cfgs: DiariaConfig[] = [
+      { fornecedor: "LIDER", turno: null, valorDiaria: 280, vigenciaInicio: null,        vigenciaFim: null },
+      { fornecedor: "LIDER", turno: null, valorDiaria: 320, vigenciaInicio: "2026-01-01", vigenciaFim: "2026-12-31" },
+    ];
+    expect(resolverDiaria("LIDER", "1ª TURNO", cfgs, "2026-05-10")).toBe(320);
+  });
+
+  it("sem parâmetro data, configs com vigência não são selecionadas", () => {
+    const cfgs: DiariaConfig[] = [
+      { fornecedor: "JSS", turno: "1ª TURNO", valorDiaria: 300, vigenciaInicio: "2026-01-01", vigenciaFim: "2026-12-31" },
+    ];
+    // sem data → config com vigência não entra (dentroVigencia retorna false), cai no padrão
+    expect(resolverDiaria("JSS", "1ª TURNO", cfgs)).toBe(250);
+  });
+
+  it("config com vigencia_inicio mas sem vigencia_fim é válida para datas após o início", () => {
+    const cfgs: DiariaConfig[] = [
+      { fornecedor: "JSS", turno: "1ª TURNO", valorDiaria: 270, vigenciaInicio: "2026-01-01", vigenciaFim: null },
+    ];
+    expect(resolverDiaria("JSS", "1ª TURNO", cfgs, "2026-12-01")).toBe(270);
+  });
+});
+
 // ─── resolverHoraPadrao ──────────────────────────────────────
 
 describe("resolverHoraPadrao", () => {
