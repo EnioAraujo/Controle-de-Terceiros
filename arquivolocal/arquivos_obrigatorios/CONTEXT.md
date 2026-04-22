@@ -23,7 +23,7 @@
 | 2026-04-04 | ErrorBoundary: console.error protegido com guarda DEV para evitar vazamento de stack trace em produção (OWASP A05) |
 # Controle de Terceiros — Contexto do Projeto
 
-> **Última atualização:** 2026-04-20
+> **Última atualização:** 2026-04-22
 > **Branch:** Main-terceiros
 
 ---
@@ -533,3 +533,4 @@ Resultado da varredura de verbosidade e over-engineering realizada em 2026-03-26
 | 2026-04-06 | Conformidade TOTP: migration backup_codes.sql (tabela + RLS + RPC use_backup_code); MfaSetupPage exibe 10 backup codes após enrollment (copiar/baixar); LoginPage com rate limit TOTP (5 falhas/60s), fluxo de recuperação por backup code, logAudit em 5 eventos MFA, aria-label e placeholder corrigidos; tipos MFA adicionados em audit.ts |
 | 2026-04-06 | fix_audit_log_constraint.sql: adicionados 5 tipos MFA na constraint CHECK (MFA_ENROLL, MFA_VERIFY, MFA_SKIP, MFA_VERIFY_FAIL, BACKUP_CODE_USED) — corrige 400 Bad Request no audit_log |
 | 2026-04-19 | feat(diarias): vigência de período em diarias_config — migration diarias_config_add_vigencia.sql (ADD vigencia_inicio/fim DATE, DROP UNIQUE fornecedor+turno); DiariaConfig interface atualizada; resolverDiaria prioriza config c/ vigência válida sobre sem período; calcularValorDia e gerarItensFechamento passam data; Dashboard.tsx e ProjecaoPage.tsx passam r.data/dia; Configuracoes.tsx: insert em vez de upsert, campos De/Até no formulário, coluna Vigência na tabela; 7 novos testes — total 189 passando |
+| 2026-04-22 | ResetPasswordPage: logo do topo atualizada para reutilizar o asset logo.png (C laranja) no lugar do SVG de caminhão, alinhando o branding da recuperação de senha ao header principal do app |

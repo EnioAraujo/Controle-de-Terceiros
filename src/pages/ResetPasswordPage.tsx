@@ -70,14 +70,10 @@ export default function ResetPasswordPage() {
       <div style={{ width: "100%", maxWidth: 420 }}>
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 32 }}>
-          <div style={{ width: 44, height: 44, background: "linear-gradient(135deg,#F37E38,#F9A86A)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8zM5.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM18.5 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
-            </svg>
-          </div>
+          <img src="/logo.png" width={36} height={36} alt="" style={{ display: "block", flexShrink: 0 }} />
           <div>
-            <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: -.5, color: "#212B36", lineHeight: 1.1 }}>Controle de</div>
-            <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: -.5, color: "#F37E38", lineHeight: 1.1 }}>Terceiros</div>
+            <div style={{ fontWeight: 800, fontSize: 16, letterSpacing: -.4, color: "#212B36", lineHeight: 1.1 }}>Controle de</div>
+            <div style={{ fontWeight: 800, fontSize: 16, letterSpacing: -.4, color: "#F37E38", lineHeight: 1.1 }}>Terceiros</div>
           </div>
         </div>
 
