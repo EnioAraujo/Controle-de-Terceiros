@@ -51,6 +51,14 @@ export interface FechamentoOutput {
   created_by: string;
 }
 
+export interface FechamentoValorFinalOutput {
+  registroId: string;
+  data: string;
+  valorCalculado: number;
+  atualizadoEm: string | null;
+  criadoEm: string | null;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // API DE FECHAMENTO
 // ═══════════════════════════════════════════════════════════════
@@ -281,6 +289,72 @@ export async function buscarFechamentoItens(
     return {
       success: true,
       data: data as FechamentoItem[],
+    };
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error("[API_FECHAMENTO] Erro inesperado:", errorMessage);
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
+/**
+ * Busca os valores finais já salvos em fechamentos para um período.
+ *
+ * Usado pelo Dashboard para refletir ajustes manuais/diferenças do fechamento
+ * sem duplicar regra financeira na camada de UI.
+ */
+export async function buscarValoresFinaisFechamentoPorPeriodo(
+  dataInicio: string,
+  dataFim: string
+): Promise<{ success: boolean; data?: FechamentoValorFinalOutput[]; error?: string }> {
+  try {
+    const { data, error } = await supabase
+      .from("fechamento_itens")
+      .select(`
+        registro_id,
+        data,
+        valor_calculado,
+        fechamentos (
+          updated_at,
+          created_at
+        )
+      `)
+      .not("registro_id", "is", null)
+      .gte("data", dataInicio)
+      .lte("data", dataFim);
+
+    if (error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
+    const normalized = ((data ?? []) as Array<{
+      registro_id: string | null;
+      data: string;
+      valor_calculado: number;
+      fechamentos?: { updated_at?: string | null; created_at?: string | null } | Array<{ updated_at?: string | null; created_at?: string | null }> | null;
+    }>)
+      .filter((item) => item.registro_id)
+      .map((item) => {
+        const fechamento = Array.isArray(item.fechamentos) ? item.fechamentos[0] : item.fechamentos;
+
+        return {
+          registroId: item.registro_id as string,
+          data: item.data,
+          valorCalculado: Number(item.valor_calculado),
+          atualizadoEm: fechamento?.updated_at ?? null,
+          criadoEm: fechamento?.created_at ?? null,
+        };
+      });
+
+    return {
+      success: true,
+      data: normalized,
     };
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err);

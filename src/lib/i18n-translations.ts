@@ -458,6 +458,7 @@ export const translations = {
     dash_fech_pago_mes: "Pago no mês",
     dash_fech_media:    "Média mensal",
     dash_fech_pendentes: "Pendentes",
+    dash_total_terceiros: "Total de terceiros",
   },
 
 
@@ -916,6 +917,7 @@ export const translations = {
     dash_fech_pago_mes: "Paid this month",
     dash_fech_media:    "Monthly average",
     dash_fech_pendentes: "Pending",
+    dash_total_terceiros: "Total third parties",
   },
 } as const;
 

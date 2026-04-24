@@ -7,6 +7,8 @@ import { BlockHeader } from "@/components/atoms";
 import { resolverDiaria, dbToDiariaConfig } from "@/lib/fechamento-utils";
 import type { DiariaConfig } from "@/lib/fechamento-utils";
 import { supabase, authReady } from "@/lib/supabase";
+import { buscarValoresFinaisFechamentoPorPeriodo } from "@/lib/api/fechamento";
+import { montarFinanceiroDashboard, type FechamentoValorFinalDashboard } from "@/lib/dashboard-finance-utils";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Legend,
@@ -50,6 +52,7 @@ export const Dashboard = ({
   const [periodo, setPeriodo] = useState(mesAtual());
   const [barMode, setBarMode] = useState<"stacked" | "grouped">("stacked");
   const [diariasConfig, setDiariasConfig] = useState<DiariaConfig[]>([]);
+  const [fechamentoValores, setFechamentoValores] = useState<FechamentoValorFinalDashboard[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -68,6 +71,32 @@ export const Dashboard = ({
 
   const doMes  = useMemo(() => registros.filter(r => r.data.startsWith(periodo)), [registros, periodo]);
   const deHoje = registros.filter(r => r.data === hoje());
+  const totalTerceiros = opcoes.nomes.length;
+
+  const [ano, mes] = periodo.split("-").map(Number);
+  const diasNoMes  = new Date(ano, mes, 0).getDate();
+
+  useEffect(() => {
+    let active = true;
+    const inicio = `${periodo}-01`;
+    const fim = `${periodo}-${String(diasNoMes).padStart(2, "0")}`;
+
+    authReady.then(async () => {
+      const result = await buscarValoresFinaisFechamentoPorPeriodo(inicio, fim);
+      if (!active) return;
+
+      if (!result.success || !result.data) {
+        setFechamentoValores([]);
+        return;
+      }
+
+      setFechamentoValores(result.data);
+    }).catch(() => {
+      if (active) setFechamentoValores([]);
+    });
+
+    return () => { active = false; };
+  }, [periodo, diasNoMes]);
 
   // ── KPIs ──────────────────────────────────────────────────────────────────
   const totalMes  = doMes.length;
@@ -83,29 +112,17 @@ export const Dashboard = ({
     }), [turnos, doMes, totalMes, diasComReg]);
 
   // ── Custo por Fornecedor ──────────────────────────────────────────────────
-  const custosPorFornecedor = useMemo(() => {
-    const map = new Map<string, { presencas: number; totalCusto: number }>();
-    doMes.forEach(r => {
-      const forn = r.fornecedor || "—";
-      const custo = resolverDiaria(r.fornecedor, r.turno, diariasConfig, r.data);
-      const entry = map.get(forn) ?? { presencas: 0, totalCusto: 0 };
-      entry.presencas += 1;
-      entry.totalCusto += custo;
-      map.set(forn, entry);
-    });
-    return Array.from(map.entries())
-      .map(([fornecedor, { presencas, totalCusto }]) => ({
-        fornecedor,
-        presencas,
-        totalCusto,
-        avgCusto: presencas > 0 ? Math.round(totalCusto / presencas) : 0,
-      }))
-      .sort((a, b) => b.totalCusto - a.totalCusto);
-  }, [doMes, diariasConfig]);
+  const periodLabels = useMemo(() => [t("dash_period_1"), t("dash_period_2"), t("dash_period_3")], [t]);
+  const dashboardFinance = useMemo(() => montarFinanceiroDashboard({
+    registros: doMes,
+    turnos,
+    periodLabels,
+    diariasConfig,
+    fechamentoValores,
+  }), [doMes, turnos, periodLabels, diariasConfig, fechamentoValores]);
+  const { custosPorFornecedor, dadosPeriodo, totalCusto } = dashboardFinance;
 
   // ── Gráfico diário (barras por turno + linha de média) ────────────────────
-  const [ano, mes] = periodo.split("-").map(Number);
-  const diasNoMes  = new Date(ano, mes, 0).getDate();
 
   const dadosDiarios = useMemo(() => {
     return Array.from({ length: diasNoMes }, (_, i) => {
@@ -119,23 +136,6 @@ export const Dashboard = ({
   }, [doMes, turnos, periodo, diasNoMes]);
 
   const avgLine = totalMes > 0 ? parseFloat(avgDia) : 0;
-
-  // ── Gráfico por período (01-10, 11-20, 21-fim) ────────────────────────────
-  const periodLabels = [t("dash_period_1"), t("dash_period_2"), t("dash_period_3")];
-  const dadosPeriodo = useMemo(() => {
-    const grupos = [
-      doMes.filter(r => { const d = parseInt(r.data.slice(8), 10); return d <= 10; }),
-      doMes.filter(r => { const d = parseInt(r.data.slice(8), 10); return d >= 11 && d <= 20; }),
-      doMes.filter(r => { const d = parseInt(r.data.slice(8), 10); return d >= 21; }),
-    ];
-    return grupos.map((regs, idx) => {
-      const ponto: Record<string, number | string> = { periodo: periodLabels[idx] };
-      turnos.forEach(tr => { ponto[tr] = regs.filter(r => r.turno === tr).length; });
-      ponto._total = regs.length;
-      ponto._custo = regs.reduce((s, r) => s + resolverDiaria(r.fornecedor, r.turno, diariasConfig, r.data), 0);
-      return ponto;
-    });
-  }, [doMes, turnos, periodLabels, diariasConfig]);
 
   // ── Helpers de navegação ──────────────────────────────────────────────────
  const navMes = (delta: number) => {
@@ -240,7 +240,10 @@ export const Dashboard = ({
             </div>
           </div>
           {/* Legenda */}
-          <div style={{ display:"flex", gap:12, flexWrap:"wrap", alignItems:"center" }}>
+          <div style={{ display:"flex", gap:12, flexWrap:"wrap", alignItems:"center", justifyContent:"flex-end" }}>
+            <span style={{ fontSize:11, fontWeight:700, fontFamily:S.fLabel, color:S.on, background:S.low, borderRadius:99, padding:"6px 10px" }}>
+              {t("dash_total_terceiros")}: {totalTerceiros}
+            </span>
             {turnos.map((tr, i) => (
               <span key={tr} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, fontWeight:500, fontFamily:S.fLabel, color:S.onVar }}>
                 <span style={{ width:10, height:10, borderRadius:3, background:TURNO_CORES[i % TURNO_CORES.length], display:"inline-block" }} />
@@ -305,7 +308,7 @@ export const Dashboard = ({
               </div>
             </div>
             <div style={{ fontSize:15, fontWeight:800, color:"#22A06B" }}>
-              {fmtBRL(custosPorFornecedor.reduce((s, f) => s + f.totalCusto, 0))}
+              {fmtBRL(totalCusto)}
             </div>
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
@@ -337,7 +340,10 @@ export const Dashboard = ({
               <div style={{ fontWeight:700, fontSize:14, fontFamily:S.fBody, color:S.on }}>{t("dash_period_title")}</div>
               <div style={{ fontSize:12, fontFamily:S.fLabel, color:S.muted, marginTop:2 }}>Dias 1–10, 11–20, 21–fim</div>
             </div>
-            <div style={{ display:"flex", gap:5 }}>
+            <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap", justifyContent:"flex-end" }}>
+              <span style={{ fontSize:11, fontWeight:700, fontFamily:S.fLabel, color:S.on, background:S.low, borderRadius:99, padding:"6px 10px" }}>
+                {t("dash_total_terceiros")}: {totalTerceiros}
+              </span>
               {(["stacked", "grouped"] as const).map(mode => (
                 <button key={mode} onClick={() => setBarMode(mode)}
                   style={{ padding:"3px 10px", borderRadius:99, fontSize:11, fontWeight:600, fontFamily:S.fLabel, border:"1px solid", cursor:"pointer",
@@ -399,7 +405,7 @@ export const Dashboard = ({
                 <div style={{ height:"100%", background:"#F37E38", borderRadius:99, width:"100%" }} />
               </div>
               <div style={{ fontSize:13, fontWeight:800, color:"#F37E38", minWidth:32, textAlign:"right" }}>{totalMes}</div>
-              <div style={{ fontSize:11, fontFamily:S.fLabel, color:S.muted, minWidth:78, textAlign:"right" }}>{fmtBRL(dadosPeriodo.reduce((s, p) => s + (p._custo as number), 0))}</div>
+              <div style={{ fontSize:11, fontFamily:S.fLabel, color:S.muted, minWidth:78, textAlign:"right" }}>{fmtBRL(totalCusto)}</div>
             </div>
           </div>
         </div>
