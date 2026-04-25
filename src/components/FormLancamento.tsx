@@ -237,8 +237,8 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
                   <div style={{ fontFamily:"monospace", fontSize:12, fontWeight:700, color: total ? "#0E9F6E" : "#CBD5E1", textAlign:"center" }}>{total || "—"}</div>
                 </div>
                 {!isEdit && (
-                  <div style={{ padding:"0 14px 8px", display:"flex", gap:8, alignItems:"center", background: bgRow, borderBottom: notLast ? "1px solid #F1F5F9" : "none" }}>
-                    <div style={{ width:36, flexShrink:0 }} />
+                  <div className="mobile-form-worker-obs" style={{ padding:"0 14px 8px", display:"flex", gap:8, alignItems:"center", background: bgRow, borderBottom: notLast ? "1px solid #F1F5F9" : "none" }}>
+                    <div className="mobile-form-worker-obs__spacer" style={{ width:36, flexShrink:0 }} />
                     <input
                       value={p.obs}
                       onChange={e => setP(i, "obs", e.target.value)}

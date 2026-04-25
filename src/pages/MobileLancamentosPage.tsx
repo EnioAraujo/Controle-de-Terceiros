@@ -291,6 +291,20 @@ const MobileModal = ({ title, onClose, children }: { title: string; onClose: () 
         justify-content: center !important;
         font-size: 13px !important;
       }
+      /* Obs individual — full-width no mobile, sem espaçador */
+      .mobile-form-worker-obs {
+        padding: 0 12px 10px !important;
+      }
+      .mobile-form-worker-obs__spacer {
+        display: none !important;
+      }
+      .mobile-form-worker-obs > input {
+        width: 100% !important;
+        font-size: 14px !important;
+        padding: 10px 12px !important;
+        border-radius: 8px !important;
+        box-sizing: border-box !important;
+      }
     `}</style>
     <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(10,18,35,0.6)", backdropFilter: "blur(2px)" }} />
     <div style={{
