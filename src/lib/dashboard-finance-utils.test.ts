@@ -147,4 +147,103 @@ describe("montarFinanceiroDashboard", () => {
       _custo: 240,
     });
   });
+
+  it("consolida custo por fornecedor com total 3544 quando LIDER MASTER=3440 e JSS=104", () => {
+    const registros: Registro[] = [
+      {
+        id: "l1",
+        data: "2026-04-12",
+        turno: "1ª TURNO",
+        horaEntrada: "05:21",
+        horaSaida: "13:40",
+        totalHoras: "08:20",
+        nome: "Lider A",
+        cargo: "",
+        setor: "",
+        unidade: "",
+        cc: "",
+        motivo: "",
+        fornecedor: "LIDER MASTER",
+        obs: "",
+      },
+      {
+        id: "l2",
+        data: "2026-04-15",
+        turno: "1ª TURNO",
+        horaEntrada: "05:21",
+        horaSaida: "13:40",
+        totalHoras: "08:20",
+        nome: "Lider B",
+        cargo: "",
+        setor: "",
+        unidade: "",
+        cc: "",
+        motivo: "",
+        fornecedor: "LIDER MASTER",
+        obs: "",
+      },
+      {
+        id: "j1",
+        data: "2026-04-18",
+        turno: "1ª TURNO",
+        horaEntrada: "05:21",
+        horaSaida: "13:40",
+        totalHoras: "08:20",
+        nome: "Jss A",
+        cargo: "",
+        setor: "",
+        unidade: "",
+        cc: "",
+        motivo: "",
+        fornecedor: "JSS",
+        obs: "",
+      },
+    ];
+
+    const result = montarFinanceiroDashboard({
+      registros,
+      turnos: ["1ª TURNO"],
+      periodLabels: ["1º", "2º", "3º"],
+      diariasConfig,
+      fechamentoValores: [
+        {
+          registroId: "l1",
+          fornecedor: "LIDER MASTER",
+          nome: "Lider A",
+          data: "2026-04-12",
+          turno: "1ª TURNO",
+          horas: "08:20",
+          valorCalculado: 1720,
+          atualizadoEm: "2026-04-21T10:00:00Z",
+        },
+        {
+          registroId: "l2",
+          fornecedor: "LIDER MASTER",
+          nome: "Lider B",
+          data: "2026-04-15",
+          turno: "1ª TURNO",
+          horas: "08:20",
+          valorCalculado: 1720,
+          atualizadoEm: "2026-04-21T10:00:00Z",
+        },
+        {
+          registroId: "j1",
+          fornecedor: "JSS",
+          nome: "Jss A",
+          data: "2026-04-18",
+          turno: "1ª TURNO",
+          horas: "08:20",
+          valorCalculado: 104,
+          atualizadoEm: "2026-04-21T10:00:00Z",
+        },
+      ],
+    });
+
+    expect(result.custosPorFornecedor).toEqual([
+      { fornecedor: "LIDER MASTER", presencas: 2, totalCusto: 3440, avgCusto: 1720 },
+      { fornecedor: "JSS", presencas: 1, totalCusto: 104, avgCusto: 104 },
+    ]);
+
+    expect(result.totalCusto).toBe(3544);
+  });
 });

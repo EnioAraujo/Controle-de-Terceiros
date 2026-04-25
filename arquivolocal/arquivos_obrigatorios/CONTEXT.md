@@ -96,6 +96,8 @@ src/
 │   ├── i18n-translations.ts # Traduções pt-BR/en-US + mapSupabaseError()
 │   ├── i18n-context.ts      # React.createContext do sistema i18n
 │   ├── i18n.tsx             # I18nProvider (componente de contexto)
+│   ├── api/
+│   │   └── fechamento-dashboard.ts # Fonte canônica do dashboard financeiro (somente fechamentos aprovados)
 │   └── utils.ts             # cn() helper
 ├── pages/
 │   ├── Index.tsx            # Orquestrador (~197L): apenas imports + componente Index
@@ -534,3 +536,4 @@ Resultado da varredura de verbosidade e over-engineering realizada em 2026-03-26
 | 2026-04-06 | fix_audit_log_constraint.sql: adicionados 5 tipos MFA na constraint CHECK (MFA_ENROLL, MFA_VERIFY, MFA_SKIP, MFA_VERIFY_FAIL, BACKUP_CODE_USED) — corrige 400 Bad Request no audit_log |
 | 2026-04-19 | feat(diarias): vigência de período em diarias_config — migration diarias_config_add_vigencia.sql (ADD vigencia_inicio/fim DATE, DROP UNIQUE fornecedor+turno); DiariaConfig interface atualizada; resolverDiaria prioriza config c/ vigência válida sobre sem período; calcularValorDia e gerarItensFechamento passam data; Dashboard.tsx e ProjecaoPage.tsx passam r.data/dia; Configuracoes.tsx: insert em vez de upsert, campos De/Até no formulário, coluna Vigência na tabela; 7 novos testes — total 189 passando |
 | 2026-04-22 | ResetPasswordPage: logo do topo atualizada para reutilizar o asset logo.png (C laranja) no lugar do SVG de caminhão, alinhando o branding da recuperação de senha ao header principal do app |
+| 2026-04-25 | Dashboard financeiro passa a buscar apenas itens de fechamentos aprovados canônicos por fornecedor/período (src/lib/api/fechamento-dashboard.ts), corrigindo divergência de custo por fornecedor e total geral; adicionados testes de regressão (3440/3544) |

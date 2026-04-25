@@ -7,7 +7,7 @@ import { BlockHeader } from "@/components/atoms";
 import { resolverDiaria, dbToDiariaConfig } from "@/lib/fechamento-utils";
 import type { DiariaConfig } from "@/lib/fechamento-utils";
 import { supabase, authReady } from "@/lib/supabase";
-import { buscarValoresFinaisFechamentoPorPeriodo } from "@/lib/api/fechamento";
+import { buscarValoresFinaisFechamentoAprovadoPorPeriodo } from "@/lib/api/fechamento-dashboard";
 import { montarFinanceiroDashboard, type FechamentoValorFinalDashboard } from "@/lib/dashboard-finance-utils";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -81,7 +81,7 @@ export const Dashboard = ({
     const fim = `${periodo}-${String(diasNoMes).padStart(2, "0")}`;
 
     authReady.then(async () => {
-      const result = await buscarValoresFinaisFechamentoPorPeriodo(inicio, fim);
+      const result = await buscarValoresFinaisFechamentoAprovadoPorPeriodo(inicio, fim);
       if (!active) return;
 
       if (!result.success || !result.data) {
