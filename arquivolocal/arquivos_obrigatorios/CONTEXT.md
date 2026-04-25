@@ -1,3 +1,4 @@
+| 2026-04-25 | Lançamentos: após importar CSV, o app exibe resumo da importação e alerta quando registros ficam ocultos por filtros, com ação "Mostrar importados" que limpa data/mês/período. |
 | 2026-03-15 | Barra de exclusão em massa (Excluir selecionados) agora ocupa toda a largura abaixo dos filtros, igual à imagem 2 enviada pelo usuário. |
 | 2026-03-15 | Botão 'Excluir selecionados' movido para logo abaixo dos filtros, alinhado à direita, conforme layout solicitado pelo usuário. |
 | 2026-03-15 | Ajuste visual: controles acima da tabela alinhados conforme layout do usuário (contador à esquerda, botão excluir à direita). |

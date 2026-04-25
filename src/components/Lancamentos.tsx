@@ -33,6 +33,26 @@ const findConflitoDeTurno = (
 
 interface Filtros { data: string; turno: string; fornecedor: string; unidade: string; busca: string; }
 
+interface ImportFeedbackState {
+  importedIds: string[];
+  importados: number;
+  rejeitados: number;
+  fonte: string;
+}
+
+const passaFiltrosLancamentos = (
+  r: Registro,
+  filtros: Filtros,
+  intervaloPeriodo: { inicio: string; fim: string },
+): boolean => {
+  if (!passaFiltroDataPeriodo(r.data, filtros.data, intervaloPeriodo)) return false;
+  if (filtros.turno && r.turno !== filtros.turno) return false;
+  if (filtros.fornecedor && r.fornecedor !== filtros.fornecedor) return false;
+  if (filtros.unidade && r.unidade !== filtros.unidade) return false;
+  if (filtros.busca && !r.nome.toLowerCase().includes(filtros.busca.toLowerCase())) return false;
+  return true;
+};
+
 interface LancamentosProps {
   registros: Registro[];
   setRegistros: (val: Registro[]) => void;
@@ -58,6 +78,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
   const [detalhe, setDetalhe] = useState<Registro | Registro[] | null>(null);
   const [conflito, setConflito] = useState<{ novos: Registro[]; nomes: string[]; justificativa: string } | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importFeedback, setImportFeedback] = useState<ImportFeedbackState | null>(null);
 
   const set = (k: keyof Filtros, v: string) => setFiltros(f => ({ ...f, [k]: v }));
   const intervaloPeriodo = useMemo(() => resolverIntervaloLancamentos(filtroPeriodo), [filtroPeriodo]);
@@ -68,14 +89,18 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
     [registros, capacidadeConfig],
   );
 
-  const filtered = useMemo(() => registros.filter(r => {
-    if (!passaFiltroDataPeriodo(r.data, filtros.data, intervaloPeriodo)) return false;
-    if (filtros.turno      && r.turno !== filtros.turno)             return false;
-    if (filtros.fornecedor && r.fornecedor !== filtros.fornecedor)   return false;
-    if (filtros.unidade    && r.unidade !== filtros.unidade)         return false;
-    if (filtros.busca      && !r.nome.toLowerCase().includes(filtros.busca.toLowerCase())) return false;
-    return true;
-  }), [registros, filtros, intervaloPeriodo]);
+  const filtered = useMemo(
+    () => registros.filter(r => passaFiltrosLancamentos(r, filtros, intervaloPeriodo)),
+    [registros, filtros, intervaloPeriodo],
+  );
+
+  const importadosVisiveis = useMemo(() => {
+    if (!importFeedback) return 0;
+    const idsVisiveis = new Set(filtered.map(r => r.id));
+    return importFeedback.importedIds.filter(id => idsVisiveis.has(id)).length;
+  }, [filtered, importFeedback]);
+
+  const importadosOcultos = importFeedback ? Math.max(importFeedback.importados - importadosVisiveis, 0) : 0;
 
   const grupos = useMemo(() => {
     const groupMap = new Map<string, Registro[]>();
@@ -181,7 +206,32 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
           onClose={() => setImportModalOpen(false)}
           registros={registros}
           setRegistros={setRegistros}
+          onImported={setImportFeedback}
         />
+      )}
+
+      {importFeedback && (
+        <div style={{ background:"#EFF6FF", border:"1px solid #BFDBFE", borderRadius:10, padding:"10px 12px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
+          <div style={{ fontSize:12, color:"#1E3A8A" }}>
+            Importação "{importFeedback.fonte || "arquivo"}": {importFeedback.importados} incluídos, {importFeedback.rejeitados} rejeitados.
+            {importadosOcultos > 0 ? ` ${importadosOcultos} fora do filtro atual.` : " Todos os importados estão visíveis."}
+          </div>
+          <div style={{ display:"flex", gap:8 }}>
+            {importadosOcultos > 0 && (
+              <Btn
+                small
+                variant="ghost"
+                onClick={() => {
+                  setFiltros({ data:"", turno:"", fornecedor:"", unidade:"", busca:"" });
+                  setFiltroPeriodo({ mes: "", periodoIdx: null, customInicio: "", customFim: "" });
+                }}
+              >
+                Mostrar importados
+              </Btn>
+            )}
+            <Btn small variant="ghost" onClick={() => setImportFeedback(null)}>Fechar aviso</Btn>
+          </div>
+        </div>
       )}
 
       <div id="tour-filtros" style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:"14px 18px", display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
@@ -203,7 +253,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
             small
             onClick={() => {
               setFiltros({ data:"", turno:"", fornecedor:"", unidade:"", busca:"" });
-              setFiltroPeriodo({ mes: mesAtual(), periodoIdx: null, customInicio: "", customFim: "" });
+              setFiltroPeriodo({ mes: "", periodoIdx: null, customInicio: "", customFim: "" });
             }}
           >
             {t("lanc_filter_clear")}

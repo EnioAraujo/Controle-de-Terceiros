@@ -9,9 +9,10 @@ interface ImportRegistrosCsvModalProps {
   onClose: () => void;
   registros: Registro[];
   setRegistros: (val: Registro[]) => void;
+  onImported?: (result: { importedIds: string[]; importados: number; rejeitados: number; fonte: string }) => void;
 }
 
-export const ImportRegistrosCsvModal = ({ onClose, registros, setRegistros }: ImportRegistrosCsvModalProps) => {
+export const ImportRegistrosCsvModal = ({ onClose, registros, setRegistros, onImported }: ImportRegistrosCsvModalProps) => {
   const { t } = useI18n();
   const [fileName, setFileName] = useState("");
   const [preview, setPreview] = useState<ImportCsvResult | null>(null);
@@ -33,6 +34,12 @@ export const ImportRegistrosCsvModal = ({ onClose, registros, setRegistros }: Im
   const aplicarImportacao = () => {
     if (!preview || preview.valid.length === 0) return;
     setRegistros([...registros, ...preview.valid]);
+    onImported?.({
+      importedIds: preview.valid.map(r => r.id),
+      importados: preview.valid.length,
+      rejeitados: preview.invalid.length,
+      fonte: fileName,
+    });
     logAudit("IMPORT", "registros", undefined, {
       fonte: fileName,
       total_linhas: preview.totalRows,
