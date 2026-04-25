@@ -10,6 +10,7 @@ import { calcExcedentePorTurnoDia } from "@/lib/excedente-utils";
 import { useI18n } from "@/hooks/use-i18n";
 import { Icon, Chip, Btn, Modal, Input, Select, BlockHeader } from "@/components/atoms";
 import { FormLancamento } from "@/components/FormLancamento";
+import { ImportRegistrosCsvModal } from "@/components/ImportRegistrosCsvModal";
 
 /** Retorna o registro existente que conflita com `r` em turno na mesma data. */
 const findConflitoDeTurno = (
@@ -44,6 +45,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
   const [confirm, setConfirm] = useState<string[] | 'ALL' | null>(null);
   const [detalhe, setDetalhe] = useState<Registro | Registro[] | null>(null);
   const [conflito, setConflito] = useState<{ novos: Registro[]; nomes: string[]; justificativa: string } | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const set = (k: keyof Filtros, v: string) => setFiltros(f => ({ ...f, [k]: v }));
 
@@ -152,9 +154,22 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
         <BlockHeader section={t("lanc_section")} title={t("lanc_title")} />
         <div style={{ display:"flex", gap:8 }}>
           <Btn variant="ghost" id="tour-btn-export" onClick={exportCSV} icon={<Icon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />}>{t("lanc_btn_export")}</Btn>
+          {isAdmin && (
+            <Btn variant="ghost" onClick={() => setImportModalOpen(true)} icon={<Icon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M12 3v12M7 8l5-5 5 5" />}>
+              {t("lanc_btn_import")}
+            </Btn>
+          )}
           <Btn id="tour-btn-novo" onClick={() => setModal("new")} icon={<Icon d="M12 5v14M5 12h14" />}>{t("lanc_btn_new")}</Btn>
         </div>
       </div>
+
+      {importModalOpen && (
+        <ImportRegistrosCsvModal
+          onClose={() => setImportModalOpen(false)}
+          registros={registros}
+          setRegistros={setRegistros}
+        />
+      )}
 
       <div id="tour-filtros" style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:"14px 18px", display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
         <Input label={t("form_label_data")} type="date" value={filtros.data} onChange={e => set("data", e.target.value)} style={{ width:150 }} />

@@ -75,6 +75,7 @@ src/
 │   ├── PrivacyNotice.tsx    # usePrivacyAccepted() + PrivacyNotice (LGPD)
 │   ├── FormLancamento.tsx   # Formulário de lançamento (PessoaRow, FormLancamento)
 │   ├── Lancamentos.tsx      # Tab de lançamentos (tabela, filtros, modais)
+│   ├── ImportRegistrosCsvModal.tsx # Modal isolado para importação de presenças via CSV com prévia
 │   ├── Dashboard.tsx        # Tab de dashboard (KPIs, gráfico por fornecedor)
 │   ├── Configuracoes.tsx    # Tab de configurações (opções, DPO, WhatsApp, admin)
 │   ├── FechamentoTab.tsx    # Tab de fechamento financeiro por fornecedor/período
@@ -90,6 +91,7 @@ src/
 │   ├── audit.ts             # uuid(), sanitize(), logAudit() — centralizados
 │   ├── supabase.ts          # Client Supabase + authReady promise
 │   ├── format-utils.ts      # Funções puras: calcHoras, fmt, fmtMes (Intl), dbToRegistro, etc.
+│   ├── import-registros-csv.ts # Parser/normalizador/validador puro para importação de registros via CSV
 │   ├── fechamento-utils.ts  # Lógica de fechamento financeiro; inclui TurnoCapacidade + mappers
 │   ├── excedente-utils.ts   # Funções puras: resolverCapacidade, calcExcedentePorTurnoDia, gerarDadosRelatorioExcedentes
 │   ├── projecao-utils.ts    # Funções puras: gerarDias(), calcMediaPorTurno(), calcDadosPorDia(), TURNOS_PROJECAO
@@ -537,3 +539,4 @@ Resultado da varredura de verbosidade e over-engineering realizada em 2026-03-26
 | 2026-04-19 | feat(diarias): vigência de período em diarias_config — migration diarias_config_add_vigencia.sql (ADD vigencia_inicio/fim DATE, DROP UNIQUE fornecedor+turno); DiariaConfig interface atualizada; resolverDiaria prioriza config c/ vigência válida sobre sem período; calcularValorDia e gerarItensFechamento passam data; Dashboard.tsx e ProjecaoPage.tsx passam r.data/dia; Configuracoes.tsx: insert em vez de upsert, campos De/Até no formulário, coluna Vigência na tabela; 7 novos testes — total 189 passando |
 | 2026-04-22 | ResetPasswordPage: logo do topo atualizada para reutilizar o asset logo.png (C laranja) no lugar do SVG de caminhão, alinhando o branding da recuperação de senha ao header principal do app |
 | 2026-04-25 | Dashboard financeiro passa a buscar apenas itens de fechamentos aprovados canônicos por fornecedor/período (src/lib/api/fechamento-dashboard.ts), corrigindo divergência de custo por fornecedor e total geral; adicionados testes de regressão (3440/3544) |
+| 2026-04-25 | Importação de presença via CSV em Lançamentos: modal isolado (ImportRegistrosCsvModal), parser puro em src/lib/import-registros-csv.ts com validação/deduplicação/conflito de turno, integração admin-only no botão "Importar CSV" e testes unitários da importação |
