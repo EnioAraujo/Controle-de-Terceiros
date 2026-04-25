@@ -45,14 +45,11 @@ export interface Fechamento {
   fornecedor: string;
   dataInicio: string;  // YYYY-MM-DD
   dataFim: string;     // YYYY-MM-DD
-  status: "rascunho" | "enviado" | "revisao" | "aprovado";
   valorTotal: number;
   createdAt?: string;
   updatedAt?: string;
   createdBy?: string;
 }
-
-export type FechamentoStatus = Fechamento["status"];
 
 // ─── CONVERSÃO HH:MM → DECIMAL ────────────────────────────────
 
@@ -289,7 +286,6 @@ export const dbToFechamento = (row: DbRow): Fechamento => ({
   fornecedor: row.fornecedor as string,
   dataInicio: row.data_inicio as string,
   dataFim:    row.data_fim as string,
-  status:     row.status as Fechamento["status"],
   valorTotal: Number(row.valor_total),
   createdAt:  row.created_at as string | undefined,
   updatedAt:  row.updated_at as string | undefined,
@@ -301,7 +297,6 @@ export const fechamentoToDb = (f: Fechamento) => ({
   fornecedor:  f.fornecedor,
   data_inicio: f.dataInicio,
   data_fim:    f.dataFim,
-  status:      f.status,
   valor_total: f.valorTotal,
 });
 

@@ -6,14 +6,13 @@ import {
 } from "./fechamento-dashboard";
 
 describe("selecionarFechamentosAprovadosCanonicos", () => {
-  it("mantem somente aprovados e escolhe a versao mais recente por fornecedor+periodo", () => {
+  it("mantem somente fechamentos do periodo e escolhe a versao mais recente por fornecedor+periodo", () => {
     const base: FechamentoAprovadoCabecalho[] = [
       {
         id: "f-antigo",
         fornecedor: "LIDER MASTER",
         data_inicio: "2026-04-11",
         data_fim: "2026-04-20",
-        status: "aprovado",
         updated_at: "2026-04-20T10:00:00Z",
         created_at: "2026-04-20T09:00:00Z",
       },
@@ -22,16 +21,6 @@ describe("selecionarFechamentosAprovadosCanonicos", () => {
         fornecedor: "LIDER MASTER",
         data_inicio: "2026-04-11",
         data_fim: "2026-04-20",
-        status: "aprovado",
-        updated_at: "2026-04-20T12:00:00Z",
-        created_at: "2026-04-20T11:00:00Z",
-      },
-      {
-        id: "f-nao-aprovado",
-        fornecedor: "JSS",
-        data_inicio: "2026-04-11",
-        data_fim: "2026-04-20",
-        status: "rascunho",
         updated_at: "2026-04-20T12:00:00Z",
         created_at: "2026-04-20T11:00:00Z",
       },
@@ -40,7 +29,6 @@ describe("selecionarFechamentosAprovadosCanonicos", () => {
         fornecedor: "JSS",
         data_inicio: "2026-03-01",
         data_fim: "2026-03-10",
-        status: "aprovado",
         updated_at: "2026-03-10T10:00:00Z",
         created_at: "2026-03-10T09:00:00Z",
       },
@@ -49,7 +37,6 @@ describe("selecionarFechamentosAprovadosCanonicos", () => {
         fornecedor: "JSS",
         data_inicio: "2026-04-11",
         data_fim: "2026-04-20",
-        status: "aprovado",
         updated_at: "2026-04-20T08:00:00Z",
         created_at: "2026-04-20T07:00:00Z",
       },
@@ -86,11 +73,11 @@ const getBuilder = async () => {
 describe("buscarResumoFechamentosSalvosPorPeriodo", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("retorna total, count e porStatus para multiplos fechamentos", async () => {
+  it("retorna total e count para multiplos fechamentos", async () => {
     const rows = [
-      { valor_total: 1000, status: "aprovado" },
-      { valor_total: 2000, status: "aprovado" },
-      { valor_total: 500,  status: "rascunho" },
+      { valor_total: 1000 },
+      { valor_total: 2000 },
+      { valor_total: 500 },
     ];
 
     const { supabase: sb } = await import("@/lib/supabase");
@@ -106,7 +93,6 @@ describe("buscarResumoFechamentosSalvosPorPeriodo", () => {
     expect(result.success).toBe(true);
     expect(result.data?.total).toBe(3500);
     expect(result.data?.count).toBe(3);
-    expect(result.data?.porStatus).toEqual({ aprovado: 2, rascunho: 1 });
   });
 
   it("retorna zeros quando nao ha fechamentos no periodo", async () => {
@@ -123,7 +109,6 @@ describe("buscarResumoFechamentosSalvosPorPeriodo", () => {
     expect(result.success).toBe(true);
     expect(result.data?.total).toBe(0);
     expect(result.data?.count).toBe(0);
-    expect(result.data?.porStatus).toEqual({});
   });
 
   it("retorna error quando supabase falha", async () => {

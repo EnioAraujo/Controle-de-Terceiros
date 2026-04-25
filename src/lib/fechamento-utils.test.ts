@@ -360,7 +360,6 @@ describe("dbToFechamento / fechamentoToDb", () => {
     const f = dbToFechamento(row);
     expect(f.fornecedor).toBe("JSS");
     expect(f.valorTotal).toBe(1500.5);
-    expect(f.status).toBe("rascunho");
 
     const db = fechamentoToDb(f);
     expect(db.fornecedor).toBe("JSS");

@@ -17,7 +17,6 @@ export interface FechamentoAprovadoCabecalho {
   fornecedor: string;
   data_inicio: string;
   data_fim: string;
-  status: "rascunho" | "enviado" | "revisao" | "aprovado";
   updated_at: string | null;
   created_at: string | null;
 }
@@ -39,7 +38,6 @@ export const selecionarFechamentosAprovadosCanonicos = (
   const canonicosPorPeriodo = new Map<string, FechamentoAprovadoCabecalho>();
 
   fechamentos
-    .filter((f) => f.status === "aprovado")
     .filter((f) => periodosSobrepoem(f, dataInicio, dataFim))
     .forEach((f) => {
       const key = `${f.fornecedor}|${f.data_inicio}|${f.data_fim}`;
@@ -60,8 +58,7 @@ export async function buscarValoresFinaisFechamentoAprovadoPorPeriodo(
   try {
     const { data: fechamentosData, error: fechamentosError } = await supabase
       .from("fechamentos")
-      .select("id, fornecedor, data_inicio, data_fim, status, updated_at, created_at")
-      .eq("status", "aprovado")
+      .select("id, fornecedor, data_inicio, data_fim, updated_at, created_at")
       .lte("data_inicio", dataFim)
       .gte("data_fim", dataInicio);
 
@@ -142,7 +139,6 @@ export async function buscarValoresFinaisFechamentoAprovadoPorPeriodo(
 export interface ResumoFechamentosSalvosDashboard {
   total: number;
   count: number;
-  porStatus: Record<string, number>;
 }
 
 export async function buscarResumoFechamentosSalvosPorPeriodo(
@@ -152,7 +148,7 @@ export async function buscarResumoFechamentosSalvosPorPeriodo(
   try {
     const { data, error } = await supabase
       .from("fechamentos")
-      .select("valor_total, status")
+      .select("valor_total")
       .lte("data_inicio", dataFim)
       .gte("data_fim", dataInicio);
 
@@ -160,19 +156,14 @@ export async function buscarResumoFechamentosSalvosPorPeriodo(
       return { success: false, error: error.message };
     }
 
-    const rows = (data ?? []) as Array<{ valor_total: number; status: string }>;
+    const rows = (data ?? []) as Array<{ valor_total: number }>;
 
     if (rows.length === 0) {
-      return { success: true, data: { total: 0, count: 0, porStatus: {} } };
+      return { success: true, data: { total: 0, count: 0 } };
     }
 
     const total = rows.reduce((sum, r) => sum + Number(r.valor_total ?? 0), 0);
-    const porStatus: Record<string, number> = {};
-    rows.forEach((r) => {
-      porStatus[r.status] = (porStatus[r.status] ?? 0) + 1;
-    });
-
-    return { success: true, data: { total, count: rows.length, porStatus } };
+    return { success: true, data: { total, count: rows.length } };
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error("[API_FECHAMENTO_DASHBOARD] Erro inesperado:", errorMessage);
