@@ -237,13 +237,7 @@ export const Dashboard = ({
             <div style={{ fontSize:24, fontWeight:800, fontFamily:S.fDisplay, color:"#8657C7", letterSpacing:-1, lineHeight:1 }}>{fmtBRL(resumoFechamentos.total)}</div>
             <div style={{ fontSize:11, fontFamily:S.fLabel, color:S.onVar, marginTop:4 }}>{resumoFechamentos.count} fechamento{resumoFechamentos.count !== 1 ? "s" : ""}</div>
           </div>
-          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-            {Object.entries(resumoFechamentos.porStatus).map(([status, qtd]) => (
-              <span key={status} style={{ padding:"3px 10px", borderRadius:99, fontSize:11, fontWeight:600, fontFamily:S.fLabel, background:S.low, color:S.onVar, border:S.ghost }}>
-                {status} ({qtd})
-              </span>
-            ))}
-          </div>
+          {/* Bloco de status removido: porStatus não existe mais no resumoFechamentos */}
         </div>
       )}
 
