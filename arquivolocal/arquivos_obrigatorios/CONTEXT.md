@@ -83,7 +83,8 @@ src/
 │   ├── Configuracoes.tsx    # Tab de configurações (opções, DPO, WhatsApp, admin)
 │   ├── FechamentoTab.tsx    # Tab de fechamento financeiro por fornecedor/período
 │   ├── fechamento/
-│   │   └── FornecedoresMultiSelect.tsx # Seletor multi-fornecedor isolado para o fechamento
+│   │   ├── FornecedoresMultiSelect.tsx # Seletor multi-fornecedor isolado para o fechamento
+│   │   └── FechamentoItensTable.tsx # Tabela de itens do fechamento (colunas e edição inline) isolada
 │   ├── ErrorBoundary.tsx    # Error Boundary global
 │   └── ui/                  # Todos os componentes shadcn/ui (não editar)
 ├── hooks/
@@ -553,6 +554,7 @@ Resultado da varredura de verbosidade e over-engineering realizada em 2026-03-26
 | 2026-04-22 | ResetPasswordPage: logo do topo atualizada para reutilizar o asset logo.png (C laranja) no lugar do SVG de caminhão, alinhando o branding da recuperação de senha ao header principal do app |
 | 2026-04-25 | Dashboard financeiro passa a buscar apenas itens de fechamentos aprovados canônicos por fornecedor/período (src/lib/api/fechamento-dashboard.ts), corrigindo divergência de custo por fornecedor e total geral; adicionados testes de regressão (3440/3544) |
 | 2026-04-25 | Fechamento: multi-seleção de fornecedores no filtro, cálculo consolidado por período e salvamento em lote (N fechamentos em 1 clique); extraídos `src/components/fechamento/FornecedoresMultiSelect.tsx` e `src/lib/fechamento-multifornecedor-utils.ts` com testes unitários dedicados |
+| 2026-04-25 | Fechamento: tabela de itens passa a exibir coluna Fornecedor quando há seleção de 1+ fornecedores; tabela isolada em `src/components/fechamento/FechamentoItensTable.tsx` e resolução de fornecedor por item adicionada em utilitário puro |
 | 2026-04-25 | Importação de presença via CSV em Lançamentos: modal isolado (ImportRegistrosCsvModal), parser puro em src/lib/import-registros-csv.ts com validação/deduplicação/conflito de turno, integração admin-only no botão "Importar CSV" e testes unitários da importação |
 | 2026-04-25 | Lançamentos: adicionados filtros de Mês + Período (1º/2º/3º/personalizado) no padrão do Fechamento, mantendo coexistência com filtro de data exata; lógica de intervalo extraída para src/lib/lancamentos-filtros-utils.ts e controles isolados em src/components/LancamentosPeriodoFilters.tsx |
 | 2026-04-25 | Correção do filtro de Mês em Lançamentos: quando nenhum período é selecionado, o sistema agora aplica intervalo do mês inteiro (01 até último dia) em src/lib/lancamentos-filtros-utils.ts; testes unitários atualizados |

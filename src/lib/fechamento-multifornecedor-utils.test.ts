@@ -5,6 +5,7 @@ import {
   dividirItensPorFornecedor,
   filtrarRegistrosPorFornecedoresEPeriodo,
   mapearFornecedorPorRegistroId,
+  resolverFornecedorDoItem,
 } from "./fechamento-multifornecedor-utils";
 
 const baseRegistros: Registro[] = [
@@ -108,5 +109,23 @@ describe("fechamento-multifornecedor-utils", () => {
     expect(lotes).toHaveLength(2);
     expect(lotes[0]).toEqual({ fornecedor: "JSS", itens: [baseItens[0]], total: 120 });
     expect(lotes[1]).toEqual({ fornecedor: "LIDER MASTER", itens: [baseItens[1]], total: 250 });
+  });
+
+  it("resolve fornecedor por registroId e faz fallback quando ha apenas um selecionado", () => {
+    const map = mapearFornecedorPorRegistroId(baseRegistros);
+
+    expect(resolverFornecedorDoItem(baseItens[0], map, ["JSS", "LIDER MASTER"]))
+      .toBe("JSS");
+
+    const itemSemRegistro: FechamentoItem = {
+      ...baseItens[0],
+      registroId: null,
+    };
+
+    expect(resolverFornecedorDoItem(itemSemRegistro, map, ["JSS"]))
+      .toBe("JSS");
+
+    expect(resolverFornecedorDoItem(itemSemRegistro, map, ["JSS", "LIDER MASTER"]))
+      .toBe("-");
   });
 });

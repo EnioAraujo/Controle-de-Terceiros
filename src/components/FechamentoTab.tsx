@@ -19,11 +19,13 @@ import {
   dividirItensPorFornecedor,
   filtrarRegistrosPorFornecedoresEPeriodo,
   mapearFornecedorPorRegistroId,
+  resolverFornecedorDoItem,
 } from "@/lib/fechamento-multifornecedor-utils";
 import { gerarDadosRelatorioExcedentes } from "@/lib/excedente-utils";
 import { useI18n } from "@/hooks/use-i18n";
 import { BlockHeader } from "@/components/atoms";
 import { FornecedoresMultiSelect } from "@/components/fechamento/FornecedoresMultiSelect";
+import { FechamentoItensTable } from "@/components/fechamento/FechamentoItensTable";
 
 const STATUS_LABEL_KEY: Record<FechamentoStatus, TranslationKey> = {
   rascunho: "fech_status_rascunho",
@@ -384,6 +386,7 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
   const fmtCurrency = (v: number) => v.toLocaleString(lang, { style: "currency", currency: "BRL" });
   const fornecedoresLabel = fornecedores.join(", ");
   const fornecedoresSlug = fornecedores.join("_").replace(/\s+/g, "-");
+  const mostrarColunaFornecedor = fornecedores.length > 0;
 
   // suprimir warning de resumoPessoas não usado — o dado existe para extensões futuras
   void resumoPessoas;
@@ -479,69 +482,28 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
             <div style={{ padding: 32, textAlign: "center", color: "#94A3B8", fontSize: 13 }}>{t("fech_sem_registros")}</div>
           ) : (
             <>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                  <thead>
-                    <tr style={{ background: "#F1F5F9", textAlign: "left" }}>
-                      {[t("fech_col_data"), t("fech_col_turno"), t("fech_col_nome"), t("fech_col_horas"), t("fech_col_diaria"), t("fech_col_vlr_dia"), t("fech_col_diff"), t("fech_col_obs"), t("fech_col_acoes")].map(h => (
-                        <th key={h} style={{ padding: "8px 10px", fontWeight: 700, color: "#475569", borderBottom: "2px solid #E2E6EC", whiteSpace: "nowrap" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {itens.map((item, idx) => (
-                      <tr key={idx} style={{ borderBottom: "1px solid #F1F5F9", background: item.ajusteManual ? "#FFFBEB" : "transparent" }}>
-                        <td style={{ padding: "7px 10px", color: "#64748B", fontFamily: "monospace" }}>{fmt(item.data, lang)}</td>
-                        <td style={{ padding: "7px 10px", color: "#64748B" }}>{item.turno}</td>
-                        <td style={{ padding: "7px 10px", fontWeight: 600, color: "#0F1C2E", whiteSpace: "nowrap" }}>{item.nome}</td>
-                        <td style={{ padding: "7px 10px", color: "#64748B", fontFamily: "monospace" }}>{item.horas}</td>
-                        <td style={{ padding: "7px 10px", color: "#64748B" }}>{fmtCurrency(item.valorDiaria)}</td>
-                        {editIdx === idx ? (
-                          <>
-                            <td style={{ padding: "4px 6px" }}>
-                              <input type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)}
-                                style={{ width: 80, border: "1.5px solid #1A56DB", borderRadius: 5, padding: "4px 6px", fontSize: 12, fontFamily: "inherit", outline: "none" }} />
-                            </td>
-                            <td></td>
-                            <td style={{ padding: "4px 6px" }}>
-                              <input value={editObs} onChange={e => setEditObs(sanitize(e.target.value))} placeholder={t("fech_col_obs")}
-                                style={{ width: 100, border: "1.5px solid #E2E6EC", borderRadius: 5, padding: "4px 6px", fontSize: 12, fontFamily: "inherit", outline: "none" }} />
-                            </td>
-                            <td style={{ padding: "4px 6px", whiteSpace: "nowrap" }}>
-                              <button onClick={() => aplicarEdicao(idx)} style={{ background: "#0E9F6E", border: "none", borderRadius: 5, padding: "4px 10px", color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit", marginRight: 4 }}>✓</button>
-                              <button onClick={() => setEditIdx(null)} style={{ background: "#F1F5F9", border: "none", borderRadius: 5, padding: "4px 10px", color: "#64748B", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>✕</button>
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            <td style={{ padding: "7px 10px", fontWeight: 700, color: item.ajusteManual ? "#D97706" : "#0E9F6E" }}>{fmtCurrency(item.valorCalculado)}</td>
-                            {(() => { const diff = item.valorCalculado - item.valorDiaria; return (
-                              <td style={{ padding: "7px 10px", fontWeight: 700, color: diff < 0 ? "#E02424" : diff > 0 ? "#0E9F6E" : "#94A3B8" }}>
-                                {diff !== 0 ? fmtCurrency(diff) : "—"}
-                              </td>
-                            ); })()}
-                            <td style={{ padding: "7px 10px", color: "#94A3B8", fontSize: 11, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.obs}</td>
-                            <td style={{ padding: "7px 10px" }}>
-                              <button onClick={() => { setEditIdx(idx); setEditValor(String(item.valorCalculado)); setEditObs(item.obs); }}
-                                title={t("fech_ajuste")}
-                                style={{ background: "transparent", border: "1px solid #E2E6EC", borderRadius: 5, padding: "3px 8px", cursor: "pointer", color: "#64748B", fontSize: 11, fontFamily: "inherit" }}>
-                                ✎
-                              </button>
-                            </td>
-                          </>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr style={{ background: "#F1F5F9" }}>
-                      <td colSpan={5} style={{ padding: "8px 10px", fontWeight: 800, color: "#0F1C2E", textAlign: "right" }}>{t("fech_total")}</td>
-                      <td style={{ padding: "8px 10px", fontWeight: 800, color: "#0E9F6E" }}>{fmtCurrency(total)}</td>
-                      <td colSpan={3}></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+              <FechamentoItensTable
+                itens={itens}
+                total={total}
+                lang={lang}
+                t={t}
+                fmtCurrency={fmtCurrency}
+                showFornecedorCol={mostrarColunaFornecedor}
+                resolverFornecedor={(item) => resolverFornecedorDoItem(item, fornecedorPorRegistroId, fornecedores)}
+                editIdx={editIdx}
+                editValor={editValor}
+                editObs={editObs}
+                onEditValorChange={setEditValor}
+                onEditObsChange={(valor) => setEditObs(sanitize(valor))}
+                onAplicarEdicao={aplicarEdicao}
+                onCancelarEdicao={() => setEditIdx(null)}
+                onIniciarEdicao={(idx, item) => {
+                  setEditIdx(idx);
+                  setEditValor(String(item.valorCalculado));
+                  setEditObs(item.obs);
+                }}
+                fmtData={fmt}
+              />
 
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16, alignItems: "center" }}>
                 <button onClick={salvar} style={{ background: "#1A56DB", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>

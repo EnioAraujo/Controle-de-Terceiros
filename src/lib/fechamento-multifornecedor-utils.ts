@@ -54,3 +54,19 @@ export const dividirItensPorFornecedor = (
     };
   });
 };
+
+export const resolverFornecedorDoItem = (
+  item: FechamentoItem,
+  fornecedorPorRegistroId: Record<string, string>,
+  fornecedoresSelecionados: string[],
+): string => {
+  if (item.registroId && fornecedorPorRegistroId[item.registroId]) {
+    return fornecedorPorRegistroId[item.registroId];
+  }
+
+  if (fornecedoresSelecionados.length === 1) {
+    return fornecedoresSelecionados[0];
+  }
+
+  return "-";
+};
