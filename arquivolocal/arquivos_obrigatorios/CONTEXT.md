@@ -1,3 +1,4 @@
+| 2026-04-25 | Fechamento: filtro de fornecedor agora permite multi-seleção com cálculo consolidado e salvamento em lote (1 clique cria N fechamentos, um por fornecedor); lógica pura extraída para fechamento-multifornecedor-utils e UI isolada em FornecedoresMultiSelect. |
 | 2026-04-25 | Lançamentos: após importar CSV, o app exibe resumo da importação e alerta quando registros ficam ocultos por filtros, com ação "Mostrar importados" que limpa data/mês/período. |
 | 2026-03-15 | Barra de exclusão em massa (Excluir selecionados) agora ocupa toda a largura abaixo dos filtros, igual à imagem 2 enviada pelo usuário. |
 | 2026-03-15 | Botão 'Excluir selecionados' movido para logo abaixo dos filtros, alinhado à direita, conforme layout solicitado pelo usuário. |
@@ -24,7 +25,7 @@
 | 2026-04-04 | ErrorBoundary: console.error protegido com guarda DEV para evitar vazamento de stack trace em produção (OWASP A05) |
 # Controle de Terceiros — Contexto do Projeto
 
-> **Última atualização:** 2026-04-22
+> **Última atualização:** 2026-04-25
 > **Branch:** Main-terceiros
 
 ---
@@ -81,6 +82,8 @@ src/
 │   ├── Dashboard.tsx        # Tab de dashboard (KPIs, gráfico por fornecedor)
 │   ├── Configuracoes.tsx    # Tab de configurações (opções, DPO, WhatsApp, admin)
 │   ├── FechamentoTab.tsx    # Tab de fechamento financeiro por fornecedor/período
+│   ├── fechamento/
+│   │   └── FornecedoresMultiSelect.tsx # Seletor multi-fornecedor isolado para o fechamento
 │   ├── ErrorBoundary.tsx    # Error Boundary global
 │   └── ui/                  # Todos os componentes shadcn/ui (não editar)
 ├── hooks/
@@ -96,6 +99,7 @@ src/
 │   ├── import-registros-csv.ts # Parser/normalizador/validador puro para importação de registros via CSV
 │   ├── lancamentos-filtros-utils.ts # Regras puras de intervalo/período para filtros de Lançamentos
 │   ├── fechamento-utils.ts  # Lógica de fechamento financeiro; inclui TurnoCapacidade + mappers
+│   ├── fechamento-multifornecedor-utils.ts # Funções puras para filtro/split de fechamento por múltiplos fornecedores
 │   ├── excedente-utils.ts   # Funções puras: resolverCapacidade, calcExcedentePorTurnoDia, gerarDadosRelatorioExcedentes
 │   ├── projecao-utils.ts    # Funções puras: gerarDias(), calcMediaPorTurno(), calcDadosPorDia(), TURNOS_PROJECAO
 │   ├── i18n-translations.ts # Traduções pt-BR/en-US + mapSupabaseError()
@@ -283,6 +287,12 @@ Setores:      RECEBIMENTO, EXPEDIÇÃO, SEPARAÇÃO, CONFERÊNCIA, ENDEREÇAMENT
 - Carrega `opcoes` e `terceiros` em paralelo
 - Sincroniza incrementalmente: apenas adiciona/remove os valores que mudaram
 - Lotes de 100 itens (CHUNK) para evitar limites do Supabase
+
+### Fechamento Multi-fornecedor
+
+- Filtro de fornecedor do Fechamento suporta seleção múltipla para cálculo consolidado no período
+- `Salvar` com múltiplos fornecedores executa salvamento em lote: cria 1 fechamento por fornecedor selecionado
+- Split de itens por fornecedor é feito por função pura em `src/lib/fechamento-multifornecedor-utils.ts`
 
 ---
 
@@ -542,6 +552,7 @@ Resultado da varredura de verbosidade e over-engineering realizada em 2026-03-26
 | 2026-04-19 | feat(diarias): vigência de período em diarias_config — migration diarias_config_add_vigencia.sql (ADD vigencia_inicio/fim DATE, DROP UNIQUE fornecedor+turno); DiariaConfig interface atualizada; resolverDiaria prioriza config c/ vigência válida sobre sem período; calcularValorDia e gerarItensFechamento passam data; Dashboard.tsx e ProjecaoPage.tsx passam r.data/dia; Configuracoes.tsx: insert em vez de upsert, campos De/Até no formulário, coluna Vigência na tabela; 7 novos testes — total 189 passando |
 | 2026-04-22 | ResetPasswordPage: logo do topo atualizada para reutilizar o asset logo.png (C laranja) no lugar do SVG de caminhão, alinhando o branding da recuperação de senha ao header principal do app |
 | 2026-04-25 | Dashboard financeiro passa a buscar apenas itens de fechamentos aprovados canônicos por fornecedor/período (src/lib/api/fechamento-dashboard.ts), corrigindo divergência de custo por fornecedor e total geral; adicionados testes de regressão (3440/3544) |
+| 2026-04-25 | Fechamento: multi-seleção de fornecedores no filtro, cálculo consolidado por período e salvamento em lote (N fechamentos em 1 clique); extraídos `src/components/fechamento/FornecedoresMultiSelect.tsx` e `src/lib/fechamento-multifornecedor-utils.ts` com testes unitários dedicados |
 | 2026-04-25 | Importação de presença via CSV em Lançamentos: modal isolado (ImportRegistrosCsvModal), parser puro em src/lib/import-registros-csv.ts com validação/deduplicação/conflito de turno, integração admin-only no botão "Importar CSV" e testes unitários da importação |
 | 2026-04-25 | Lançamentos: adicionados filtros de Mês + Período (1º/2º/3º/personalizado) no padrão do Fechamento, mantendo coexistência com filtro de data exata; lógica de intervalo extraída para src/lib/lancamentos-filtros-utils.ts e controles isolados em src/components/LancamentosPeriodoFilters.tsx |
 | 2026-04-25 | Correção do filtro de Mês em Lançamentos: quando nenhum período é selecionado, o sistema agora aplica intervalo do mês inteiro (01 até último dia) em src/lib/lancamentos-filtros-utils.ts; testes unitários atualizados |

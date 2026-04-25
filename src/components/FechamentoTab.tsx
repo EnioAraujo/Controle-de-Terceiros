@@ -15,9 +15,15 @@ import {
   periodosPadrao,
   STATUS_COLORS, NEXT_STATUS,
 } from "@/lib/fechamento-utils";
+import {
+  dividirItensPorFornecedor,
+  filtrarRegistrosPorFornecedoresEPeriodo,
+  mapearFornecedorPorRegistroId,
+} from "@/lib/fechamento-multifornecedor-utils";
 import { gerarDadosRelatorioExcedentes } from "@/lib/excedente-utils";
 import { useI18n } from "@/hooks/use-i18n";
 import { BlockHeader } from "@/components/atoms";
+import { FornecedoresMultiSelect } from "@/components/fechamento/FornecedoresMultiSelect";
 
 const STATUS_LABEL_KEY: Record<FechamentoStatus, TranslationKey> = {
   rascunho: "fech_status_rascunho",
@@ -34,7 +40,8 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
   const [periodoIdx, setPeriodoIdx] = useState(0);
   const [customInicio, setCustomInicio] = useState("");
   const [customFim, setCustomFim] = useState("");
-  const [fornecedor, setFornecedor] = useState("");
+  const [fornecedores, setFornecedores] = useState<string[]>([]);
+  const [fornecedorPorRegistroId, setFornecedorPorRegistroId] = useState<Record<string, string>>({});
 
   // ── Dados calculados ──
   const [itens, setItens] = useState<FechamentoItem[]>([]);
@@ -46,6 +53,7 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
   const [fechamento, setFechamento] = useState<Fechamento | null>(null);
   const [historico, setHistorico] = useState<Fechamento[]>([]);
   const [feedback, setFeedback] = useState("");
+  const [feedbackTipo, setFeedbackTipo] = useState<"success" | "error" | null>(null);
 
   // ── Configs (carregar do DB) ──
   const [turnosConfig, setTurnosConfig] = useState<TurnoConfig[]>([]);
@@ -82,11 +90,12 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
   }, [periodoIdx, periodos, customInicio, customFim]);
 
   const calcular = useCallback(() => {
-    if (!fornecedor || !intervalo.inicio || !intervalo.fim) return;
-    const regs = registros.filter(r =>
-      r.fornecedor === fornecedor &&
-      r.data >= intervalo.inicio &&
-      r.data <= intervalo.fim
+    if (fornecedores.length === 0 || !intervalo.inicio || !intervalo.fim) return;
+    const regs = filtrarRegistrosPorFornecedoresEPeriodo(
+      registros,
+      fornecedores,
+      intervalo.inicio,
+      intervalo.fim,
     );
     const items = gerarItensFechamento(
       regs.map(r => ({
@@ -98,11 +107,13 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
     setItens(items);
     setResumoPessoas(agruparPorPessoa(items));
     setTotal(calcularTotal(items));
+    setFornecedorPorRegistroId(mapearFornecedorPorRegistroId(regs));
     setCalculado(true);
     setFechamento(null);
     setEditIdx(null);
     setFeedback("");
-  }, [fornecedor, intervalo, registros, diariasConfig, turnosConfig]);
+    setFeedbackTipo(null);
+  }, [fornecedores, intervalo, registros, diariasConfig, turnosConfig]);
 
   const aplicarEdicao = (idx: number) => {
     const val = parseFloat(editValor);
@@ -117,32 +128,107 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
     setEditIdx(null);
   };
 
-  const salvar = async () => {
-    if (!fornecedor || itens.length === 0) return;
-    const fech: Fechamento = fechamento ?? {
-      fornecedor,
+  const salvarFechamentoFornecedor = async (
+    fornecedorAlvo: string,
+    itensAlvo: FechamentoItem[],
+    totalAlvo: number,
+    fechamentoAtual: Fechamento | null,
+  ): Promise<{ success: boolean; saved?: Fechamento }> => {
+    if (itensAlvo.length === 0) return { success: false };
+
+    const fech: Fechamento = fechamentoAtual ?? {
+      fornecedor: fornecedorAlvo,
       dataInicio: intervalo.inicio,
       dataFim: intervalo.fim,
       status: "rascunho",
-      valorTotal: total,
+      valorTotal: totalAlvo,
     };
-    fech.valorTotal = total;
+
+    fech.valorTotal = totalAlvo;
     const dbFech = fechamentoToDb(fech);
+
     const { data: savedFech, error } = fech.id
       ? await supabase.from("fechamentos").update(dbFech).eq("id", fech.id).select().single()
       : await supabase.from("fechamentos").insert(dbFech).select().single();
-    if (error || !savedFech) { setFeedback(t("fech_erro_salvar")); return; }
+
+    if (error || !savedFech) return { success: false };
+
     const fechId = savedFech.id as string;
     const { error: delErr } = await supabase.from("fechamento_itens").delete().eq("fechamento_id", fechId);
-    if (delErr) { console.error("Erro ao limpar itens:", delErr.message); setFeedback(t("fech_erro_salvar")); return; }
-    const { error: insErr } = await supabase.from("fechamento_itens").insert(itens.map(i => fechamentoItemToDb(i, fechId)));
-    if (insErr) { console.error("Erro ao inserir itens:", insErr.message); setFeedback(t("fech_erro_salvar")); return; }
+    if (delErr) {
+      console.error("Erro ao limpar itens:", delErr.message);
+      return { success: false };
+    }
+
+    const { error: insErr } = await supabase.from("fechamento_itens").insert(itensAlvo.map((i) => fechamentoItemToDb(i, fechId)));
+    if (insErr) {
+      console.error("Erro ao inserir itens:", insErr.message);
+      return { success: false };
+    }
+
     const savedObj = dbToFechamento(savedFech);
-    setFechamento(savedObj);
-    logAudit(fech.id ? "UPDATE" : "INSERT", "fechamentos", fechId, { fornecedor, total });
-    setHistorico(prev => [savedObj, ...prev.filter(h => h.id !== fechId)]);
-    setFeedback(t("fech_salvo_sucesso"));
-    setTimeout(() => setFeedback(""), 3000);
+    logAudit(fech.id ? "UPDATE" : "INSERT", "fechamentos", fechId, { fornecedor: fornecedorAlvo, total: totalAlvo });
+    return { success: true, saved: savedObj };
+  };
+
+  const salvar = async () => {
+    if (fornecedores.length === 0 || itens.length === 0) return;
+
+    if (fornecedores.length === 1) {
+      const fornecedorAtual = fornecedores[0];
+      const result = await salvarFechamentoFornecedor(fornecedorAtual, itens, total, fechamento?.fornecedor === fornecedorAtual ? fechamento : null);
+      if (!result.success || !result.saved) {
+        setFeedback(t("fech_erro_salvar"));
+        setFeedbackTipo("error");
+        return;
+      }
+
+      setFechamento(result.saved);
+      setHistorico((prev) => [result.saved!, ...prev.filter((h) => h.id !== result.saved!.id)]);
+      setFeedback(t("fech_salvo_sucesso"));
+      setFeedbackTipo("success");
+      setTimeout(() => {
+        setFeedback("");
+        setFeedbackTipo(null);
+      }, 3000);
+      return;
+    }
+
+    const lotes = dividirItensPorFornecedor(itens, fornecedores, fornecedorPorRegistroId).filter((l) => l.itens.length > 0);
+    let sucesso = 0;
+    let erro = 0;
+    const salvos: Fechamento[] = [];
+
+    for (const lote of lotes) {
+      const result = await salvarFechamentoFornecedor(lote.fornecedor, lote.itens, lote.total, null);
+      if (result.success && result.saved) {
+        sucesso += 1;
+        salvos.push(result.saved);
+      } else {
+        erro += 1;
+      }
+    }
+
+    if (salvos.length > 0) {
+      setHistorico((prev) => [...salvos, ...prev.filter((h) => !salvos.some((s) => s.id === h.id))]);
+    }
+
+    if (sucesso > 0 && erro === 0) {
+      setFeedback(t("fech_salvo_lote_sucesso").replace("{ok}", String(sucesso)));
+      setFeedbackTipo("success");
+    } else if (sucesso > 0 && erro > 0) {
+      setFeedback(t("fech_salvo_lote_parcial").replace("{ok}", String(sucesso)).replace("{erro}", String(erro)));
+      setFeedbackTipo("error");
+    } else {
+      setFeedback(t("fech_erro_salvar"));
+      setFeedbackTipo("error");
+    }
+
+    setFechamento(null);
+    setTimeout(() => {
+      setFeedback("");
+      setFeedbackTipo(null);
+    }, 3000);
   };
 
   const avancarStatus = async () => {
@@ -171,7 +257,7 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
 
   const abrirFechamento = async (f: Fechamento) => {
     if (!f.id) return;
-    setFornecedor(f.fornecedor);
+    setFornecedores([f.fornecedor]);
     setMes(f.dataInicio.slice(0, 7));
     setPeriodoIdx(3);
     setCustomInicio(f.dataInicio);
@@ -183,11 +269,17 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
       setItens(items);
       setResumoPessoas(agruparPorPessoa(items));
       setTotal(calcularTotal(items));
+      const map: Record<string, string> = {};
+      items.forEach((item) => {
+        if (item.registroId) map[item.registroId] = f.fornecedor;
+      });
+      setFornecedorPorRegistroId(map);
     }
     setFechamento(f);
     setCalculado(true);
     setEditIdx(null);
     setFeedback("");
+    setFeedbackTipo(null);
   };
 
   const excluirFechamento = async (f: Fechamento) => {
@@ -208,7 +300,7 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
       const doc = new jsPDF({ orientation: "landscape" });
       doc.setFontSize(13);
       doc.setFont("helvetica", "bold");
-      doc.text(`Fechamento — ${fornecedor} (${fmt(intervalo.inicio, lang)} a ${fmt(intervalo.fim, lang)})`, 14, 16);
+      doc.text(`Fechamento — ${fornecedoresLabel} (${fmt(intervalo.inicio, lang)} a ${fmt(intervalo.fim, lang)})`, 14, 16);
       autoTable(doc, {
         startY: 22,
         head: [[t("fech_col_data"), t("fech_col_turno"), t("fech_col_nome"), t("fech_col_horas"), t("fech_col_diaria"), t("fech_col_vlr_dia"), t("fech_col_diff"), t("fech_col_obs")]],
@@ -219,7 +311,7 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
         footStyles: { fillColor: [241, 245, 249], textColor: [15, 28, 46], fontStyle: "bold" },
         columnStyles: { 5: { textColor: [14, 159, 110] } },
       });
-      doc.save(`fechamento_${fornecedor}_${intervalo.inicio}_${intervalo.fim}.pdf`);
+      doc.save(`fechamento_${fornecedoresSlug}_${intervalo.inicio}_${intervalo.fim}.pdf`);
     } catch (err) { console.error("Erro ao exportar PDF:", err); }
   };
 
@@ -248,7 +340,7 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `fechamento_${fornecedor}_${intervalo.inicio}_${intervalo.fim}.xlsx`;
+      a.download = `fechamento_${fornecedoresSlug}_${intervalo.inicio}_${intervalo.fim}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) { console.error("Erro ao exportar XLSX:", err); }
@@ -290,6 +382,8 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
   };
 
   const fmtCurrency = (v: number) => v.toLocaleString(lang, { style: "currency", currency: "BRL" });
+  const fornecedoresLabel = fornecedores.join(", ");
+  const fornecedoresSlug = fornecedores.join("_").replace(/\s+/g, "-");
 
   // suprimir warning de resumoPessoas não usado — o dado existe para extensões futuras
   void resumoPessoas;
@@ -338,15 +432,23 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
           </>
         )}
         <div>
-          <label style={{ fontSize: 11, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 4 }}>{t("fech_fornecedor")}</label>
-          <select value={fornecedor} onChange={e => { setFornecedor(e.target.value); setCalculado(false); }}
-            style={{ border: "1.5px solid #E2E6EC", borderRadius: 7, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", background: "#FAFBFC", outline: "none", minWidth: 180 }}>
-            <option value="">{t("fech_selecione_forn")}</option>
-            {opcoes.fornecedores.map(f => <option key={f} value={f}>{f}</option>)}
-          </select>
+          <FornecedoresMultiSelect
+            fornecedores={opcoes.fornecedores}
+            selecionados={fornecedores}
+            onChange={(novos) => {
+              setFornecedores(novos);
+              setCalculado(false);
+              setFechamento(null);
+              setFeedback("");
+              setFeedbackTipo(null);
+            }}
+            label={t("fech_fornecedor")}
+            placeholder={t("fech_selecione_forn")}
+            selectedSuffix={t("fech_fornecedores_sel")}
+          />
         </div>
-        <button onClick={calcular} disabled={!fornecedor || !intervalo.inicio || !intervalo.fim}
-          style={{ background: "#1A56DB", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit", opacity: !fornecedor ? 0.5 : 1 }}>
+        <button onClick={calcular} disabled={fornecedores.length === 0 || !intervalo.inicio || !intervalo.fim}
+          style={{ background: "#1A56DB", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit", opacity: fornecedores.length === 0 ? 0.5 : 1 }}>
           {calculado ? t("fech_recalcular") : t("fech_calcular")}
         </button>
       </div>
@@ -443,7 +545,7 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
 
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16, alignItems: "center" }}>
                 <button onClick={salvar} style={{ background: "#1A56DB", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
-                  {t("fech_salvar")}
+                  {fornecedores.length > 1 ? t("fech_salvar_lote") : t("fech_salvar")}
                 </button>
                 {fechamento && NEXT_STATUS[fechamento.status] && (
                   <button onClick={avancarStatus} style={{ background: STATUS_COLORS[NEXT_STATUS[fechamento.status]!], border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
@@ -467,7 +569,7 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
                   {t("fech_exportar_pdf")}
                 </button>
                 {feedback && (
-                  <div style={{ fontSize: 12, fontWeight: 600, color: feedback === t("fech_salvo_sucesso") ? "#0E9F6E" : "#E02424", background: feedback === t("fech_salvo_sucesso") ? "#E6F9F4" : "#FEF2F2", borderRadius: 7, padding: "6px 14px" }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: feedbackTipo === "success" ? "#0E9F6E" : "#E02424", background: feedbackTipo === "success" ? "#E6F9F4" : "#FEF2F2", borderRadius: 7, padding: "6px 14px" }}>
                     {feedback}
                   </div>
                 )}
