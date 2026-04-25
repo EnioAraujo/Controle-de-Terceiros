@@ -86,6 +86,7 @@ describe("montarFinanceiroDashboard", () => {
       turnos: ["1ª TURNO", "2ª TURNO"],
       periodLabels: ["1º", "2º", "3º"],
       diariasConfig,
+      turnosConfig: [],
       fechamentoValores: [
         { registroId: "r1", fornecedor: "JSS", nome: "Ana", data: "2026-04-05", turno: "1ª TURNO", horas: "08:20", valorCalculado: 250, atualizadoEm: "2026-04-18T10:00:00Z" },
         { registroId: "r2", fornecedor: "JSS", nome: "Bruno", data: "2026-04-12", turno: "2ª TURNO", horas: "08:20", valorCalculado: 150, atualizadoEm: "2026-04-18T10:00:00Z" },
@@ -112,6 +113,7 @@ describe("montarFinanceiroDashboard", () => {
       turnos: ["1ª TURNO", "2ª TURNO"],
       periodLabels: ["1º", "2º", "3º"],
       diariasConfig,
+      turnosConfig: [],
       fechamentoValores: [],
     });
 
@@ -129,6 +131,7 @@ describe("montarFinanceiroDashboard", () => {
       turnos: ["1ª TURNO", "2ª TURNO"],
       periodLabels: ["1º", "2º", "3º"],
       diariasConfig,
+      turnosConfig: [],
       fechamentoValores: [
         { registroId: null, fornecedor: "LIDER", nome: "Caio", data: "2026-04-25", turno: "1ª TURNO", horas: "08:20", valorCalculado: 240, atualizadoEm: "2026-04-18T10:00:00Z" },
       ],
@@ -205,6 +208,7 @@ describe("montarFinanceiroDashboard", () => {
       turnos: ["1ª TURNO"],
       periodLabels: ["1º", "2º", "3º"],
       diariasConfig,
+      turnosConfig: [],
       fechamentoValores: [
         {
           registroId: "l1",

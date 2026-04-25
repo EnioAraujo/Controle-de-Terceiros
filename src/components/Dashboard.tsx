@@ -5,7 +5,7 @@ import { fmtMes, hoje, mesAtual } from "@/lib/format-utils";
 import { useI18n } from "@/hooks/use-i18n";
 import { BlockHeader } from "@/components/atoms";
 import { resolverDiaria, dbToDiariaConfig } from "@/lib/fechamento-utils";
-import type { DiariaConfig } from "@/lib/fechamento-utils";
+import type { DiariaConfig, TurnoConfig } from "@/lib/fechamento-utils";
 import { supabase, authReady } from "@/lib/supabase";
 import { buscarValoresFinaisFechamentoAprovadoPorPeriodo, buscarResumoFechamentosSalvosPorPeriodo, type ResumoFechamentosSalvosDashboard } from "@/lib/api/fechamento-dashboard";
 import { montarFinanceiroDashboard, type FechamentoValorFinalDashboard } from "@/lib/dashboard-finance-utils";
@@ -42,10 +42,12 @@ const S = {
 export const Dashboard = ({
   registros,
   opcoes,
+  turnosConfig = [],
   isAdminOrMod = true,
 }: {
   registros: Registro[];
   opcoes: Opcoes;
+  turnosConfig?: TurnoConfig[];
   isAdminOrMod?: boolean;
 }) => {
   const { t, lang } = useI18n();
@@ -117,8 +119,9 @@ export const Dashboard = ({
     turnos,
     periodLabels,
     diariasConfig,
+    turnosConfig,
     fechamentoValores,
-  }), [doMes, turnos, periodLabels, diariasConfig, fechamentoValores]);
+  }), [doMes, turnos, periodLabels, diariasConfig, turnosConfig, fechamentoValores]);
   const { custosPorFornecedor, dadosPeriodo, totalCusto } = dashboardFinance;
 
   // ── Gráfico diário (barras por turno + linha de média) ────────────────────

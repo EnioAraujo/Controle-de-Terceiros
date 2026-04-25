@@ -1,5 +1,5 @@
 import type { Registro } from "@/types/attendance";
-import { resolverDiaria, type DiariaConfig } from "@/lib/fechamento-utils";
+import { resolverDiaria, calcularValorDia, type DiariaConfig, type TurnoConfig } from "@/lib/fechamento-utils";
 
 export interface FechamentoValorFinalDashboard {
   registroId: string | null;
@@ -18,6 +18,7 @@ interface DashboardFinanceParams {
   turnos: string[];
   periodLabels: string[];
   diariasConfig: DiariaConfig[];
+  turnosConfig: TurnoConfig[];
   fechamentoValores: FechamentoValorFinalDashboard[];
 }
 
@@ -81,6 +82,7 @@ export const criarMapaCustosFinais = (valores: FechamentoValorFinalDashboard[]) 
 export const resolverCustoDashboard = (
   registro: Registro,
   diariasConfig: DiariaConfig[],
+  turnosConfig: TurnoConfig[],
   custosFinaisMap: Map<string, number>,
 ) => {
   const custoFechamento =
@@ -93,7 +95,16 @@ export const resolverCustoDashboard = (
       horas: registro.totalHoras,
     })}`);
 
-  return custoFechamento ?? resolverDiaria(registro.fornecedor, registro.turno, diariasConfig, registro.data);
+  if (custoFechamento !== undefined) return custoFechamento;
+
+  return calcularValorDia(
+    registro.totalHoras,
+    registro.turno,
+    registro.fornecedor,
+    diariasConfig,
+    turnosConfig,
+    registro.data,
+  ).valorCalculado;
 };
 
 export const montarFinanceiroDashboard = ({
@@ -101,6 +112,7 @@ export const montarFinanceiroDashboard = ({
   turnos,
   periodLabels,
   diariasConfig,
+  turnosConfig,
   fechamentoValores,
 }: DashboardFinanceParams): DashboardFinanceData => {
   const custosFinaisMap = criarMapaCustosFinais(fechamentoValores);
@@ -108,7 +120,7 @@ export const montarFinanceiroDashboard = ({
 
   registros.forEach((registro) => {
     const fornecedor = registro.fornecedor || "—";
-    const custo = resolverCustoDashboard(registro, diariasConfig, custosFinaisMap);
+    const custo = resolverCustoDashboard(registro, diariasConfig, turnosConfig, custosFinaisMap);
     const entry = custosPorFornecedorMap.get(fornecedor) ?? { presencas: 0, totalCusto: 0 };
 
     entry.presencas += 1;
@@ -136,7 +148,7 @@ export const montarFinanceiroDashboard = ({
       periodo: periodLabels[index] ?? `${index + 1}`,
       _total: grupo.length,
       _custo: roundCurrency(
-        grupo.reduce((acc, registro) => acc + resolverCustoDashboard(registro, diariasConfig, custosFinaisMap), 0),
+        grupo.reduce((acc, registro) => acc + resolverCustoDashboard(registro, diariasConfig, turnosConfig, custosFinaisMap), 0),
       ),
     };
 
