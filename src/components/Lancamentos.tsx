@@ -76,7 +76,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
   });
   const [modal, setModal]     = useState<null | "new" | Registro | Registro[]>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [confirm, setConfirm] = useState<string[] | 'ALL' | null>(null);
+  const [confirm, setConfirm] = useState<string[] | null>(null);
   const [detalhe, setDetalhe] = useState<Registro | Registro[] | null>(null);
   const [conflito, setConflito] = useState<{ novos: Registro[]; nomes: string[]; justificativa: string } | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -292,12 +292,10 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
           <Btn
             variant="danger"
             small
-            onClick={() => selectedIds.length === registros.length ? setConfirm('ALL') : setConfirm(selectedIds)}
+            onClick={() => setConfirm(selectedIds)}
             icon={<Icon d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />}
           >
-            {selectedIds.length === registros.length
-              ? 'Excluir Todos'
-              : `Excluir selecionados (${selectedIds.length})`}
+            {`Excluir selecionados (${selectedIds.length})`}
           </Btn>
         )}
       </div>
@@ -484,33 +482,15 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
 
       {confirm && (
         <Modal title={t("lanc_confirm_title")} onClose={() => setConfirm(null)}>
-          {confirm === 'ALL' ? (
-            <>
-              <p style={{ color:"#E02424", fontWeight:700, fontSize:15, lineHeight:1.6 }}>
-                Tem certeza que deseja <b>EXCLUIR TODOS os registros</b>?<br/>Esta ação não poderá ser desfeita e será registrada no log de auditoria.
-              </p>
-              <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20 }}>
-                <Btn variant="ghost" onClick={() => setConfirm(null)}>{t("lanc_confirm_cancel")}</Btn>
-                <Btn variant="danger" style={{ fontWeight:800, background:"#E02424", color:"#fff" }} onClick={() => {
-                  setRegistros([]);
-                  setConfirm(null);
-                  logAudit("PURGE", "registros", undefined, { motivo:"Exclusão em massa (admin)", registros_removidos:registros.length });
-                }}>Excluir TODOS</Btn>
-              </div>
-            </>
-          ) : (
-            <>
-              <p style={{ color:"#475569", fontSize:13, lineHeight:1.6 }}>
-                {(confirm as string[]).length > 1
-                  ? t("lanc_confirm_lote").replace("{n}", String((confirm as string[]).length))
-                  : t("lanc_confirm_single")}
-              </p>
-              <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20 }}>
-                <Btn variant="ghost" onClick={() => setConfirm(null)}>{t("lanc_confirm_cancel")}</Btn>
-                <Btn variant="danger" onClick={() => excluir(confirm as string[])}>{t("lanc_confirm_delete")}</Btn>
-              </div>
-            </>
-          )}
+          <p style={{ color:"#475569", fontSize:13, lineHeight:1.6 }}>
+            {confirm.length > 1
+              ? t("lanc_confirm_lote").replace("{n}", String(confirm.length))
+              : t("lanc_confirm_single")}
+          </p>
+          <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20 }}>
+            <Btn variant="ghost" onClick={() => setConfirm(null)}>{t("lanc_confirm_cancel")}</Btn>
+            <Btn variant="danger" onClick={() => excluir(confirm)}>{t("lanc_confirm_delete")}</Btn>
+          </div>
         </Modal>
       )}
 

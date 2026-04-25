@@ -7,7 +7,7 @@ import type { TurnoConfig } from "@/lib/fechamento-utils";
 import { useI18n } from "@/hooks/use-i18n";
 import { Icon, Input, Select, Btn, AutocompleteNome, G } from "@/components/atoms";
 
-export interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; cargo: string; }
+export interface PessoaRow { nome: string; horaEntrada: string; horaSaida: string; cargo: string; obs: string; }
 export interface FormLancamentoProps {
   inicial?: Registro | null;
   loteInicial?: Registro[];
@@ -35,13 +35,13 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
     cc:          base?.cc          || opcoes.ccList[0]       || "",
     motivo:      base?.motivo      || opcoes.motivos[0]      || "",
     fornecedor:  base?.fornecedor  || opcoes.fornecedores[0] || "",
-    obs:         base?.obs         || "",
+    obs:         isLoteEdit ? "" : (base?.obs || ""),
   });
 
   const [pessoas, setPessoas] = useState<PessoaRow[]>(
     isLoteEdit
-      ? loteInicial!.map(r => ({ nome: r.nome, horaEntrada: r.horaEntrada, horaSaida: r.horaSaida, cargo: r.cargo || base?.cargo || opcoes.cargos[0] || "" }))
-      : [{ nome: inicial?.nome || "", horaEntrada: base?.horaEntrada || "05:00", horaSaida: base?.horaSaida || "13:20", cargo: base?.cargo || opcoes.cargos[0] || "" }]
+      ? loteInicial!.map(r => ({ nome: r.nome, horaEntrada: r.horaEntrada, horaSaida: r.horaSaida, cargo: r.cargo || base?.cargo || opcoes.cargos[0] || "", obs: r.obs || "" }))
+      : [{ nome: inicial?.nome || "", horaEntrada: base?.horaEntrada || "05:00", horaSaida: base?.horaSaida || "13:20", cargo: base?.cargo || opcoes.cargos[0] || "", obs: "" }]
   );
 
   const setC = (k: string, v: string) => {
@@ -63,7 +63,7 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
     const cap = Math.max(1, Math.min(20, n));
     setPessoas(prev => {
       if (cap > prev.length)
-        return [...prev, ...Array.from({ length: cap - prev.length }, () => ({ nome: "", horaEntrada: comum.horaEntrada, horaSaida: comum.horaSaida, cargo: comum.cargo }))];
+        return [...prev, ...Array.from({ length: cap - prev.length }, () => ({ nome: "", horaEntrada: comum.horaEntrada, horaSaida: comum.horaSaida, cargo: comum.cargo, obs: "" }))];
       return prev.slice(0, cap);
     });
   };
@@ -135,6 +135,7 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
         horaEntrada: p.horaEntrada,
         horaSaida: p.horaSaida,
         totalHoras: calcHoras(p.horaEntrada, p.horaSaida),
+        obs: [sanitize(p.obs.trim()), comum.obs].filter(Boolean).join(' | '),
       })));
     }
   };
@@ -213,24 +214,40 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
           </div>
           {pessoas.map((p, i) => {
             const total = calcHoras(p.horaEntrada, p.horaSaida);
+            const bgRow = i % 2 === 0 ? "#fff" : "#FAFBFC";
+            const notLast = i < pessoas.length - 1;
             return (
-              <div key={i} className="mobile-form-worker-grid" style={{ display:"grid", gridTemplateColumns:"36px 130px 1fr 110px 110px 62px", gap:8, padding:"8px 14px", borderBottom: i < pessoas.length - 1 ? "1px solid #F1F5F9" : "none", alignItems:"center", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
-                <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textAlign:"center" }}>{i + 1}</div>
-                <select value={p.cargo} onChange={e => setP(i, "cargo", e.target.value)}
-                  style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:12, background:"#FAFBFC", width:"100%", outline:"none", fontFamily:"inherit" }}>
-                  {opcoes.cargos.map(c => <option key={c}>{c}</option>)}
-                </select>
-                <AutocompleteNome
-                  value={p.nome}
-                  onChange={v => setP(i, "nome", v)}
-                  suggestions={opcoes.nomes}
-                  placeholder={t("form_placeholder_nome")}
-                />
-                <input type="time" value={p.horaEntrada} onChange={e => setP(i, "horaEntrada", e.target.value)}
-                  style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:12, fontFamily:"monospace", background:"#FAFBFC", width:"100%", outline:"none" }} />
-                <input type="time" value={p.horaSaida} onChange={e => setP(i, "horaSaida", e.target.value)}
-                  style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:12, fontFamily:"monospace", background:"#FAFBFC", width:"100%", outline:"none" }} />
-                <div style={{ fontFamily:"monospace", fontSize:12, fontWeight:700, color: total ? "#0E9F6E" : "#CBD5E1", textAlign:"center" }}>{total || "—"}</div>
+              <div key={i}>
+                <div className="mobile-form-worker-grid" style={{ display:"grid", gridTemplateColumns:"36px 130px 1fr 110px 110px 62px", gap:8, padding:"8px 14px", borderBottom: isEdit && notLast ? "1px solid #F1F5F9" : "none", alignItems:"center", background: bgRow }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textAlign:"center" }}>{i + 1}</div>
+                  <select value={p.cargo} onChange={e => setP(i, "cargo", e.target.value)}
+                    style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:12, background:"#FAFBFC", width:"100%", outline:"none", fontFamily:"inherit" }}>
+                    {opcoes.cargos.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                  <AutocompleteNome
+                    value={p.nome}
+                    onChange={v => setP(i, "nome", v)}
+                    suggestions={opcoes.nomes}
+                    placeholder={t("form_placeholder_nome")}
+                  />
+                  <input type="time" value={p.horaEntrada} onChange={e => setP(i, "horaEntrada", e.target.value)}
+                    style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:12, fontFamily:"monospace", background:"#FAFBFC", width:"100%", outline:"none" }} />
+                  <input type="time" value={p.horaSaida} onChange={e => setP(i, "horaSaida", e.target.value)}
+                    style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:12, fontFamily:"monospace", background:"#FAFBFC", width:"100%", outline:"none" }} />
+                  <div style={{ fontFamily:"monospace", fontSize:12, fontWeight:700, color: total ? "#0E9F6E" : "#CBD5E1", textAlign:"center" }}>{total || "—"}</div>
+                </div>
+                {!isEdit && (
+                  <div style={{ padding:"0 14px 8px", display:"flex", gap:8, alignItems:"center", background: bgRow, borderBottom: notLast ? "1px solid #F1F5F9" : "none" }}>
+                    <div style={{ width:36, flexShrink:0 }} />
+                    <input
+                      value={p.obs}
+                      onChange={e => setP(i, "obs", e.target.value)}
+                      placeholder="Obs. individual (opcional)"
+                      style={{ flex:1, border:"1.5px solid #E2E6EC", borderRadius:7, padding:"5px 10px",
+                               fontSize:11, fontFamily:"inherit", outline:"none", background:"#FAFBFC", color:"#475569" }}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
