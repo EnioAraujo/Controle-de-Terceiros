@@ -2,15 +2,21 @@ import { useState, useMemo } from "react";
 import { Registro } from "@/types/attendance";
 import type { Opcoes } from "@/types/attendance";
 import { sanitize, logAudit } from "@/lib/audit";
-import { hoje, fmt, fornCor, buildWhatsAppMessage } from "@/lib/format-utils";
+import { hoje, mesAtual, fmt, fornCor, buildWhatsAppMessage } from "@/lib/format-utils";
 import type { WhatsAppTemplate } from "@/lib/format-utils";
 import type { TurnoConfig } from "@/lib/fechamento-utils";
 import type { TurnoCapacidade } from "@/lib/fechamento-utils";
 import { calcExcedentePorTurnoDia } from "@/lib/excedente-utils";
+import {
+  type LancamentosPeriodoFiltroState,
+  passaFiltroDataPeriodo,
+  resolverIntervaloLancamentos,
+} from "@/lib/lancamentos-filtros-utils";
 import { useI18n } from "@/hooks/use-i18n";
 import { Icon, Chip, Btn, Modal, Input, Select, BlockHeader } from "@/components/atoms";
 import { FormLancamento } from "@/components/FormLancamento";
 import { ImportRegistrosCsvModal } from "@/components/ImportRegistrosCsvModal";
+import { LancamentosPeriodoFilters } from "@/components/LancamentosPeriodoFilters";
 
 /** Retorna o registro existente que conflita com `r` em turno na mesma data. */
 const findConflitoDeTurno = (
@@ -40,6 +46,12 @@ interface LancamentosProps {
 export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, capacidadeConfig, isAdmin, waTemplate }: LancamentosProps) => {
   const { t, lang } = useI18n();
   const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", busca: "" });
+  const [filtroPeriodo, setFiltroPeriodo] = useState<LancamentosPeriodoFiltroState>({
+    mes: mesAtual(),
+    periodoIdx: null,
+    customInicio: "",
+    customFim: "",
+  });
   const [modal, setModal]     = useState<null | "new" | Registro | Registro[]>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [confirm, setConfirm] = useState<string[] | 'ALL' | null>(null);
@@ -48,6 +60,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
   const [importModalOpen, setImportModalOpen] = useState(false);
 
   const set = (k: keyof Filtros, v: string) => setFiltros(f => ({ ...f, [k]: v }));
+  const intervaloPeriodo = useMemo(() => resolverIntervaloLancamentos(filtroPeriodo), [filtroPeriodo]);
 
   // Usa TODOS os registros (não filtrados) para refletir a contagem real por data+turno
   const excedenteMap = useMemo(
@@ -56,13 +69,13 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
   );
 
   const filtered = useMemo(() => registros.filter(r => {
-    if (filtros.data       && r.data !== filtros.data)               return false;
+    if (!passaFiltroDataPeriodo(r.data, filtros.data, intervaloPeriodo)) return false;
     if (filtros.turno      && r.turno !== filtros.turno)             return false;
     if (filtros.fornecedor && r.fornecedor !== filtros.fornecedor)   return false;
     if (filtros.unidade    && r.unidade !== filtros.unidade)         return false;
     if (filtros.busca      && !r.nome.toLowerCase().includes(filtros.busca.toLowerCase())) return false;
     return true;
-  }), [registros, filtros]);
+  }), [registros, filtros, intervaloPeriodo]);
 
   const grupos = useMemo(() => {
     const groupMap = new Map<string, Registro[]>();
@@ -172,6 +185,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
       )}
 
       <div id="tour-filtros" style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:"14px 18px", display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
+        <LancamentosPeriodoFilters filtroPeriodo={filtroPeriodo} onChange={setFiltroPeriodo} />
         <Input label={t("form_label_data")} type="date" value={filtros.data} onChange={e => set("data", e.target.value)} style={{ width:150 }} />
         <Select label={t("form_label_turno")} value={filtros.turno} onChange={e => set("turno", e.target.value)} style={{ width:150 }}>
           <option value="">{t("lanc_filter_all_m")}</option>{opcoes.turnos.map(opt => <option key={opt}>{opt}</option>)}
@@ -184,7 +198,16 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
         </Select>
         <Input label={t("lanc_filter_busca")} value={filtros.busca} onChange={e => set("busca", e.target.value)} placeholder="Nome…" style={{ width:180 }} />
         <div style={{ marginLeft:"auto", alignSelf:"flex-end" }}>
-          <Btn variant="ghost" small onClick={() => setFiltros({ data:"", turno:"", fornecedor:"", unidade:"", busca:"" })}>{t("lanc_filter_clear")}</Btn>
+          <Btn
+            variant="ghost"
+            small
+            onClick={() => {
+              setFiltros({ data:"", turno:"", fornecedor:"", unidade:"", busca:"" });
+              setFiltroPeriodo({ mes: mesAtual(), periodoIdx: null, customInicio: "", customFim: "" });
+            }}
+          >
+            {t("lanc_filter_clear")}
+          </Btn>
         </div>
       </div>
 

@@ -75,6 +75,7 @@ src/
 │   ├── PrivacyNotice.tsx    # usePrivacyAccepted() + PrivacyNotice (LGPD)
 │   ├── FormLancamento.tsx   # Formulário de lançamento (PessoaRow, FormLancamento)
 │   ├── Lancamentos.tsx      # Tab de lançamentos (tabela, filtros, modais)
+│   ├── LancamentosPeriodoFilters.tsx # Controles isolados de filtro por mês/período em Lançamentos
 │   ├── ImportRegistrosCsvModal.tsx # Modal isolado para importação de presenças via CSV com prévia
 │   ├── Dashboard.tsx        # Tab de dashboard (KPIs, gráfico por fornecedor)
 │   ├── Configuracoes.tsx    # Tab de configurações (opções, DPO, WhatsApp, admin)
@@ -92,6 +93,7 @@ src/
 │   ├── supabase.ts          # Client Supabase + authReady promise
 │   ├── format-utils.ts      # Funções puras: calcHoras, fmt, fmtMes (Intl), dbToRegistro, etc.
 │   ├── import-registros-csv.ts # Parser/normalizador/validador puro para importação de registros via CSV
+│   ├── lancamentos-filtros-utils.ts # Regras puras de intervalo/período para filtros de Lançamentos
 │   ├── fechamento-utils.ts  # Lógica de fechamento financeiro; inclui TurnoCapacidade + mappers
 │   ├── excedente-utils.ts   # Funções puras: resolverCapacidade, calcExcedentePorTurnoDia, gerarDadosRelatorioExcedentes
 │   ├── projecao-utils.ts    # Funções puras: gerarDias(), calcMediaPorTurno(), calcDadosPorDia(), TURNOS_PROJECAO
@@ -540,3 +542,4 @@ Resultado da varredura de verbosidade e over-engineering realizada em 2026-03-26
 | 2026-04-22 | ResetPasswordPage: logo do topo atualizada para reutilizar o asset logo.png (C laranja) no lugar do SVG de caminhão, alinhando o branding da recuperação de senha ao header principal do app |
 | 2026-04-25 | Dashboard financeiro passa a buscar apenas itens de fechamentos aprovados canônicos por fornecedor/período (src/lib/api/fechamento-dashboard.ts), corrigindo divergência de custo por fornecedor e total geral; adicionados testes de regressão (3440/3544) |
 | 2026-04-25 | Importação de presença via CSV em Lançamentos: modal isolado (ImportRegistrosCsvModal), parser puro em src/lib/import-registros-csv.ts com validação/deduplicação/conflito de turno, integração admin-only no botão "Importar CSV" e testes unitários da importação |
+| 2026-04-25 | Lançamentos: adicionados filtros de Mês + Período (1º/2º/3º/personalizado) no padrão do Fechamento, mantendo coexistência com filtro de data exata; lógica de intervalo extraída para src/lib/lancamentos-filtros-utils.ts e controles isolados em src/components/LancamentosPeriodoFilters.tsx |
