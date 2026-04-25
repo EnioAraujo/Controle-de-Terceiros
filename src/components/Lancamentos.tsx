@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { Registro } from "@/types/attendance";
 import type { Opcoes } from "@/types/attendance";
 import { sanitize, logAudit } from "@/lib/audit";
@@ -64,6 +65,7 @@ interface LancamentosProps {
 }
 
 export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, capacidadeConfig, isAdmin, waTemplate }: LancamentosProps) => {
+  const { toast } = useToast ? useToast() : { toast: () => {} };
   const { t, lang } = useI18n();
   const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", busca: "" });
   const [filtroPeriodo, setFiltroPeriodo] = useState<LancamentosPeriodoFiltroState>({
@@ -166,7 +168,23 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
     setConflito(null);
   };
 
-  const excluir = (ids: string[]) => { setRegistros(registros.filter(r => !ids.includes(r.id))); setSelectedIds([]); setConfirm(null); };
+  // Exclusão com feedback de erro de sync
+  const [excluindo, setExcluindo] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const excluir = async (ids: string[]) => {
+    setExcluindo(true);
+    setSyncError(null);
+    try {
+      await setRegistros(registros.filter(r => !ids.includes(r.id)));
+      setSelectedIds([]);
+      setConfirm(null);
+      // Após aguardar, checar se realmente sumiu do banco (opcional: pode ser validado via reload ou callback)
+    } catch (e) {
+      setSyncError("Erro ao excluir: operação não persistida no banco. Verifique sua conexão ou permissões.");
+    } finally {
+      setExcluindo(false);
+    }
+  };
 
   const csvSafe = (val: string) => {
     if (!val) return val;
@@ -188,6 +206,11 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+      {syncError && (
+        <div style={{ background: "#FEE2E2", color: "#B91C1C", border: "1px solid #FCA5A5", borderRadius: 8, padding: "8px 12px", marginBottom: 8, fontSize: 13 }}>
+          {syncError}
+        </div>
+      )}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
         <BlockHeader section={t("lanc_section")} title={t("lanc_title")} />
         <div style={{ display:"flex", gap:8 }}>
