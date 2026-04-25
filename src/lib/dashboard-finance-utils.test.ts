@@ -63,11 +63,19 @@ const diariasConfig: DiariaConfig[] = [
 describe("criarMapaCustosFinais", () => {
   it("mantém o valor mais recente quando o mesmo registro aparece em mais de um fechamento", () => {
     const mapa = criarMapaCustosFinais([
-      { registroId: "r1", data: "2026-04-05", valorCalculado: 200, atualizadoEm: "2026-04-10T10:00:00Z" },
-      { registroId: "r1", data: "2026-04-05", valorCalculado: 260, atualizadoEm: "2026-04-12T10:00:00Z" },
+      { registroId: "r1", fornecedor: "JSS", nome: "Ana", data: "2026-04-05", turno: "1ª TURNO", horas: "08:20", valorCalculado: 200, atualizadoEm: "2026-04-10T10:00:00Z" },
+      { registroId: "r1", fornecedor: "JSS", nome: "Ana", data: "2026-04-05", turno: "1ª TURNO", horas: "08:20", valorCalculado: 260, atualizadoEm: "2026-04-12T10:00:00Z" },
     ]);
 
-    expect(mapa.get("r1")).toBe(260);
+    expect(mapa.get("id:r1")).toBe(260);
+  });
+
+  it("usa chave de fallback quando o item salvo não tem registroId", () => {
+    const mapa = criarMapaCustosFinais([
+      { registroId: null, fornecedor: "LIDER MASTER", nome: "Carlos", data: "2026-04-05", turno: "1ª TURNO", horas: "08:20", valorCalculado: 240, atualizadoEm: "2026-04-12T10:00:00Z" },
+    ]);
+
+    expect(mapa.get("fallback:LIDER MASTER|Carlos|2026-04-05|1ª TURNO|08:20")).toBe(240);
   });
 });
 
@@ -79,8 +87,8 @@ describe("montarFinanceiroDashboard", () => {
       periodLabels: ["1º", "2º", "3º"],
       diariasConfig,
       fechamentoValores: [
-        { registroId: "r1", data: "2026-04-05", valorCalculado: 250, atualizadoEm: "2026-04-18T10:00:00Z" },
-        { registroId: "r2", data: "2026-04-12", valorCalculado: 150, atualizadoEm: "2026-04-18T10:00:00Z" },
+        { registroId: "r1", fornecedor: "JSS", nome: "Ana", data: "2026-04-05", turno: "1ª TURNO", horas: "08:20", valorCalculado: 250, atualizadoEm: "2026-04-18T10:00:00Z" },
+        { registroId: "r2", fornecedor: "JSS", nome: "Bruno", data: "2026-04-12", turno: "2ª TURNO", horas: "08:20", valorCalculado: 150, atualizadoEm: "2026-04-18T10:00:00Z" },
       ],
     });
 
@@ -113,5 +121,30 @@ describe("montarFinanceiroDashboard", () => {
     ]);
 
     expect(result.totalCusto).toBe(680);
+  });
+
+  it("aplica valor final do fechamento mesmo quando o item salvo não tem registroId", () => {
+    const result = montarFinanceiroDashboard({
+      registros: registrosBase,
+      turnos: ["1ª TURNO", "2ª TURNO"],
+      periodLabels: ["1º", "2º", "3º"],
+      diariasConfig,
+      fechamentoValores: [
+        { registroId: null, fornecedor: "LIDER", nome: "Caio", data: "2026-04-25", turno: "1ª TURNO", horas: "08:20", valorCalculado: 240, atualizadoEm: "2026-04-18T10:00:00Z" },
+      ],
+    });
+
+    expect(result.custosPorFornecedor).toEqual([
+      { fornecedor: "JSS", presencas: 2, totalCusto: 380, avgCusto: 190 },
+      { fornecedor: "LIDER", presencas: 1, totalCusto: 240, avgCusto: 240 },
+    ]);
+
+    expect(result.dadosPeriodo[2]).toEqual({
+      periodo: "3º",
+      "1ª TURNO": 1,
+      "2ª TURNO": 0,
+      _total: 1,
+      _custo: 240,
+    });
   });
 });

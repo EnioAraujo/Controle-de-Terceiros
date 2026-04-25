@@ -11,7 +11,7 @@ import { buscarValoresFinaisFechamentoPorPeriodo } from "@/lib/api/fechamento";
 import { montarFinanceiroDashboard, type FechamentoValorFinalDashboard } from "@/lib/dashboard-finance-utils";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, BarChart, Legend,
+  ResponsiveContainer, LabelList,
 } from "recharts";
 
 // Cores fixas por posição de turno (exclui Intermediário)
@@ -71,7 +71,6 @@ export const Dashboard = ({
 
   const doMes  = useMemo(() => registros.filter(r => r.data.startsWith(periodo)), [registros, periodo]);
   const deHoje = registros.filter(r => r.data === hoje());
-  const totalTerceiros = opcoes.nomes.length;
 
   const [ano, mes] = periodo.split("-").map(Number);
   const diasNoMes  = new Date(ano, mes, 0).getDate();
@@ -129,7 +128,7 @@ export const Dashboard = ({
       const day  = String(i + 1).padStart(2, "0");
       const data = `${periodo}-${day}`;
       const regs = doMes.filter(r => r.data === data);
-      const ponto: Record<string, number> = { dia: i + 1 };
+      const ponto: Record<string, number> = { dia: i + 1, _total: regs.length };
       turnos.forEach(tr => { ponto[tr] = regs.filter(r => r.turno === tr).length; });
       return ponto;
     });
@@ -241,9 +240,6 @@ export const Dashboard = ({
           </div>
           {/* Legenda */}
           <div style={{ display:"flex", gap:12, flexWrap:"wrap", alignItems:"center", justifyContent:"flex-end" }}>
-            <span style={{ fontSize:11, fontWeight:700, fontFamily:S.fLabel, color:S.on, background:S.low, borderRadius:99, padding:"6px 10px" }}>
-              {t("dash_total_terceiros")}: {totalTerceiros}
-            </span>
             {turnos.map((tr, i) => (
               <span key={tr} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, fontWeight:500, fontFamily:S.fLabel, color:S.onVar }}>
                 <span style={{ width:10, height:10, borderRadius:3, background:TURNO_CORES[i % TURNO_CORES.length], display:"inline-block" }} />
@@ -269,6 +265,9 @@ export const Dashboard = ({
               {turnos.map((tr, i) => (
                 <Bar key={tr} dataKey={tr} stackId="s" fill={TURNO_CORES[i % TURNO_CORES.length] + "CC"} radius={i === turnos.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]} />
               ))}
+              <Line dataKey="_total" type="linear" stroke="transparent" dot={false} activeDot={false} legendType="none">
+                <LabelList dataKey="_total" position="top" formatter={(value: number) => value || ""} style={{ fill: S.on, fontSize: 11, fontWeight: 700 }} />
+              </Line>
               <Line dataKey="_avg" data={dadosDiarios.map(d => ({ ...d, _avg: avgLine }))}
                 type="linear" stroke="#F37E38" strokeWidth={1.5} strokeDasharray="4 4"
                 dot={false} activeDot={{ r: 4, fill:"#F37E38" }} legendType="none" />
@@ -341,9 +340,6 @@ export const Dashboard = ({
               <div style={{ fontSize:12, fontFamily:S.fLabel, color:S.muted, marginTop:2 }}>Dias 1–10, 11–20, 21–fim</div>
             </div>
             <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap", justifyContent:"flex-end" }}>
-              <span style={{ fontSize:11, fontWeight:700, fontFamily:S.fLabel, color:S.on, background:S.low, borderRadius:99, padding:"6px 10px" }}>
-                {t("dash_total_terceiros")}: {totalTerceiros}
-              </span>
               {(["stacked", "grouped"] as const).map(mode => (
                 <button key={mode} onClick={() => setBarMode(mode)}
                   style={{ padding:"3px 10px", borderRadius:99, fontSize:11, fontWeight:600, fontFamily:S.fLabel, border:"1px solid", cursor:"pointer",
@@ -359,7 +355,7 @@ export const Dashboard = ({
             <div style={{ height:200, display:"flex", alignItems:"center", justifyContent:"center", color:S.muted, fontSize:13 }}>{t("dash_no_data")}</div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={dadosPeriodo} margin={{ top:4, right:4, left:-20, bottom:0 }} barCategoryGap="25%">
+              <ComposedChart data={dadosPeriodo} margin={{ top:4, right:4, left:-20, bottom:0 }} barCategoryGap="25%">
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
                 <XAxis dataKey="periodo" tick={{ fontSize:11, fill:"#7B8FA0" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize:10, fill:"#7B8FA0" }} axisLine={false} tickLine={false} />
@@ -370,7 +366,10 @@ export const Dashboard = ({
                     fill={TURNO_CORES[i % TURNO_CORES.length]}
                     radius={barMode === "stacked" && i === turnos.length - 1 ? [3, 3, 0, 0] : barMode === "grouped" ? [3, 3, 0, 0] : [0, 0, 0, 0]} />
                 ))}
-              </BarChart>
+                <Line dataKey="_total" type="linear" stroke="transparent" dot={false} activeDot={false} legendType="none">
+                  <LabelList dataKey="_total" position="top" formatter={(value: number) => value || ""} style={{ fill: S.on, fontSize: 11, fontWeight: 700 }} />
+                </Line>
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>

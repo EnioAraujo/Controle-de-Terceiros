@@ -52,8 +52,12 @@ export interface FechamentoOutput {
 }
 
 export interface FechamentoValorFinalOutput {
-  registroId: string;
+  registroId: string | null;
+  fornecedor: string;
+  nome: string;
   data: string;
+  turno: string;
+  horas: string;
   valorCalculado: number;
   atualizadoEm: string | null;
   criadoEm: string | null;
@@ -315,14 +319,17 @@ export async function buscarValoresFinaisFechamentoPorPeriodo(
       .from("fechamento_itens")
       .select(`
         registro_id,
+        nome,
         data,
+        turno,
+        horas,
         valor_calculado,
         fechamentos (
+          fornecedor,
           updated_at,
           created_at
         )
       `)
-      .not("registro_id", "is", null)
       .gte("data", dataInicio)
       .lte("data", dataFim);
 
@@ -335,17 +342,31 @@ export async function buscarValoresFinaisFechamentoPorPeriodo(
 
     const normalized = ((data ?? []) as Array<{
       registro_id: string | null;
+      nome: string;
       data: string;
+      turno: string;
+      horas: string;
       valor_calculado: number;
-      fechamentos?: { updated_at?: string | null; created_at?: string | null } | Array<{ updated_at?: string | null; created_at?: string | null }> | null;
+      fechamentos?: {
+        fornecedor?: string | null;
+        updated_at?: string | null;
+        created_at?: string | null;
+      } | Array<{
+        fornecedor?: string | null;
+        updated_at?: string | null;
+        created_at?: string | null;
+      }> | null;
     }>)
-      .filter((item) => item.registro_id)
       .map((item) => {
         const fechamento = Array.isArray(item.fechamentos) ? item.fechamentos[0] : item.fechamentos;
 
         return {
-          registroId: item.registro_id as string,
+          registroId: item.registro_id,
+          fornecedor: fechamento?.fornecedor ?? "",
+          nome: item.nome,
           data: item.data,
+          turno: item.turno,
+          horas: item.horas,
           valorCalculado: Number(item.valor_calculado),
           atualizadoEm: fechamento?.updated_at ?? null,
           criadoEm: fechamento?.created_at ?? null,

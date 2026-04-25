@@ -2,8 +2,12 @@ import type { Registro } from "@/types/attendance";
 import { resolverDiaria, type DiariaConfig } from "@/lib/fechamento-utils";
 
 export interface FechamentoValorFinalDashboard {
-  registroId: string;
+  registroId: string | null;
+  fornecedor: string;
+  nome: string;
   data: string;
+  turno: string;
+  horas: string;
   valorCalculado: number;
   atualizadoEm?: string | null;
   criadoEm?: string | null;
@@ -41,15 +45,31 @@ const roundCurrency = (value: number) => Math.round(value * 100) / 100;
 const getReferenciaMaisRecente = (value: FechamentoValorFinalDashboard) =>
   value.atualizadoEm ?? value.criadoEm ?? "";
 
+const montarChaveFallback = ({
+  fornecedor,
+  nome,
+  data,
+  turno,
+  horas,
+}: {
+  fornecedor: string;
+  nome: string;
+  data: string;
+  turno: string;
+  horas: string;
+}) => [fornecedor, nome, data, turno, horas].join("|");
+
 export const criarMapaCustosFinais = (valores: FechamentoValorFinalDashboard[]) => {
   const latestByRegistro = new Map<string, FechamentoValorFinalDashboard>();
 
   valores.forEach((valor) => {
-    if (!valor.registroId) return;
+    const key = valor.registroId
+      ? `id:${valor.registroId}`
+      : `fallback:${montarChaveFallback(valor)}`;
 
-    const current = latestByRegistro.get(valor.registroId);
+    const current = latestByRegistro.get(key);
     if (!current || getReferenciaMaisRecente(valor) >= getReferenciaMaisRecente(current)) {
-      latestByRegistro.set(valor.registroId, valor);
+      latestByRegistro.set(key, valor);
     }
   });
 
@@ -62,7 +82,19 @@ export const resolverCustoDashboard = (
   registro: Registro,
   diariasConfig: DiariaConfig[],
   custosFinaisMap: Map<string, number>,
-) => custosFinaisMap.get(registro.id) ?? resolverDiaria(registro.fornecedor, registro.turno, diariasConfig, registro.data);
+) => {
+  const custoFechamento =
+    custosFinaisMap.get(`id:${registro.id}`) ??
+    custosFinaisMap.get(`fallback:${montarChaveFallback({
+      fornecedor: registro.fornecedor,
+      nome: registro.nome,
+      data: registro.data,
+      turno: registro.turno,
+      horas: registro.totalHoras,
+    })}`);
+
+  return custoFechamento ?? resolverDiaria(registro.fornecedor, registro.turno, diariasConfig, registro.data);
+};
 
 export const montarFinanceiroDashboard = ({
   registros,
