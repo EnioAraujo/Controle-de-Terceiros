@@ -15,7 +15,18 @@ export interface IntervaloData {
 export const resolverIntervaloLancamentos = (
   filtro: LancamentosPeriodoFiltroState,
 ): IntervaloData => {
-  if (filtro.periodoIdx === null) return { inicio: "", fim: "" };
+  if (filtro.periodoIdx === null) {
+    if (!filtro.mes) return { inicio: "", fim: "" };
+    const match = filtro.mes.match(/^(\d{4})-(\d{2})$/);
+    if (!match) return { inicio: "", fim: "" };
+    const y = Number(match[1]);
+    const m = Number(match[2]);
+    const ultimoDia = new Date(y, m, 0).getDate();
+    return {
+      inicio: `${filtro.mes}-01`,
+      fim: `${filtro.mes}-${String(ultimoDia).padStart(2, "0")}`,
+    };
+  }
 
   if (filtro.periodoIdx === 3) {
     return {

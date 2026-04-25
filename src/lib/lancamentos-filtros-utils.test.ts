@@ -6,9 +6,23 @@ import {
 } from "./lancamentos-filtros-utils";
 
 describe("resolverIntervaloLancamentos", () => {
-  it("retorna intervalo vazio quando periodo nao esta selecionado", () => {
+  it("resolve mes inteiro quando periodo nao esta selecionado", () => {
     const filtro: LancamentosPeriodoFiltroState = {
       mes: "2026-04",
+      periodoIdx: null,
+      customInicio: "",
+      customFim: "",
+    };
+
+    expect(resolverIntervaloLancamentos(filtro)).toEqual({
+      inicio: "2026-04-01",
+      fim: "2026-04-30",
+    });
+  });
+
+  it("retorna intervalo vazio quando mes esta vazio e periodo nao selecionado", () => {
+    const filtro: LancamentosPeriodoFiltroState = {
+      mes: "",
       periodoIdx: null,
       customInicio: "",
       customFim: "",
