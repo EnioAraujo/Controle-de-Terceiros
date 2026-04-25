@@ -135,6 +135,36 @@ button:hover:not(:disabled) { opacity: .88; }
   to   { transform: rotate(360deg); }
 }
 
+/* ─── App shell (sidebar fixa + main fluida) ───────────────────── */
+.app-shell {
+  display: block;
+  min-height: 100vh;
+}
+
+.app-shell-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  z-index: 220;
+}
+
+.app-shell-content {
+  margin-left: 280px;
+  min-height: 100vh;
+}
+
+.app-shell-main {
+  width: 100%;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.app-shell-mobile-top {
+  display: none;
+}
+
 /* ─── Classes responsivas (rsp-*) — usadas em todo o app ──────── */
 @media (max-width: 900px) {
   .rsp-grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
@@ -171,4 +201,22 @@ button:hover:not(:disabled) { opacity: .88; }
 
   /* Login / Reset: card com padding menor */
   .rsp-auth-card    { padding: 20px 16px !important; }
+}
+
+@media (max-width: 1024px) {
+  .app-shell-sidebar {
+    display: none;
+  }
+
+  .app-shell-content {
+    margin-left: 0;
+  }
+
+  .app-shell-main {
+    padding: 12px;
+  }
+
+  .app-shell-mobile-top {
+    display: block;
+  }
 }

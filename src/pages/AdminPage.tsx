@@ -33,6 +33,9 @@ import {
   CheckCircle2, XCircle, Trash2, KeyRound, Settings, Plus, LayoutGrid, List,
   LogOut, ChevronLeft,
 } from "lucide-react";
+import { AppShell } from "@/components/layout/AppShell";
+import { AppSidebar } from "@/components/layout/AppSidebar";
+import type { AppSidebarItem } from "@/components/layout/AppSidebar";
 
 // ── Tipos ──────────────────────────────────────────────────────────
 type AppRole = "admin" | "moderator" | "user";
@@ -50,6 +53,7 @@ type UserWithRole = {
 };
 
 type ModalMode = "create" | "edit" | "delete" | null;
+type AdminTab = "usuarios" | "permissoes" | "conta";
 
 // Centraliza o tamanho mínimo de senha para consistência entre criação e troca de senha
 const MIN_PASSWORD_LENGTH = 8;
@@ -106,12 +110,6 @@ const getRoleLabel = (role: AppRole) => {
   }
 };
 
-// Ícone SVG inline para manter o header existente funcionando
-const Icon = ({ d, size = 16 }: { d: string; size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-    strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
-);
-
 export default function AdminPage() {
   const navigate    = useNavigate();
   const queryClient = useQueryClient();
@@ -127,6 +125,7 @@ export default function AdminPage() {
   // UI state
   const [search,   setSearch]   = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [activeTab, setActiveTab] = useState<AdminTab>("usuarios");
 
   // Permissions tab
   const [selectedUserPerms, setSelectedUserPerms] = useState<UserWithRole | null>(null);
@@ -506,40 +505,61 @@ export default function AdminPage() {
 
   const totalAdmins = users.filter(u => u.role === "admin").length;
   const totalCommon = users.length - totalAdmins;
+  const adminNav: AppSidebarItem[] = [
+    { id: "usuarios", label: t("admin_tab_users"), icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
+    { id: "permissoes", label: "Permissões", icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
+    { id: "conta", label: t("admin_tab_account"), icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
+  ];
 
   return (
-    <div style={{ minHeight:"100vh", background:"#FAF9FB", fontFamily:"'DM Sans',system-ui,sans-serif", display:"flex", flexDirection:"column" }}>
+    <div style={{ minHeight:"100vh", background:"#FAF9FB", fontFamily:"'DM Sans',system-ui,sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');`}</style>
-      {/* Header — mesmas cores do app principal */}
-      <header style={{ background:"#212B36", borderBottom:"1px solid #2E3B4A", height:58, display:"flex", alignItems:"center", padding:"0 24px", gap:0, position:"sticky", top:0, zIndex:200 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10, paddingRight:28, borderRight:"1px solid #2E3B4A", marginRight:20 }}>
-          <img src="/admin.png" alt="Administração" style={{ width:34, height:34, borderRadius:9, objectFit:"cover" }} />
-          <div>
-            <div style={{ color:"#F8FAFC", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Controle de</div>
-            <div style={{ color:"#F37E38", fontWeight:800, fontSize:14, letterSpacing:-.4, lineHeight:1.1 }}>Terceiros</div>
+      <AppShell
+        sidebar={(
+          <AppSidebar
+            items={adminNav}
+            activeItemId={activeTab}
+            onItemClick={(id) => setActiveTab(id as AdminTab)}
+            brandImageSrc="/admin.png"
+            brandImageAlt="Administração"
+            footer={(
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:5, background:"#F37E3818", border:"1px solid #F37E3833", borderRadius:8, padding:"6px 10px", fontSize:11, color:"#F37E38", fontWeight:600 }}>
+                  <Shield className="h-3 w-3" style={{ marginRight:4 }} />{t("admin_header_badge")}
+                </div>
+                <span style={{ color:"#98A2B3", fontSize:11 }}>{myEmail}</span>
+                <button onClick={() => navigate("/")} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:4, background:"transparent", border:"1px solid #2E3B4A", cursor:"pointer", color:"#98A2B3", fontSize:12, fontFamily:"inherit", fontWeight:600, padding:"6px 10px", borderRadius:8 }}>
+                  <ChevronLeft className="h-4 w-4" />{t("admin_back_app")}
+                </button>
+                <button onClick={() => supabase.auth.signOut()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:4, background:"transparent", border:"1px solid #2E3B4A", cursor:"pointer", color:"#EF4444", fontSize:12, fontFamily:"inherit", fontWeight:600, padding:"6px 10px", borderRadius:8 }}>
+                  <LogOut className="h-4 w-4" />{t("nav_logout")}
+                </button>
+              </div>
+            )}
+          />
+        )}
+        mobileTopBar={(
+          <div className="rsp-admin-header" style={{ background:"#212B36", borderBottom:"1px solid #2E3B4A", padding:"10px 12px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <span style={{ color:"#F8FAFC", fontWeight:700, fontSize:13 }}>{t("admin_panel_title")}</span>
+            <div className="rsp-admin-header-right" style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <button onClick={() => navigate("/")} style={{ background:"transparent", border:"1px solid #2E3B4A", borderRadius:8, padding:"4px 8px", color:"#98A2B3", fontSize:11, fontWeight:600 }}>
+                {t("admin_back_app")}
+              </button>
+              <button onClick={() => supabase.auth.signOut()} style={{ background:"transparent", border:"1px solid #2E3B4A", borderRadius:8, padding:"4px 8px", color:"#EF4444", fontSize:11, fontWeight:600 }}>
+                {t("nav_logout")}
+              </button>
+            </div>
           </div>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:5, background:"#F37E3818", border:"1px solid #F37E3833", borderRadius:8, padding:"4px 10px", fontSize:11, color:"#F37E38", fontWeight:600 }}>
-          <Shield className="h-3 w-3" style={{ marginRight:4 }} />{t("admin_header_badge")}
-        </div>
-        <div style={{ flex:1 }} />
-        <span className="hidden sm:block" style={{ color:"#9898B0", fontSize:11, marginRight:8 }}>{myEmail}</span>
-        <button onClick={() => navigate("/")} style={{ display:"flex", alignItems:"center", gap:4, background:"transparent", border:"none", cursor:"pointer", color:"#9898B0", fontSize:13, fontFamily:"inherit", fontWeight:600, padding:"6px 10px", borderRadius:7 }}>
-          <ChevronLeft className="h-4 w-4" />{t("admin_back_app")}
-        </button>
-        <button onClick={() => supabase.auth.signOut()} style={{ display:"flex", alignItems:"center", background:"transparent", border:"none", cursor:"pointer", color:"#9898B0", padding:"6px 8px", borderRadius:7 }}>
-          <LogOut className="h-4 w-4" />
-        </button>
-      </header>
-
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8">
+        )}
+      >
+      <div className="rsp-main-admin" style={{ width:"100%", padding:"24px" }}>
         <div className="mb-6">
           <p style={{ fontSize:11, color:"#9898B0", textTransform:"uppercase", letterSpacing:"0.1em", fontWeight:600, marginBottom:4 }}>{t("admin_section_sys")}</p>
           <h1 style={{ fontSize:24, fontWeight:800, color:"#212B36", letterSpacing:-.5, lineHeight:1.2 }}>{t("admin_panel_title")}</h1>
           <p style={{ fontSize:13, color:"#9898B0", marginTop:4 }}>{t("admin_panel_desc")}</p>
         </div>
 
-        <Tabs defaultValue="usuarios" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as AdminTab)} className="space-y-6">
           <TabsList style={{ background:"#F4F3F5", borderRadius:10, padding:4 }}>
             <TabsTrigger value="usuarios" className="gap-2" style={{ fontFamily:"inherit", fontWeight:600 }}>
               <Users className="h-4 w-4" />{t("admin_tab_users")}
@@ -928,7 +948,8 @@ export default function AdminPage() {
             </div>
           </TabsContent>
         </Tabs>
-      </main>
+      </div>
+      </AppShell>
 
       {/* AlertDialog: Confirmar remoção de MFA */}
       <AlertDialog open={isUnenrollOpen} onOpenChange={v => { if (!mfaLoading) setIsUnenrollOpen(v); }}>

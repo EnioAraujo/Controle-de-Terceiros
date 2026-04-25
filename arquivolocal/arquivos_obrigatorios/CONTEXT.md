@@ -18,6 +18,7 @@
 | 2026-04-04 | Index: verif. admin migrada para rpc('is_admin') (SECURITY DEFINER, fail-closed); ícones PNG no nav (dashboard.png, logo.png, admin.png) |
 | 2026-04-04 | Index: PNG contextual no branding (quadrado logo) — dashboard.png na aba dashboard, logo.png nas demais; nav tabs voltam a usar SVG |
 | 2026-04-20 | Ícones: todos os arquivos PNG em public/ substituídos por logo_terceiros.png ("C" laranja em círculo escuro); logo-192.png e logo-512.png regenerados nos tamanhos PWA |
+| 2026-04-25 | Layout: criado AppShell e AppSidebar (sidebar fixa + área principal 100% tela), integrados em Index/Admin; removido max-width/mx-auto das páginas principais; estrutura modular para layout profissional; atualizado globals.css e CONTEXT.md |
 | 2026-04-20 | feat(excedente): nova tabela turnos_capacidade; coluna Excedente na tela de lançamentos; seção Capacidade por Turno em Configurações (admin-only); botão Excedentes XLSX no fechamento |
 | 2026-04-19 | Ícones: favicon.png substituído pelo novo ícone (pessoa + laranja); dashboard.png criado (estava ausente, causava imagem quebrada no header) |
 | 2026-04-19 | PWA: adicionado vite-plugin-pwa + Workbox; manifest gerado com ícones 192/512; SW cacheia assets estáticos + NetworkOnly para Supabase (LGPD); CSP atualizada com worker-src 'self' no vercel.json |
