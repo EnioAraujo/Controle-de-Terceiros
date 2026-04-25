@@ -138,3 +138,44 @@ export async function buscarValoresFinaisFechamentoAprovadoPorPeriodo(
     return { success: false, error: errorMessage };
   }
 }
+
+export interface ResumoFechamentosSalvosDashboard {
+  total: number;
+  count: number;
+  porStatus: Record<string, number>;
+}
+
+export async function buscarResumoFechamentosSalvosPorPeriodo(
+  dataInicio: string,
+  dataFim: string,
+): Promise<{ success: boolean; data?: ResumoFechamentosSalvosDashboard; error?: string }> {
+  try {
+    const { data, error } = await supabase
+      .from("fechamentos")
+      .select("valor_total, status")
+      .lte("data_inicio", dataFim)
+      .gte("data_fim", dataInicio);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const rows = (data ?? []) as Array<{ valor_total: number; status: string }>;
+
+    if (rows.length === 0) {
+      return { success: true, data: { total: 0, count: 0, porStatus: {} } };
+    }
+
+    const total = rows.reduce((sum, r) => sum + Number(r.valor_total ?? 0), 0);
+    const porStatus: Record<string, number> = {};
+    rows.forEach((r) => {
+      porStatus[r.status] = (porStatus[r.status] ?? 0) + 1;
+    });
+
+    return { success: true, data: { total, count: rows.length, porStatus } };
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error("[API_FECHAMENTO_DASHBOARD] Erro inesperado:", errorMessage);
+    return { success: false, error: errorMessage };
+  }
+}

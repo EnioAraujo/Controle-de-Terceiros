@@ -7,7 +7,7 @@ import { BlockHeader } from "@/components/atoms";
 import { resolverDiaria, dbToDiariaConfig } from "@/lib/fechamento-utils";
 import type { DiariaConfig } from "@/lib/fechamento-utils";
 import { supabase, authReady } from "@/lib/supabase";
-import { buscarValoresFinaisFechamentoAprovadoPorPeriodo } from "@/lib/api/fechamento-dashboard";
+import { buscarValoresFinaisFechamentoAprovadoPorPeriodo, buscarResumoFechamentosSalvosPorPeriodo, type ResumoFechamentosSalvosDashboard } from "@/lib/api/fechamento-dashboard";
 import { montarFinanceiroDashboard, type FechamentoValorFinalDashboard } from "@/lib/dashboard-finance-utils";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -53,6 +53,7 @@ export const Dashboard = ({
   const [barMode, setBarMode] = useState<"stacked" | "grouped">("stacked");
   const [diariasConfig, setDiariasConfig] = useState<DiariaConfig[]>([]);
   const [fechamentoValores, setFechamentoValores] = useState<FechamentoValorFinalDashboard[]>([]);
+  const [resumoFechamentos, setResumoFechamentos] = useState<ResumoFechamentosSalvosDashboard | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -81,17 +82,16 @@ export const Dashboard = ({
     const fim = `${periodo}-${String(diasNoMes).padStart(2, "0")}`;
 
     authReady.then(async () => {
-      const result = await buscarValoresFinaisFechamentoAprovadoPorPeriodo(inicio, fim);
+      const [resultValores, resultResumo] = await Promise.all([
+        buscarValoresFinaisFechamentoAprovadoPorPeriodo(inicio, fim),
+        buscarResumoFechamentosSalvosPorPeriodo(inicio, fim),
+      ]);
       if (!active) return;
 
-      if (!result.success || !result.data) {
-        setFechamentoValores([]);
-        return;
-      }
-
-      setFechamentoValores(result.data);
+      setFechamentoValores(resultValores.success && resultValores.data ? resultValores.data : []);
+      setResumoFechamentos(resultResumo.success && resultResumo.data ? resultResumo.data : null);
     }).catch(() => {
-      if (active) setFechamentoValores([]);
+      if (active) { setFechamentoValores([]); setResumoFechamentos(null); }
     });
 
     return () => { active = false; };
@@ -228,6 +228,24 @@ export const Dashboard = ({
           </div>
         ))}
       </div>
+
+      {/* ── Card: Fechamentos salvos no mês ── */}
+      {isAdminOrMod && resumoFechamentos !== null && resumoFechamentos.count > 0 && (
+        <div style={{ background:S.lowest, borderRadius:12, padding:"16px 24px", boxShadow:S.shadow, display:"flex", alignItems:"center", justifyContent:"space-between", gap:16, flexWrap:"wrap" }}>
+          <div>
+            <div style={{ fontSize:10, fontWeight:600, fontFamily:S.fLabel, color:S.muted, textTransform:"uppercase", letterSpacing:.8, marginBottom:4 }}>Fechamentos salvos no período</div>
+            <div style={{ fontSize:24, fontWeight:800, fontFamily:S.fDisplay, color:"#8657C7", letterSpacing:-1, lineHeight:1 }}>{fmtBRL(resumoFechamentos.total)}</div>
+            <div style={{ fontSize:11, fontFamily:S.fLabel, color:S.onVar, marginTop:4 }}>{resumoFechamentos.count} fechamento{resumoFechamentos.count !== 1 ? "s" : ""}</div>
+          </div>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+            {Object.entries(resumoFechamentos.porStatus).map(([status, qtd]) => (
+              <span key={status} style={{ padding:"3px 10px", borderRadius:99, fontSize:11, fontWeight:600, fontFamily:S.fLabel, background:S.low, color:S.onVar, border:S.ghost }}>
+                {status} ({qtd})
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Gráfico Dia a Dia ── */}
       <div id="tour-dashboard-chart" style={{ background:S.lowest, borderRadius:12, padding:96, boxShadow:S.shadow }}>

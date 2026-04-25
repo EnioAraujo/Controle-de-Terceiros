@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   selecionarFechamentosAprovadosCanonicos,
+  buscarResumoFechamentosSalvosPorPeriodo,
   type FechamentoAprovadoCabecalho,
 } from "./fechamento-dashboard";
 
@@ -58,5 +59,85 @@ describe("selecionarFechamentosAprovadosCanonicos", () => {
 
     expect(result).toHaveLength(2);
     expect(result.map((f) => f.id).sort()).toEqual(["f-jss", "f-recente"]);
+  });
+});
+
+// ── buscarResumoFechamentosSalvosPorPeriodo ──────────────────────────────────
+
+vi.mock("@/lib/supabase", () => {
+  const builder = {
+    select: vi.fn().mockReturnThis(),
+    lte: vi.fn().mockReturnThis(),
+    gte: vi.fn().mockResolvedValue({ data: [], error: null }),
+  };
+  return { supabase: { from: vi.fn(() => builder) }, authReady: Promise.resolve() };
+});
+
+const getBuilder = async () => {
+  const mod = await import("@/lib/supabase");
+  const from = mod.supabase.from as ReturnType<typeof vi.fn>;
+  return from.mock.results[from.mock.results.length - 1]?.value as {
+    select: ReturnType<typeof vi.fn>;
+    lte: ReturnType<typeof vi.fn>;
+    gte: ReturnType<typeof vi.fn>;
+  };
+};
+
+describe("buscarResumoFechamentosSalvosPorPeriodo", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("retorna total, count e porStatus para multiplos fechamentos", async () => {
+    const rows = [
+      { valor_total: 1000, status: "aprovado" },
+      { valor_total: 2000, status: "aprovado" },
+      { valor_total: 500,  status: "rascunho" },
+    ];
+
+    const { supabase: sb } = await import("@/lib/supabase");
+    const from = sb.from as ReturnType<typeof vi.fn>;
+    from.mockReturnValueOnce({
+      select: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockResolvedValue({ data: rows, error: null }),
+    });
+
+    const result = await buscarResumoFechamentosSalvosPorPeriodo("2026-04-01", "2026-04-30");
+
+    expect(result.success).toBe(true);
+    expect(result.data?.total).toBe(3500);
+    expect(result.data?.count).toBe(3);
+    expect(result.data?.porStatus).toEqual({ aprovado: 2, rascunho: 1 });
+  });
+
+  it("retorna zeros quando nao ha fechamentos no periodo", async () => {
+    const { supabase: sb } = await import("@/lib/supabase");
+    const from = sb.from as ReturnType<typeof vi.fn>;
+    from.mockReturnValueOnce({
+      select: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockResolvedValue({ data: [], error: null }),
+    });
+
+    const result = await buscarResumoFechamentosSalvosPorPeriodo("2026-04-01", "2026-04-30");
+
+    expect(result.success).toBe(true);
+    expect(result.data?.total).toBe(0);
+    expect(result.data?.count).toBe(0);
+    expect(result.data?.porStatus).toEqual({});
+  });
+
+  it("retorna error quando supabase falha", async () => {
+    const { supabase: sb } = await import("@/lib/supabase");
+    const from = sb.from as ReturnType<typeof vi.fn>;
+    from.mockReturnValueOnce({
+      select: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockResolvedValue({ data: null, error: { message: "DB error" } }),
+    });
+
+    const result = await buscarResumoFechamentosSalvosPorPeriodo("2026-04-01", "2026-04-30");
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("DB error");
   });
 });
