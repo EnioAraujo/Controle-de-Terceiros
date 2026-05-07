@@ -10,6 +10,10 @@
 
 6. **Ler `README.md`
 
+
+## 
+Não realize update de nenhuma dependencia, feature, componente, nada, sem verificar a segurança, novas versões podem vir com bugs que por si, afetam a segurança do app contra ataques de principalmente CVSS.
+
 ## Processo a cada alteração
 
 1. **Ler o arquivo inteiro** antes de editar qualquer trecho (nunca editar com leitura parcial)
