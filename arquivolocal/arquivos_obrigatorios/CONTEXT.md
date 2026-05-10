@@ -1,3 +1,4 @@
+| 2026-05-10 | Registrado `TEST-FAILURES.md`: 2 testes falharam após o commit `a848692` na branch `Main-terceiros` (relatório adicionado ao repositório). |
 | 2026-04-25 | Fechamento: filtro de fornecedor agora permite multi-seleção com cálculo consolidado e salvamento em lote (1 clique cria N fechamentos, um por fornecedor); lógica pura extraída para fechamento-multifornecedor-utils e UI isolada em FornecedoresMultiSelect. |
 | 2026-04-25 | Lançamentos: após importar CSV, o app exibe resumo da importação e alerta quando registros ficam ocultos por filtros, com ação "Mostrar importados" que limpa data/mês/período. |
 | 2026-03-15 | Barra de exclusão em massa (Excluir selecionados) agora ocupa toda a largura abaixo dos filtros, igual à imagem 2 enviada pelo usuário. |
