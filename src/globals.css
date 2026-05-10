@@ -165,6 +165,24 @@ button:hover:not(:disabled) { opacity: .88; }
   display: none;
 }
 
+/* ─── App shell MDI (Activity + TabBar + Content + Status) ───── */
+.app-shell-mdi {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  grid-template-rows: 36px 1fr 24px;
+  grid-template-areas:
+    "activity tabs"
+    "activity content"
+    "status   status";
+  height: 100vh;
+  min-height: 100vh;
+}
+
+.app-shell-mdi-activity { grid-area: activity; overflow: hidden; }
+.app-shell-mdi-tabs     { grid-area: tabs; overflow: hidden; }
+.app-shell-mdi-content  { grid-area: content; overflow: auto; padding: 20px; }
+.app-shell-mdi-status   { grid-area: status; overflow: hidden; }
+
 /* ─── Classes responsivas (rsp-*) — usadas em todo o app ──────── */
 @media (max-width: 900px) {
   .rsp-grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
@@ -219,4 +237,16 @@ button:hover:not(:disabled) { opacity: .88; }
   .app-shell-mobile-top {
     display: block;
   }
+
+  .app-shell-mdi {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+  }
+
+  .app-shell-mdi-activity,
+  .app-shell-mdi-tabs,
+  .app-shell-mdi-status { display: none; }
+
+  .app-shell-mdi-content { padding: 12px; overflow: visible; }
 }

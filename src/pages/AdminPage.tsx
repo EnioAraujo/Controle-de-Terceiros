@@ -14,7 +14,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -31,11 +30,12 @@ import {
 import {
   Users, Shield, ShieldOff, Search, Crown, Pencil, Eye, User, Loader2,
   CheckCircle2, XCircle, Trash2, KeyRound, Settings, Plus, LayoutGrid, List,
-  LogOut, ChevronLeft,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
-import { AppSidebar } from "@/components/layout/AppSidebar";
-import type { AppSidebarItem } from "@/components/layout/AppSidebar";
+import { ActivityBar, type ActivityItem } from "@/components/layout/ActivityBar";
+import { TabBar } from "@/components/layout/TabBar";
+import { StatusBar } from "@/components/layout/StatusBar";
+import { useTabManager } from "@/hooks/useTabManager";
 
 // ── Tipos ──────────────────────────────────────────────────────────
 type AppRole = "admin" | "moderator" | "user";
@@ -125,7 +125,7 @@ export default function AdminPage() {
   // UI state
   const [search,   setSearch]   = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [activeTab, setActiveTab] = useState<AdminTab>("usuarios");
+  const { openTabs, activeTab, openTab, closeTab, setActiveTab } = useTabManager<AdminTab>("usuarios");
 
   // Permissions tab
   const [selectedUserPerms, setSelectedUserPerms] = useState<UserWithRole | null>(null);
@@ -505,37 +505,51 @@ export default function AdminPage() {
 
   const totalAdmins = users.filter(u => u.role === "admin").length;
   const totalCommon = users.length - totalAdmins;
-  const adminNav: AppSidebarItem[] = [
+  const adminNav: ActivityItem[] = [
     { id: "usuarios", label: t("admin_tab_users"), icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
     { id: "permissoes", label: "Permissões", icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
     { id: "conta", label: t("admin_tab_account"), icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
   ];
+  const navById = Object.fromEntries(adminNav.map(n => [n.id, n])) as Record<AdminTab, ActivityItem>;
+  const tabBarItems = openTabs.map(id => navById[id]);
 
   return (
     <div style={{ minHeight:"100vh", background:"#FAF9FB", fontFamily:"'DM Sans',system-ui,sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');`}</style>
       <AppShell
-        sidebar={(
-          <AppSidebar
+        activityBar={(
+          <ActivityBar
             items={adminNav}
-            activeItemId={activeTab}
-            onItemClick={(id) => setActiveTab(id as AdminTab)}
+            activeId={activeTab}
+            onOpen={(id) => openTab(id as AdminTab)}
             brandImageSrc="/admin.png"
             brandImageAlt="Administração"
-            footer={(
-              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:5, background:"#F37E3818", border:"1px solid #F37E3833", borderRadius:8, padding:"6px 10px", fontSize:11, color:"#F37E38", fontWeight:600 }}>
-                  <Shield className="h-3 w-3" style={{ marginRight:4 }} />{t("admin_header_badge")}
-                </div>
-                <span style={{ color:"#98A2B3", fontSize:11 }}>{myEmail}</span>
-                <button onClick={() => navigate("/")} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:4, background:"transparent", border:"1px solid #2E3B4A", cursor:"pointer", color:"#98A2B3", fontSize:12, fontFamily:"inherit", fontWeight:600, padding:"6px 10px", borderRadius:8 }}>
-                  <ChevronLeft className="h-4 w-4" />{t("admin_back_app")}
-                </button>
-                <button onClick={() => supabase.auth.signOut()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:4, background:"transparent", border:"1px solid #2E3B4A", cursor:"pointer", color:"#EF4444", fontSize:12, fontFamily:"inherit", fontWeight:600, padding:"6px 10px", borderRadius:8 }}>
-                  <LogOut className="h-4 w-4" />{t("nav_logout")}
-                </button>
-              </div>
-            )}
+            onBack={() => navigate("/")}
+            backLabel={t("admin_back_app")}
+            onLogout={() => supabase.auth.signOut()}
+            logoutLabel={t("nav_logout")}
+          />
+        )}
+        tabBar={(
+          <TabBar
+            tabs={tabBarItems}
+            activeId={activeTab}
+            onActivate={(id) => setActiveTab(id as AdminTab)}
+            onClose={(id) => closeTab(id as AdminTab)}
+          />
+        )}
+        statusBar={(
+          <StatusBar
+            loading={isLoadingUsers}
+            saved={false}
+            hojeCount={users.length}
+            mesCount={totalAdmins}
+            hojeLabel={t("admin_stat_total")}
+            mesLabel={t("admin_stat_admins")}
+            loadingLabel={t("nav_loading")}
+            savedLabel={t("nav_saved")}
+            connectedLabel={myEmail || "Conectado"}
+            lang={lang}
           />
         )}
         mobileTopBar={(
@@ -559,21 +573,9 @@ export default function AdminPage() {
           <p style={{ fontSize:13, color:"#9898B0", marginTop:4 }}>{t("admin_panel_desc")}</p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as AdminTab)} className="space-y-6">
-          <TabsList style={{ background:"#F4F3F5", borderRadius:10, padding:4 }}>
-            <TabsTrigger value="usuarios" className="gap-2" style={{ fontFamily:"inherit", fontWeight:600 }}>
-              <Users className="h-4 w-4" />{t("admin_tab_users")}
-            </TabsTrigger>
-            <TabsTrigger value="permissoes" className="gap-2" style={{ fontFamily:"inherit", fontWeight:600 }}>
-              <Settings className="h-4 w-4" />Permissões
-            </TabsTrigger>
-            <TabsTrigger value="conta" className="gap-2" style={{ fontFamily:"inherit", fontWeight:600 }}>
-              <User className="h-4 w-4" />{t("admin_tab_account")}
-            </TabsTrigger>
-          </TabsList>
-
-          {/* ── TAB: USUÁRIOS ── */}
-          <TabsContent value="usuarios" className="space-y-6">
+        <div className="space-y-6">
+          {activeTab === "usuarios" && (
+          <div className="space-y-6">
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
               {[
@@ -731,10 +733,12 @@ export default function AdminPage() {
                 ))}
               </div>
             )}
-          </TabsContent>
+          </div>
+          )}
 
           {/* ── TAB: PERMISSÕES ── */}
-          <TabsContent value="permissoes" className="space-y-6">
+          {activeTab === "permissoes" && (
+          <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <Card className="lg:col-span-1">
                 <CardHeader><CardTitle className="text-sm">Selecionar Usuário</CardTitle></CardHeader>
@@ -813,10 +817,12 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
+          </div>
+          )}
 
           {/* ── TAB: MINHA CONTA ── */}
-          <TabsContent value="conta">
+          {activeTab === "conta" && (
+          <div>
             <div className="max-w-md">
               <Card>
                 <div className="bg-gradient-to-r from-slate-900 to-slate-700 p-5 flex items-center gap-3 rounded-t-lg" style={{ background:"linear-gradient(135deg, #212B36, #2E3B4A)" }}>
@@ -946,8 +952,9 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+          )}
+        </div>
       </div>
       </AppShell>
 

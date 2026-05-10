@@ -15,6 +15,11 @@ import type { TurnoConfig } from "@/lib/fechamento-utils";
 import { FormLancamento } from "@/components/FormLancamento";
 import type { Opcoes } from "@/types/attendance";
 import { useI18n } from "@/hooks/use-i18n";
+import { AppShell } from "@/components/layout/AppShell";
+import { ActivityBar, type ActivityItem } from "@/components/layout/ActivityBar";
+import { TabBar } from "@/components/layout/TabBar";
+import { StatusBar } from "@/components/layout/StatusBar";
+import { useTabManager } from "@/hooks/useTabManager";
 // ─── CONSTANTES ─────────────────────────────────────────────────
 const OPCOES_DEFAULT: Opcoes = {
   turnos: [], unidades: [], fornecedores: [], motivos: [], cargos: [], ccList: [], nomes: [],
@@ -357,7 +362,8 @@ const MobileLancamentosPage = () => {
   const [sheet, setSheet] = useState<null | Registro | Registro[]>(null);
   const [confirm, setConfirm] = useState<string[] | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<"lancamentos" | "configuracoes">("lancamentos");
+  type MobileTab = "lancamentos" | "configuracoes";
+  const { openTabs, activeTab, openTab, closeTab, setActiveTab } = useTabManager<MobileTab>("lancamentos");
   const [cfgFornInput, setCfgFornInput] = useState("");
   const [cfgNomeInput, setCfgNomeInput] = useState("");
   const [cfgNomeBusca, setCfgNomeBusca] = useState("");
@@ -593,70 +599,50 @@ const MobileLancamentosPage = () => {
     return "Editar Lançamento";
   };
 
+  const mobileNav: ActivityItem[] = [
+    { id: "lancamentos", label: "Lançamentos", icon: "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" },
+    { id: "configuracoes", label: "Configurações", icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.94 11a8 8 0 0 0-15.88 0H2v2h2.06a8 8 0 0 0 15.88 0H22v-2h-2.06z" },
+  ];
+  const navById = Object.fromEntries(mobileNav.map(n => [n.id, n])) as Record<MobileTab, ActivityItem>;
+  const tabBarItems = openTabs.map(id => navById[id]);
+
   return (
-    <div style={{ minHeight: "100dvh", background: "#FAF9FB", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-
-      {/* ═══ HEADER FIXO ═══ */}
-      <div style={{
-        position: "sticky", top: 0, zIndex: 100,
-        background: "#212B36",
-        borderBottom: "1px solid #2E3B4A",
-        padding: "14px 16px 12px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 16, lineHeight: 1 }}>
-              <span style={{ color: "#F8FAFC" }}>Controle de </span>
-              <span style={{ color: "#F37E38" }}>Terceiros</span>
-            </div>
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 4,
-              marginTop: 4, background: "#F37E3818",
-              border: "1px solid #F37E3844",
-              borderRadius: 99, padding: "2px 8px",
-              fontSize: 10, fontWeight: 700, color: "#F37E38",
-            }}>
-              <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><rect x="5" y="2" width="14" height="20" rx="2" /><line x1="12" y1="18" x2="12" y2="18" strokeWidth={3} strokeLinecap="round" /></svg>
-              Mobile
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-            {/* Botão Desktop */}
-            <button
-              onClick={irParaDesktop}
-              style={{
-                border: "1px solid #2E3B4A",
-                background: "rgba(255,255,255,0.04)",
-                borderRadius: 8, padding: "8px 12px",
-                color: "#9898B0", fontSize: 12, fontWeight: 600,
-                fontFamily: "inherit", cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 6,
-              }}
-            >
-              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="2" y="3" width="20" height="14" rx="2" /><polyline points="8 21 12 17 16 21" /></svg>
-              Desktop
-            </button>
-            {/* Botão Sair */}
-            <button
-              onClick={() => supabase.auth.signOut()}
-              style={{
-                border: "1px solid #2E3B4A",
-                background: "rgba(255,255,255,0.04)",
-                borderRadius: 8, padding: "8px 12px",
-                color: "#EF4444", fontSize: 12, fontWeight: 600,
-                fontFamily: "inherit", cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 6,
-              }}
-            >
-              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-              Sair
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ═══ CONTEÚDO ═══ */}
+    <AppShell
+      activityBar={(
+        <ActivityBar
+          items={mobileNav}
+          activeId={activeTab}
+          onOpen={(id) => openTab(id as MobileTab)}
+          brandImageSrc="/logo.png"
+          brandImageAlt="Controle de Terceiros"
+          onBack={irParaDesktop}
+          backLabel="Desktop"
+          onLogout={() => supabase.auth.signOut()}
+        />
+      )}
+      tabBar={(
+        <TabBar
+          tabs={tabBarItems}
+          activeId={activeTab}
+          onActivate={(id) => setActiveTab(id as MobileTab)}
+          onClose={(id) => closeTab(id as MobileTab)}
+        />
+      )}
+      statusBar={(
+        <StatusBar
+          loading={loading}
+          saved={false}
+          hojeCount={filtered.length}
+          mesCount={registros.length}
+          hojeLabel="Filtrados"
+          mesLabel="Total"
+          loadingLabel="Carregando"
+          savedLabel="Salvo"
+          connectedLabel="Conectado"
+          lang={lang}
+        />
+      )}
+    >
       <div style={{ padding: "16px 12px 144px" }}>
         {activeTab === "lancamentos" && <>
         {/* Botão de filtros */}
@@ -979,29 +965,7 @@ const MobileLancamentosPage = () => {
           />
         </MobileModal>
       )}
-      {/* ═══ TAB BAR ═══ */}
-      <div style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, height: 64,
-        background: "#212B36", zIndex: 150,
-        display: "flex", borderTop: "1px solid #2E3B4A",
-      }}>
-        {(["lancamentos", "configuracoes"] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              flex: 1, background: "none", border: "none", cursor: "pointer",
-              color: activeTab === tab ? "#F37E38" : "#64748B",
-              borderTop: activeTab === tab ? "2px solid #F37E38" : "2px solid transparent",
-              fontWeight: activeTab === tab ? 700 : 500,
-              fontSize: 12, fontFamily: "inherit",
-            }}
-          >
-            {tab === "lancamentos" ? "Lançamentos" : "Configurações"}
-          </button>
-        ))}
-      </div>
-    </div>
+    </AppShell>
   );
 };
 

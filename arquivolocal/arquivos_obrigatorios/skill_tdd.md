@@ -1,12 +1,19 @@
 ---
 name: webapp-testing-tdd
-description: Toolkit integrado para testes de aplicações web usando TDD, Playwright e automação. Suporta verificação de funcionalidade frontend, debugging de comportamento UI, captura de screenshots e testes contra regressão.
+description: >
+  Toolkit integrado para testes de aplicações web usando TDD, Playwright e automação.
+  Suporta verificação de funcionalidade frontend, debugging de comportamento UI, captura
+  de screenshots, testes contra regressão, sharding em CI, trace viewer e estratégias
+  modernas de locators (getByRole, getByLabel) recomendadas pela equipe Playwright em 2026.
 license: Complete terms in LICENSE.txt
 ---
 
-# Testes de Aplicações Web com TDD + Playwright
+# Testes de Aplicações Web com TDD + Playwright (2026 Edition)
 
 Combine **Test-Driven Development (TDD)** com **Playwright** para evoluir código web com segurança, confiança e rapidez.
+
+> **Última atualização:** Maio de 2026
+> **Baseado em:** Playwright official best practices · BrowserStack 2026 selector guide · TestDino TDD patterns
 
 ---
 
@@ -17,6 +24,8 @@ Ensinar como aplicar TDD na prática usando Playwright, garantindo:
 - ✅ Refatoração sem medo de quebrar funcionalidades
 - ✅ Design emergente a partir dos testes
 - ✅ Uso de IA como copiloto (gerar testes, edge cases, mocks)
+- ✅ Locators resilientes a mudanças de UI (estratégia 2026: user-facing > test-id > CSS)
+- ✅ CI scaling com sharding e tracing inteligente
 
 ---
 
@@ -26,18 +35,24 @@ Ensinar como aplicar TDD na prática usando Playwright, garantindo:
 
 Defina o comportamento desejado **antes** do código.
 
-```python
-def test_soma_basica():
-    assert soma(2, 2) == 4
+```typescript
+// tests/forms.spec.ts
+import { test, expect } from '@playwright/test';
 
-def test_formulario_valida_email_invalido():
-    page.goto('http://localhost:5173/form')
-    page.fill('input[name="email"]', 'email-invalido')
-    page.click('button[type="submit"]')
-    assert page.locator('.error-message').is_visible()
+test('formulário valida email inválido', async ({ page }) => {
+  await page.goto('/form');
+  await page.getByLabel('Email').fill('email-invalido');
+  await page.getByRole('button', { name: 'Enviar' }).click();
+  await expect(page.getByRole('alert')).toContainText('Email inválido');
+});
 ```
 
 **Rode o teste e confirme que falha** ✓
+
+```bash
+npx playwright test tests/forms.spec.ts
+# Resultado: FAIL ❌ (esperado)
+```
 
 ---
 
@@ -46,14 +61,32 @@ def test_formulario_valida_email_invalido():
 Implementação simples e direta:
 
 ```javascript
-// Frontend
-function soma(a, b) {
-  return a + b;
+// src/utils/validation.js
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export function validateEmail(email) {
+  return EMAIL_REGEX.test(email.trim());
 }
+```
 
-// Validação de formulário
-function validateEmail(email) {
-  return email.includes('@');
+```jsx
+// src/components/Form.jsx
+import { validateEmail } from '../utils/validation';
+
+function Form() {
+  const [error, setError] = useState('');
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!validateEmail(email)) setError('Email inválido');
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <label htmlFor="email">Email</label>
+      <input id="email" type="email" />
+      {error && <div role="alert">{error}</div>}
+      <button type="submit">Enviar</button>
+    </form>
+  );
 }
 ```
 
@@ -63,19 +96,29 @@ function validateEmail(email) {
 
 ## 3️⃣ REFACTOR – Melhore o código mantendo os testes verdes
 
-Limpe nomes, extraia métodos, remova duplicações:
+Limpe nomes, extraia componentes, remova duplicações:
 
 ```javascript
-// Antes (simples, mas sem tratamento)
-function validateEmail(email) {
-  return email.includes('@');
+// Antes (acoplado)
+function Form() {
+  const [error, setError] = useState('');
+  // ... validação inline
 }
 
-// Depois (refatorado, mais robusto)
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Depois (separação de responsabilidades)
+function useFormValidation(schema) {
+  const [errors, setErrors] = useState({});
+  const validate = (data) => {
+    const result = schema.safeParse(data);
+    setErrors(result.success ? {} : result.error.flatten());
+    return result.success;
+  };
+  return { errors, validate };
+}
 
-function validateEmail(email) {
-  return EMAIL_REGEX.test(email.trim());
+function Form() {
+  const { errors, validate } = useFormValidation(EmailSchema);
+  // ... componente focado em UI
 }
 ```
 
@@ -87,20 +130,28 @@ function validateEmail(email) {
 
 ### ✅ Testes de Unidade
 
-Focados em funções e regras isoladas:
+Focados em funções e regras isoladas. Use **Vitest** (recomendado em 2026 para Vite/React) ou Jest:
 
-```python
-def test_soma_numeros_positivos():
-    assert soma(5, 3) == 8
+```typescript
+// tests/unit/validation.test.ts
+import { describe, it, expect } from 'vitest';
+import { validateEmail } from '../src/utils/validation';
 
-def test_soma_numeros_negativos():
-    assert soma(-5, -3) == -8
-
-def test_soma_zero():
-    assert soma(0, 0) == 0
+describe('validateEmail', () => {
+  it.each([
+    ['user@example.com', true],
+    ['user.name+tag@example.co.uk', true],
+    ['invalid', false],
+    ['@example.com', false],
+    ['user@', false],
+    ['', false],
+  ])('validateEmail(%s) === %s', (input, expected) => {
+    expect(validateEmail(input)).toBe(expected);
+  });
+});
 ```
 
-**Benefício**: Testes rápidos, fáceis de debugar.
+**Benefício**: Testes rápidos, fáceis de debugar, ótimos para regras de negócio.
 
 ---
 
@@ -108,26 +159,29 @@ def test_soma_zero():
 
 Garantem que múltiplas partes trabalham juntas:
 
-```python
-def test_fluxo_completo_login():
-    """Usuário faz login, acessa dashboard e faz logout"""
-    page.goto('http://localhost:5173/login')
-    
-    # Preenche formulário
-    page.fill('input[name="email"]', 'user@example.com')
-    page.fill('input[name="password"]', 'senha123')
-    page.click('button[type="submit"]')
-    
-    # Aguarda redirecionamento
-    page.wait_for_url('**/dashboard')
-    assert page.locator('h1:has-text("Dashboard")').is_visible()
-    
-    # Faz logout
-    page.click('button[aria-label="Logout"]')
-    page.wait_for_url('**/login')
+```typescript
+// tests/e2e/login.spec.ts
+import { test, expect } from '@playwright/test';
+
+test('fluxo completo de login', async ({ page }) => {
+  await page.goto('/login');
+
+  // Preenche formulário usando user-facing locators (recomendação 2026)
+  await page.getByLabel('Email').fill('user@example.com');
+  await page.getByLabel('Senha').fill('senha123');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+
+  // Web-first assertion — espera automaticamente
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+
+  // Logout
+  await page.getByRole('button', { name: /sair|logout/i }).click();
+  await expect(page).toHaveURL(/\/login$/);
+});
 ```
 
-**Benefício**: Valida comportamento real do usuário.
+**Benefício**: Valida comportamento real do usuário, end-to-end.
 
 ---
 
@@ -135,33 +189,140 @@ def test_fluxo_completo_login():
 
 Encontrou um bug? Escreva um teste que o reproduza **antes** da correção:
 
-```python
-def test_bug_dropdown_nao_abre_segunda_vez():
-    """
-    REGRESSÃO: Dropdown não abre na segunda clicagem.
-    Issue #142: https://github.com/...
-    """
-    page.goto('http://localhost:5173/dashboard')
-    
-    # Primeira abertura
-    dropdown = page.locator('[data-testid="menu-dropdown"]')
-    dropdown.click()
-    assert page.locator('[data-testid="menu-options"]').is_visible()
-    
-    # Fecha
-    page.click('body')
-    assert not page.locator('[data-testid="menu-options"]').is_visible()
-    
-    # Segunda abertura (bug estava aqui)
-    dropdown.click()
-    assert page.locator('[data-testid="menu-options"]').is_visible()
+```typescript
+test('REGRESSÃO #142 — Dropdown não abre na segunda clicagem', async ({ page }) => {
+  await page.goto('/dashboard');
+
+  const dropdown = page.getByRole('button', { name: 'Menu' });
+  const menuOptions = page.getByRole('menu');
+
+  // Primeira abertura
+  await dropdown.click();
+  await expect(menuOptions).toBeVisible();
+
+  // Fecha clicando fora
+  await page.locator('body').click({ position: { x: 0, y: 0 } });
+  await expect(menuOptions).not.toBeVisible();
+
+  // Segunda abertura (bug estava aqui)
+  await dropdown.click();
+  await expect(menuOptions).toBeVisible();
+});
 ```
 
 **Benefício**: Garante que o bug não ressurge.
 
 ---
 
-# 🔄 3. Decision Tree: Escolhendo Sua Abordagem
+# 🎯 3. Estratégia de Locators (Best Practice 2026)
+
+A equipe Playwright e o consenso da comunidade em 2026 estabelecem uma **hierarquia clara**:
+
+| Prioridade | Estratégia | Quando usar |
+|-----------|-----------|-------------|
+| 🥇 1 | `getByRole()` | **Sempre que possível** — espelha como usuários e tecnologias assistivas percebem a página |
+| 🥈 2 | `getByLabel()` | Form fields com label associado |
+| 🥉 3 | `getByPlaceholder()` | Inputs sem label mas com placeholder |
+| 4 | `getByText()` | Conteúdo visível ao usuário (cuidado com i18n) |
+| 5 | `getByAltText()` | Imagens com texto alternativo |
+| 6 | `getByTitle()` | Elementos com atributo `title` |
+| 7 | `getByTestId()` | Quando os anteriores não bastam — defina contrato explícito com a equipe |
+| ⚠️ 8 | `locator('css=...')` | Fallback raro |
+| ❌ 9 | `locator('xpath=...')` | **Evite** — frágil, lento, acoplado ao DOM |
+
+**Por quê?** Locators baseados em estrutura DOM (CSS, XPath) quebram quando:
+- Componentes re-renderizam após hidratação
+- CSS-in-JS gera hashes novos a cada build
+- Mobile esconde labels que desktop usa
+- Frameworks reorganizam o DOM (React 19, Vue 3, Angular signals)
+
+```typescript
+// ❌ Frágil — depende de classes/estrutura
+await page.locator('button.bg-primary.add-to-cart').click();
+await page.locator('div > div:nth-child(2) > input').fill('valor');
+
+// ✅ Resiliente — semântica
+await page.getByRole('button', { name: /adicionar ao carrinho/i }).click();
+await page.getByLabel('CEP').fill('30130-100');
+```
+
+**Filtragem e encadeamento (chaining):**
+
+```typescript
+// Encontrar item específico em uma lista
+const product = page
+  .getByRole('listitem')
+  .filter({ hasText: 'Camiseta Preta P' });
+
+await product.getByRole('button', { name: 'Adicionar' }).click();
+
+// Múltiplos critérios
+await page
+  .getByRole('row', { name: /Pedido #1042/ })
+  .getByRole('button', { name: 'Editar' })
+  .click();
+```
+
+**Test IDs quando necessário** (use `data-testid` ou customize via config):
+
+```typescript
+// playwright.config.ts
+export default defineConfig({
+  use: { testIdAttribute: 'data-testid' },
+});
+
+// Uso
+await page.getByTestId('submit-button').click();
+
+// Em componentes React, defina IDs estáveis para elementos dinâmicos:
+<button data-testid="kanban-card-drag-handle">Arrastar</button>
+```
+
+---
+
+# 🪄 4. Web-First Assertions
+
+Assertions do Playwright **esperam automaticamente** até a condição ser verdadeira (com timeout). Sempre prefira a forma `expect(locator).toX()` sobre asserções síncronas:
+
+```typescript
+// ❌ Síncrono — não espera, gera flakiness
+const text = await page.locator('.message').textContent();
+expect(text).toBe('Salvo');
+
+// ✅ Web-first — espera até 5s (default) pelo elemento aparecer e ter o texto
+await expect(page.getByRole('alert')).toHaveText('Salvo');
+```
+
+**Assertions essenciais:**
+
+```typescript
+// Visibilidade e estado
+await expect(locator).toBeVisible();
+await expect(locator).toBeHidden();
+await expect(locator).toBeEnabled();
+await expect(locator).toBeDisabled();
+await expect(locator).toBeChecked();
+await expect(locator).toBeFocused();
+
+// Conteúdo
+await expect(locator).toHaveText('exato');
+await expect(locator).toContainText(/regex/);
+await expect(locator).toHaveValue('input value');
+await expect(locator).toHaveAttribute('href', /\/dashboard/);
+await expect(locator).toHaveCount(5);
+await expect(locator).toHaveClass(/active/);
+
+// Página
+await expect(page).toHaveURL(/\/success$/);
+await expect(page).toHaveTitle('Dashboard | Supporte');
+
+// Custom timeout quando necessário (default 5s)
+await expect(locator).toBeVisible({ timeout: 15_000 });
+```
+
+---
+
+# 🔄 5. Decision Tree: Escolhendo Sua Abordagem
 
 ```
 Tarefa → É HTML estático?
@@ -170,20 +331,58 @@ Tarefa → É HTML estático?
     │         └─ Falha → Trate como dinâmica (abaixo)
     │
     └─ Não (webapp dinâmica) → Servidor já está rodando?
-        ├─ Não → Use: python scripts/with_server.py --help
-        │        Depois escreva teste Playwright simplificado
+        ├─ Não → Configure webServer no playwright.config.ts
+        │        ou use scripts/with_server.py
         │
         └─ Sim → Padrão Reconhecimento-Depois-Ação:
-            1. Navegue e aguarde networkidle
-            2. Capture screenshot ou inspecione DOM
-            3. Identifique seletores do estado renderizado
-            4. Execute ações com seletores descobertos
+            1. Navegue e use page.waitForLoadState('networkidle') ou web-first assertions
+            2. Use Codegen ou Pick Locator (UI Mode) para identificar locators
+            3. Identifique role/label/text do estado renderizado
+            4. Execute ações com locators user-facing
             5. Escreva teste TDD para validar comportamento
+```
+
+**Configuração do webServer (padrão recomendado 2026):**
+
+```typescript
+// playwright.config.ts
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: process.env.CI ? 'github' : 'html',
+
+  use: {
+    baseURL: 'http://localhost:5173',
+    trace: 'on-first-retry',         // ← grava trace só se o teste falhar
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    testIdAttribute: 'data-testid',
+  },
+
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox',  use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit',   use: { ...devices['Desktop Safari'] } },
+    { name: 'mobile',   use: { ...devices['iPhone 14'] } },
+  ],
+
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:5173',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
+});
 ```
 
 ---
 
-# 🚀 4. Workflow Prático Recomendado
+# 🚀 6. Workflow Prático Recomendado
 
 ### Cenário 1: Desenvolvendo uma nova feature com TDD
 
@@ -192,7 +391,7 @@ Tarefa → É HTML estático?
 # "Usuário deve poder adicionar item à lista com Enter"
 
 # 2. Escreva o teste (RED)
-python -m pytest tests/test_todo_add.py::test_add_item_com_enter -v
+npx playwright test tests/todo-add.spec.ts --headed
 
 # Resultado: FAIL ❌
 
@@ -200,7 +399,7 @@ python -m pytest tests/test_todo_add.py::test_add_item_com_enter -v
 # ... edite src/components/TodoList.jsx ...
 
 # 4. Rode o teste novamente
-python -m pytest tests/test_todo_add.py::test_add_item_com_enter -v
+npx playwright test tests/todo-add.spec.ts
 
 # Resultado: PASS ✅
 
@@ -208,7 +407,7 @@ python -m pytest tests/test_todo_add.py::test_add_item_com_enter -v
 # ... limpe o código, extraia métodos ...
 
 # 6. Confirme que tudo continua verde
-python -m pytest tests/ -v
+npx playwright test
 
 # 7. Commite
 git commit -m "feat: adicionar item à lista com Enter"
@@ -216,147 +415,171 @@ git commit -m "feat: adicionar item à lista com Enter"
 
 ---
 
-### Cenário 2: Debugando um componente com Playwright
+### Cenário 2: Debugando com UI Mode (recomendado em 2026)
 
-```python
-# scripts/debug_form.py
-from playwright.sync_api import sync_playwright
-
-with sync_playwright() as p:
-    browser = p.chromium.launch(headless=False)  # headless=False para ver a ação
-    page = browser.new_page()
-    page.goto('http://localhost:5173/form')
-    
-    # RECONHECIMENTO: Inspecione o DOM
-    page.wait_for_load_state('networkidle')
-    page.screenshot(path='/tmp/form_inicial.png', full_page=True)
-    
-    # Identifique seletores
-    inputs = page.locator('input').all()
-    print(f"Encontrados {len(inputs)} inputs")
-    
-    # Interaja e observe
-    page.fill('input[name="email"]', 'test@example.com')
-    page.screenshot(path='/tmp/form_preenchido.png')
-    
-    # Verifique logs do console
-    page.on('console', lambda msg: print(f"[{msg.type}] {msg.text}"))
-    
-    browser.close()
-```
-
-Execute com:
 ```bash
-python scripts/debug_form.py
+# UI Mode oferece time-travel debugging — DOM snapshots, network, console
+npx playwright test --ui
+
+# Trace viewer para falhas em CI
+npx playwright show-trace test-results/.../trace.zip
+
+# Codegen para gravar testes interativamente
+npx playwright codegen http://localhost:5173
+
+# VS Code Extension — pick locator com hover
+# (instale "Playwright Test for VSCode")
 ```
 
 ---
 
-# 🛠️ 5. Usando Helper Scripts
+# 🛠️ 7. Estratégias para CI/CD
 
-**Always run scripts with `--help` first!**
+### Sharding para suites grandes
 
-### Servidor único:
+Para 500+ testes, distribua entre múltiplas máquinas:
 
-```bash
-python scripts/with_server.py --server "npm run dev" --port 5173 -- python tests/test_app.py
+```yaml
+# .github/workflows/playwright.yml
+name: Playwright Tests
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1/4, 2/4, 3/4, 4/4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --shard=${{ matrix.shard }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ matrix.shard }}
+          path: playwright-report/
+          retention-days: 30
 ```
 
-### Múltiplos servidores (backend + frontend):
+### API seeding em vez de UI login
 
-```bash
-python scripts/with_server.py \
-  --server "cd backend && python server.py" --port 3000 \
-  --server "cd frontend && npm run dev" --port 5173 \
-  -- python tests/test_integration.py
+Logar via UI a cada teste é lento e frágil. Seed via API:
+
+```typescript
+// tests/fixtures/auth.ts
+import { test as base } from '@playwright/test';
+
+type AuthFixture = { authenticatedPage: Page };
+
+export const test = base.extend<AuthFixture>({
+  authenticatedPage: async ({ page, request }, use) => {
+    // Login via API — gera cookie/token diretamente
+    const response = await request.post('/api/auth/login', {
+      data: { email: 'test@example.com', password: 'test123' }
+    });
+    const { token } = await response.json();
+
+    await page.context().addCookies([{
+      name: 'session',
+      value: token,
+      domain: 'localhost',
+      path: '/',
+      httpOnly: true,
+      secure: false,
+    }]);
+
+    await use(page);
+  },
+});
 ```
 
-Script de teste simplificado (servidores gerenciados automaticamente):
+```typescript
+// Uso
+import { test, expect } from './fixtures/auth';
 
-```python
-# tests/test_app.py
-from playwright.sync_api import sync_playwright
-
-def test_homepage_carrega():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        page.goto('http://localhost:5173')
-        page.wait_for_load_state('networkidle')  # CRÍTICO
-        
-        assert page.locator('h1').is_visible()
-        browser.close()
+test('admin pode editar usuário', async ({ authenticatedPage: page }) => {
+  await page.goto('/admin/users');
+  // já está logado, sem fluxo de UI
+});
 ```
 
 ---
 
-# 🔍 6. Padrão de Reconhecimento-Depois-Ação
+# 🔍 8. Padrão de Reconhecimento-Depois-Ação
 
 Use quando precisar debugar ou explorar um componente novo:
 
-### Passo 1: Inspecione o DOM renderizado
+### Passo 1: Inspecione o DOM renderizado com Codegen ou Pick Locator
 
-```python
-page.screenshot(path='/tmp/inspect.png', full_page=True)
-content = page.content()
-buttons = page.locator('button').all()
-print([btn.text_content() for btn in buttons])
+```bash
+# Gera locators ao clicar
+npx playwright codegen http://localhost:5173/dashboard
+
+# Ou abra UI Mode e use o picker (botão de mira)
+npx playwright test --ui
 ```
 
-### Passo 2: Identifique seletores
+### Passo 2: Identifique o melhor locator (hierarquia)
 
-```python
-# Estratégias em ordem de preferência
-page.locator('button:has-text("Enviar")')       # Texto
-page.locator('[data-testid="submit-btn"]')      # Test ID (melhor!)
-page.locator('form button[type="submit"]')      # CSS
-page.locator('role=button[name="Enviar"]')      # Accessibility
+```typescript
+// Estratégias em ordem de preferência (recapitulando)
+page.getByRole('button', { name: 'Enviar' });   // 🥇 user-facing
+page.getByLabel('Email');                        // 🥈 form fields
+page.getByText('Bem-vindo');                     // 🥉 conteúdo
+page.getByTestId('submit-btn');                  // contrato explícito
+page.locator('css=.modal');                      // fallback
 ```
 
 ### Passo 3: Execute ações e capture efeitos
 
-```python
-page.click('[data-testid="menu-toggle"]')
-page.wait_for_selector('[data-testid="menu-open"]')
-page.screenshot(path='/tmp/menu_aberto.png')
+```typescript
+await page.getByTestId('menu-toggle').click();
+await expect(page.getByRole('menu')).toBeVisible();
+await page.screenshot({ path: 'menu-aberto.png', fullPage: true });
 ```
 
 ### Passo 4: Transforme em teste TDD
 
-```python
-def test_menu_abre_ao_clicar():
-    page.goto('http://localhost:5173')
-    page.wait_for_load_state('networkidle')
-    
-    # Menu inicialmente fechado
-    assert not page.locator('[data-testid="menu-open"]').is_visible()
-    
-    # Clica no toggle
-    page.click('[data-testid="menu-toggle"]')
-    
-    # Menu fica visível
-    assert page.locator('[data-testid="menu-open"]').is_visible()
+```typescript
+test('menu abre ao clicar', async ({ page }) => {
+  await page.goto('/');
+
+  const menu = page.getByRole('menu');
+  await expect(menu).not.toBeVisible();
+
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await expect(menu).toBeVisible();
+
+  // Acessibilidade — bonus
+  await expect(menu).toHaveAttribute('aria-expanded', 'true');
+});
 ```
 
 ---
 
-# ⚡ 7. Princípios Estratégicos
+# ⚡ 9. Princípios Estratégicos
 
 ## ✅ Comece sempre pelo comportamento externo
 
 Pergunte: **"O que precisa acontecer?"** → transforme em teste:
 
-```python
-# ❌ Errado: Pensar em "como" antes de "o quê"
-# def implementar_cache()...
+```typescript
+// ❌ Errado: pensar em "como" antes de "o quê"
+// function implementarCache()...
 
-# ✅ Certo: Definir o comportamento esperado
-def test_lista_carrega_em_menos_de_500ms():
-    page.goto('http://localhost:5173/lista')
-    start = time.time()
-    page.wait_for_selector('[data-testid="item-1"]')
-    elapsed = time.time() - start
-    assert elapsed < 0.5
+// ✅ Certo: definir o comportamento esperado
+test('lista carrega em menos de 500ms', async ({ page }) => {
+  const start = Date.now();
+  await page.goto('/lista');
+  await expect(page.getByTestId('item-1')).toBeVisible();
+  expect(Date.now() - start).toBeLessThan(500);
+});
 ```
 
 ---
@@ -365,43 +588,50 @@ def test_lista_carrega_em_menos_de_500ms():
 
 Um teste deve validar **um único comportamento**:
 
-```python
-# ❌ Errado: Muitos comportamentos em um teste
-def test_formulario():
-    page.fill('input[name="email"]', 'test@example.com')
-    page.fill('input[name="password"]', 'senha123')
-    page.fill('input[name="nome"]', 'João')
-    page.click('button[type="submit"]')
-    assert page.url == '/dashboard'
-    assert page.locator('.welcome').is_visible()
-    assert page.locator('.avatar').is_visible()
+```typescript
+// ❌ Muitos comportamentos em um teste
+test('formulário', async ({ page }) => {
+  await page.getByLabel('Email').fill('test@example.com');
+  await page.getByLabel('Senha').fill('senha123');
+  await page.getByLabel('Nome').fill('João');
+  await page.getByRole('button', { name: 'Cadastrar' }).click();
+  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page.getByRole('img', { name: 'Avatar' })).toBeVisible();
+  await expect(page.getByText('Bem-vindo')).toBeVisible();
+});
 
-# ✅ Certo: Um comportamento por teste
-def test_email_obrigatorio():
-    page.fill('input[name="email"]', '')
-    page.click('button[type="submit"]')
-    assert page.locator('.error-email').is_visible()
+// ✅ Um comportamento por teste
+test('email obrigatório', async ({ page }) => {
+  await page.goto('/signup');
+  await page.getByRole('button', { name: 'Cadastrar' }).click();
+  await expect(page.getByRole('alert')).toContainText('Email obrigatório');
+});
 
-def test_redireciona_para_dashboard_apos_login():
-    page.fill('input[name="email"]', 'test@example.com')
-    page.fill('input[name="password"]', 'senha123')
-    page.click('button[type="submit"]')
-    page.wait_for_url('**/dashboard')
-    assert page.url == '/dashboard'
+test('redireciona para dashboard após cadastro', async ({ page }) => {
+  await page.goto('/signup');
+  await page.getByLabel('Email').fill('test@example.com');
+  await page.getByLabel('Senha').fill('senha123');
+  await page.getByRole('button', { name: 'Cadastrar' }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+});
 ```
 
 ---
 
-## ✅ Use IA como parceira
+## ✅ Use IA como parceira (com responsabilidade)
 
-Peça ao Claude para:
+Peça ao Claude (ou outro AI assistant) para:
 - 🤖 Gerar testes a partir de um componente
 - 🤖 Sugerir edge cases
-- 🤖 Criar mocks/stubs
+- 🤖 Criar mocks/stubs e fixtures
 - 🤖 Refatorar mantendo testes verdes
-- 🤖 Debugar falhas de teste
+- 🤖 Debugar falhas de teste (anexe trace zip + screenshots)
+- 🤖 Converter testes legados (Jest/Cypress) para Playwright
 
-**Mas sempre verifique e valide o resultado!**
+**Mas sempre verifique e valide o resultado!** Outputs de IA podem:
+- Fabricar APIs que não existem (slopsquatting de imports)
+- Sugerir locators frágeis (CSS específicos da iteração atual)
+- Gerar assertions otimistas (sem cobrir edge cases)
 
 ---
 
@@ -409,37 +639,43 @@ Peça ao Claude para:
 
 O design emergirá naturalmente conforme os testes pedem:
 
-```python
-# Teste 1: Login básico
-def test_login_valido():
-    page.fill('input[name="email"]', 'user@example.com')
-    page.fill('input[name="password"]', 'senha123')
-    page.click('button[type="submit"]')
-    page.wait_for_url('**/dashboard')
+```typescript
+// Teste 1: Login básico
+test('login válido leva ao dashboard', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('user@example.com');
+  await page.getByLabel('Senha').fill('senha123');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(page).toHaveURL(/\/dashboard/);
+});
 
-# Teste 2: Erro de validação
-def test_email_invalido_mostra_erro():
-    page.fill('input[name="email"]', 'invalido')
-    page.fill('input[name="password"]', 'senha123')
-    page.click('button[type="submit"]')
-    assert page.locator('.error-message:has-text("Email inválido")').is_visible()
+// Teste 2: Erro de validação
+test('email inválido mostra erro', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('invalido');
+  await page.getByLabel('Senha').fill('senha123');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(page.getByRole('alert')).toContainText('Email inválido');
+});
 
-# Teste 3: Rate limiting
-def test_rate_limit_apos_3_tentativas():
-    for i in range(3):
-        page.fill('input[name="email"]', 'user@example.com')
-        page.fill('input[name="password"]', 'senhaerrada')
-        page.click('button[type="submit"]')
-        page.wait_for_timeout(500)
-    
-    assert page.locator('.error-message:has-text("Muitas tentativas")').is_visible()
+// Teste 3: Rate limiting
+test('rate limit após 5 tentativas falhas', async ({ page }) => {
+  await page.goto('/login');
+  for (let i = 0; i < 5; i++) {
+    await page.getByLabel('Email').fill('user@example.com');
+    await page.getByLabel('Senha').fill('senhaerrada');
+    await page.getByRole('button', { name: 'Entrar' }).click();
+    await page.waitForTimeout(500);
+  }
+  await expect(page.getByRole('alert')).toContainText('Muitas tentativas');
+});
 
-# O design emerge: preciso de validação, feedback visual, throttling...
+// O design emerge: validação, feedback visual, throttling, mensagens semânticas...
 ```
 
 ---
 
-# 🔧 8. Identificação de Verbosidade e Over-Engineering
+# 🔧 10. Identificação de Verbosidade e Over-Engineering
 
 Antes de refatorar, identifique **o que realmente merece refatoração**.
 
@@ -447,55 +683,67 @@ Antes de refatorar, identifique **o que realmente merece refatoração**.
 
 ### 1️⃣ Lógica Duplicada
 
-O mesmo bloco de código (diff, validação, formatação) aparece em 2+ lugares:
+O mesmo bloco de código aparece em 2+ lugares:
 
-```python
-# ❌ Duplicado
-def test_email_valido():
-    email = 'user@example.com'
-    assert '@' in email
-    assert '.' in email.split('@')[1]
+```typescript
+// ❌ Duplicado entre testes
+test('email A válido', () => {
+  const email = 'user@example.com';
+  expect(email.includes('@')).toBe(true);
+  expect(email.split('@')[1].includes('.')).toBe(true);
+});
 
-def test_email_em_formulario():
-    email = 'form@example.com'
-    assert '@' in email
-    assert '.' in email.split('@')[1]
+test('email B em formulário', () => {
+  const email = 'form@example.com';
+  expect(email.includes('@')).toBe(true);
+  expect(email.split('@')[1].includes('.')).toBe(true);
+});
 ```
 
 **Solução:**
 
-```python
-# ✅ Refatorado
-def is_email_valid(email):
-    parts = email.split('@')
-    return len(parts) == 2 and '.' in parts[1]
+```typescript
+// ✅ Helper compartilhado
+function isEmailValid(email: string): boolean {
+  const parts = email.split('@');
+  return parts.length === 2 && parts[1].includes('.');
+}
 
-def test_email_valido():
-    assert is_email_valid('user@example.com')
+test('email A válido', () => expect(isEmailValid('user@example.com')).toBe(true));
+test('email B em formulário', () => expect(isEmailValid('form@example.com')).toBe(true));
+```
 
-def test_email_em_formulario():
-    assert is_email_valid('form@example.com')
+Em Playwright, use **fixtures** para setup compartilhado:
+
+```typescript
+const test = base.extend({
+  loggedInUser: async ({ page }, use) => {
+    await login(page, 'user@example.com', 'senha123');
+    await use(page);
+  },
+});
 ```
 
 ---
 
 ### 2️⃣ Dependências Mortas
 
-Biblioteca instalada e configurada, mas sem ponto de uso:
+Biblioteca instalada mas não usada — cria superfície de ataque (ver skill de segurança, A03 Supply Chain):
 
-```python
-# ❌ Dependência não usada
-import unused_library
-from playwright.sync_api import sync_playwright
-
-def test_app():
-    # ... nunca usa unused_library
+```typescript
+// ❌ Imports não usados
+import unusedLibrary from 'unused-library';
+import { test, expect } from '@playwright/test';
 ```
 
 **Solução:**
 
 ```bash
-pip uninstall unused_library
+# Auditar com depcheck
+npx depcheck
+
+# Remover
+npm uninstall unused-library
 ```
 
 ---
@@ -504,30 +752,23 @@ pip uninstall unused_library
 
 Componente que apenas re-renderiza um filho:
 
-```javascript
+```jsx
 // ❌ Wrapper inútil
 function Card({ children }) {
   return <div>{children}</div>;
 }
-
-// Em seguida...
-return (
-  <Card>
-    <p>Conteúdo</p>
-  </Card>
-);
 ```
 
 **Solução:**
 
-```javascript
-// ✅ Use o div diretamente ou agregue valor
-function Card({ children, title }) {
+```jsx
+// ✅ Use o div diretamente OU agregue valor
+function Card({ children, title, variant = 'default' }) {
   return (
-    <div className="card">
-      {title && <h2>{title}</h2>}
+    <article className={`card card--${variant}`} role="region" aria-labelledby="card-title">
+      {title && <h2 id="card-title">{title}</h2>}
       {children}
-    </div>
+    </article>
   );
 }
 ```
@@ -536,85 +777,40 @@ function Card({ children, title }) {
 
 ### 4️⃣ Estilos Inline Repetidos
 
-O mesmo objeto de estilo com 4+ atributos copiado em 10+ lugares:
-
-```javascript
+```jsx
 // ❌ Repetido
-const buttonStyle = { padding: '8px 16px', color: '#fff', fontSize: '14px', fontWeight: 'bold' };
-
-return (
-  <>
-    <button style={buttonStyle}>Enviar</button>
-    <button style={buttonStyle}>Cancelar</button>
-    <button style={buttonStyle}>Deletar</button>
-  </>
-);
+<button style={{ padding: '8px 16px', color: '#fff', fontSize: '14px', fontWeight: 'bold' }}>
+  Enviar
+</button>
 ```
 
-**Solução:**
+**Solução com Tailwind ou CSS classes:**
 
-```javascript
-// ✅ Constante ou classe CSS
-const BUTTON_STYLE = { padding: '8px 16px', color: '#fff', fontSize: '14px', fontWeight: 'bold' };
+```jsx
+// ✅ Tailwind classes
+<button className="px-4 py-2 text-white text-sm font-bold">Enviar</button>
 
-return (
-  <>
-    <button style={BUTTON_STYLE}>Enviar</button>
-    <button style={BUTTON_STYLE}>Cancelar</button>
-    <button style={BUTTON_STYLE}>Deletar</button>
-  </>
-);
-
-// Ou melhor ainda (Tailwind):
-return (
-  <>
-    <button className="px-4 py-2 text-white font-bold text-sm">Enviar</button>
-    <button className="px-4 py-2 text-white font-bold text-sm">Cancelar</button>
-    <button className="px-4 py-2 text-white font-bold text-sm">Deletar</button>
-  </>
-);
+// ou ✅ componente reutilizável
+<Button variant="primary">Enviar</Button>
 ```
 
 ---
 
 ### 5️⃣ Arquivo Monolítico
 
-Arquivo único com +1500 linhas misturando hooks, UI, lógica de negócio:
-
-```javascript
-// ❌ Monolítico (é impossível testar unidades isoladas)
-// src/pages/Dashboard.jsx (2000 linhas)
-export function Dashboard() {
-  const [data, setData] = useState([]);
-  const [filter, setFilter] = useState('');
-  const [sort, setSort] = useState('name');
-  // ... 50+ linhas de lógica ...
-  
-  function fetchData() { /* ... */ }
-  function formatDate() { /* ... */ }
-  function validateInput() { /* ... */ }
-  // ... UI ...
-  return <div>...</div>;
-}
-```
+Arquivo único com +1500 linhas misturando hooks, UI, lógica de negócio (ver A06 — Insecure Design da skill de segurança):
 
 **Solução:**
 
-```javascript
-// ✅ Estrutura modular
-// src/hooks/useDashboardData.js
-export function useDashboardData() {
-  const [data, setData] = useState([]);
-  const [filter, setFilter] = useState('');
-  // ...
-  return { data, filter, fetchData };
-}
+```typescript
+// src/hooks/useDashboardData.ts
+export function useDashboardData() { /* lógica de dados */ }
 
-// src/utils/formatters.js
-export function formatDate(date) { /* ... */ }
-export function validateInput(input) { /* ... */ }
+// src/utils/formatters.ts
+export function formatDate(date: Date) { /* ... */ }
+export function validateInput(input: string) { /* ... */ }
 
-// src/pages/Dashboard.jsx (100 linhas)
+// src/pages/Dashboard.tsx (≤ 100 linhas)
 export function Dashboard() {
   const { data, filter, fetchData } = useDashboardData();
   return <DashboardView data={data} filter={filter} />;
@@ -633,6 +829,7 @@ Faça estas perguntas **antes** de qualquer refatoração:
 - [ ] Esse estilo inline tem **4+ atributos** repetidos **5+ vezes**?
 - [ ] Esse arquivo tem **+1000 linhas** misturando responsabilidades?
 - [ ] Ao escrever o teste desta função, precisei importar **coisas demais** do mesmo arquivo?
+- [ ] Os locators do teste dependem de **estrutura DOM** em vez de role/label?
 
 **Se respondeu SIM a qualquer pergunta → merece refatoração.**
 
@@ -643,17 +840,47 @@ Faça estas perguntas **antes** de qualquer refatoração:
 1. **Identificar** o problema usando o checklist
 2. **Escrever teste** que valida o comportamento atual (RED do TDD)
 3. **Refatorar** mantendo o teste verde (REFACTOR do TDD)
-4. **Confirmar** que `pytest` ou `npm test` continua passando
+4. **Confirmar** que `npx playwright test` ou `npm test` continua passando
 5. **Commitar** como `refactor(escopo): descrição`
 
 ```bash
-# Exemplo
-git commit -m "refactor(dashboard): extrair hooks de useDashboardData para modularizar"
+git commit -m "refactor(dashboard): extrair useDashboardData hook para modularizar"
 ```
 
 ---
 
-# 📋 9. Checklist Prático da Skill
+# 🌐 11. Testes de Acessibilidade (Recomendação 2026)
+
+Use locators baseados em role como **força dupla**: testam funcionalidade E acessibilidade:
+
+```typescript
+test('formulário acessível', async ({ page }) => {
+  await page.goto('/signup');
+
+  // Inputs com labels associados (getByLabel falha se não houver)
+  await page.getByLabel('Email').fill('user@example.com');
+  await page.getByLabel('Senha').fill('senha123');
+
+  // Botão com nome acessível (não pode ser apenas ícone sem aria-label)
+  await page.getByRole('button', { name: 'Cadastrar' }).click();
+
+  // Mensagens de erro com role="alert" (announced para screen readers)
+  await expect(page.getByRole('alert')).toBeVisible();
+});
+
+// Auditoria automatizada com @axe-core/playwright
+import AxeBuilder from '@axe-core/playwright';
+
+test('página sem violações WCAG', async ({ page }) => {
+  await page.goto('/dashboard');
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations).toEqual([]);
+});
+```
+
+---
+
+# 📋 12. Checklist Prático da Skill
 
 Use este checklist antes de submeter qualquer feature ou refatoração:
 
@@ -670,13 +897,29 @@ Use este checklist antes de submeter qualquer feature ou refatoração:
 ### Qualidade de Testes
 
 - [ ] Cada teste valida **um único comportamento**?
-- [ ] Os testes cobrem **happy path + edge cases**?
+- [ ] Os testes cobrem **happy path + edge cases + error cases**?
 - [ ] Os testes funcionam isoladamente (ordem não importa)?
-- [ ] Seletores no Playwright são **estáveis** (`data-testid` preferencialmente)?
+- [ ] Locators no Playwright são **user-facing** (`getByRole`/`getByLabel` antes de `getByTestId`)?
+- [ ] Usei **web-first assertions** (`expect(locator).toX()` em vez de `expect(await ...)` síncrono)?
+- [ ] Estado entre testes é resetado (fixtures, beforeEach)?
+
+### Performance e CI
+
+- [ ] Testes paralelos quando possível (`fullyParallel: true`)?
+- [ ] Sharding configurado para suites grandes (500+ testes)?
+- [ ] Trace gravado apenas em retry (`trace: 'on-first-retry'`)?
+- [ ] API seeding em vez de UI login para autenticação?
+- [ ] Browsers instalados via `npx playwright install --with-deps`?
+
+### Acessibilidade
+
+- [ ] Locators baseados em role/label (validam acessibilidade indiretamente)?
+- [ ] Testes com `@axe-core/playwright` para violações WCAG?
+- [ ] Mensagens de erro com `role="alert"`?
 
 ### Refatoração
 
-- [ ] Identifiquei padrões de alerta (duplicação, wrappers, etc)?
+- [ ] Identifiquei padrões de alerta (duplicação, wrappers, monolitos)?
 - [ ] Escrevi testes **antes** de refatorar?
 - [ ] Todos os testes continuam passando?
 - [ ] Commit é **production-ready**?
@@ -690,8 +933,11 @@ TDD não é sobre testes. É sobre **evoluir código com segurança, confiança 
 Combine:
 - 🧪 **Testes como especificação** (antes do código)
 - 🎬 **Playwright para automação real** (UI e fluxos de usuário)
+- 🎯 **Locators user-facing** (resilientes a mudanças, validam acessibilidade)
+- 🪄 **Web-first assertions** (eliminam flakiness)
 - 🔄 **Refatoração contínua** (identificando e limpando dívida técnica)
-- 🤖 **IA como copilota** (sugestões, edge cases, debugging)
+- ⚡ **Sharding e tracing inteligente** (CI escalável)
+- 🤖 **IA como copilota** (sugestões, edge cases, debugging — sempre validada)
 
 E você terá uma base sólida para evoluir qualquer aplicação web.
 
@@ -699,12 +945,25 @@ E você terá uma base sólida para evoluir qualquer aplicação web.
 
 # 📚 Referências e Exemplos
 
+**Documentação oficial:**
+- [Playwright Best Practices](https://playwright.dev/docs/best-practices)
+- [Playwright Locators](https://playwright.dev/docs/locators)
+- [Playwright Trace Viewer](https://playwright.dev/docs/trace-viewer)
+- [Playwright UI Mode](https://playwright.dev/docs/test-ui-mode)
+- [Vitest](https://vitest.dev/)
+- [@axe-core/playwright](https://www.npmjs.com/package/@axe-core/playwright)
+
 **Arquivos de exemplo disponíveis em `examples/`:**
-- `element_discovery.py` - Descobrir elementos e seletores
-- `static_html_automation.py` - Automação com HTML local
-- `console_logging.py` - Capturar logs do console
-- `e2e_test_example.py` - Teste E2E completo com TDD
+- `element_discovery.ts` — Descobrir elementos com Codegen e Pick Locator
+- `static_html_automation.ts` — Automação com HTML local
+- `console_logging.ts` — Capturar logs do console
+- `e2e_test_example.ts` — Teste E2E completo com TDD
+- `accessibility_test.ts` — Auditoria automatizada com axe-core
 
 **Helper Scripts em `scripts/`:**
-- `with_server.py` - Gerenciar ciclo de vida do servidor
+- `with_server.py` — Gerenciar ciclo de vida do servidor (legado — prefira `webServer` no config)
 - `--help` sempre disponível para ver uso específico
+
+---
+
+*Skill versão 2026.05 | Atualizada com Playwright best practices 2026, web-first assertions, locator hierarchy oficial (getByRole > getByLabel > getByTestId), CI sharding, fixtures de autenticação via API, trace on-first-retry, integração com axe-core para a11y.*
