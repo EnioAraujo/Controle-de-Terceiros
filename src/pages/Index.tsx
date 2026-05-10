@@ -11,6 +11,7 @@ import { Configuracoes } from "@/components/Configuracoes";
 import { Lancamentos } from "@/components/Lancamentos";
 import { useStorage } from "@/hooks/useStorage";
 import { useOpcoes } from "@/hooks/useOpcoes";
+import { useHierarquia } from "@/hooks/useHierarquia";
 import { useTabManager } from "@/hooks/useTabManager";
 import { usePrivacyAccepted, PrivacyNotice } from "@/components/PrivacyNotice";
 import { Dashboard } from "@/components/Dashboard";
@@ -30,8 +31,9 @@ const Index = () => {
   const { openTabs, activeTab, openTab, closeTab, setActiveTab } = useTabManager<TabId>("dashboard");
   const [registros, setRegistros, loadingRegs] = useStorage();
   const [opcoes, setOpcoes, loadingOpts]        = useOpcoes();
+  const hierarquiaApi                          = useHierarquia();
   const [saved, setSaved]                      = useState(false);
-  const loading                                = loadingRegs || loadingOpts;
+  const loading                                = loadingRegs || loadingOpts || hierarquiaApi.loading;
   const [privacyAccepted, acceptPrivacy]       = usePrivacyAccepted();
   const [dpoCfg, setDpoCfg]                   = useState<{ nome: string; email: string }>({ nome: "", email: "" });
   const [isAdmin, setIsAdmin]                  = useState(false);
@@ -173,10 +175,10 @@ const Index = () => {
           ) : (
             <>
               {activeTab === "dashboard"     && <Dashboard    registros={registros} opcoes={opcoes} turnosConfig={turnosConfig} isAdminOrMod={isAdminOrMod} />}
-              {activeTab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} turnosConfig={turnosConfig} capacidadeConfig={capacidadeConfig} isAdmin={isAdmin} waTemplate={waTemplate} />}
+              {activeTab === "lancamentos"   && <Lancamentos  registros={registros} setRegistros={wrap(setRegistros)} opcoes={opcoes} hierarquia={hierarquiaApi.hierarquia} turnosConfig={turnosConfig} capacidadeConfig={capacidadeConfig} isAdmin={isAdmin} waTemplate={waTemplate} />}
               {activeTab === "projecao"      && <ProjecaoPage  registros={registros} opcoes={opcoes} />}
               {activeTab === "fechamento"    && <FechamentoTab registros={registros} opcoes={opcoes} capacidadeConfig={capacidadeConfig} />}
-              {activeTab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} registros={registros} setRegistros={setRegistros} isAdmin={isAdmin} isAdminOrMod={isAdminOrMod} setWaTemplate={setWaTemplate} capacidadeConfig={capacidadeConfig} setCapacidadeConfig={setCapacidadeConfig} />}
+              {activeTab === "configuracoes" && <Configuracoes opcoes={opcoes} setOpcoes={setOpcoes} registros={registros} setRegistros={setRegistros} isAdmin={isAdmin} isAdminOrMod={isAdminOrMod} setWaTemplate={setWaTemplate} capacidadeConfig={capacidadeConfig} setCapacidadeConfig={setCapacidadeConfig} hierarquiaApi={hierarquiaApi} />}
             </>
           )}
           </div>

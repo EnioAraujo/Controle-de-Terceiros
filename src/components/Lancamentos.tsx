@@ -58,13 +58,14 @@ interface LancamentosProps {
   registros: Registro[];
   setRegistros: (val: Registro[]) => void;
   opcoes: Opcoes;
+  hierarquia: import("@/types/hierarquia").Hierarquia;
   turnosConfig: TurnoConfig[];
   capacidadeConfig: TurnoCapacidade[];
   isAdmin: boolean;
   waTemplate: WhatsAppTemplate;
 }
 
-export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, capacidadeConfig, isAdmin, waTemplate }: LancamentosProps) => {
+export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turnosConfig, capacidadeConfig, isAdmin, waTemplate }: LancamentosProps) => {
   const { toast } = useToast ? useToast() : { toast: () => {} };
   const { t, lang } = useI18n();
   const [filtros, setFiltros] = useState<Filtros>({ data: hoje(), turno: "", fornecedor: "", unidade: "", busca: "" });
@@ -390,7 +391,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, turnosConfig, cap
           <FormLancamento
             inicial={modal === "new" || Array.isArray(modal) ? null : modal as Registro}
             loteInicial={Array.isArray(modal) ? modal : undefined}
-            onSave={salvar} onCancel={() => setModal(null)} opcoes={opcoes} registros={registros} turnosConfig={turnosConfig} />
+            onSave={salvar} onCancel={() => setModal(null)} opcoes={opcoes} hierarquia={hierarquia} registros={registros} turnosConfig={turnosConfig} />
         </Modal>
       )}
 

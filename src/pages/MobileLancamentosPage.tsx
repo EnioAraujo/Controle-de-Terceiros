@@ -14,6 +14,7 @@ import { dbToTurnoConfig } from "@/lib/fechamento-utils";
 import type { TurnoConfig } from "@/lib/fechamento-utils";
 import { FormLancamento } from "@/components/FormLancamento";
 import type { Opcoes } from "@/types/attendance";
+import { useHierarquia } from "@/hooks/useHierarquia";
 import { useI18n } from "@/hooks/use-i18n";
 import { AppShell } from "@/components/layout/AppShell";
 import { ActivityBar, type ActivityItem } from "@/components/layout/ActivityBar";
@@ -348,6 +349,7 @@ const MobileLancamentosPage = () => {
   // ── Estado dos dados ──
   const [registros, setRegistrosState] = useState<Registro[]>([]);
   const [opcoes, setOpcoes] = useState<Opcoes>(OPCOES_DEFAULT);
+  const hierarquiaApi = useHierarquia();
   const [turnosConfig, setTurnosConfig] = useState<TurnoConfig[]>([]);
   const [waTemplate, setWaTemplate] = useState<WhatsAppTemplate>(WA_DEFAULT_TEMPLATE);
   const [loading, setLoading] = useState(true);
@@ -960,6 +962,7 @@ const MobileLancamentosPage = () => {
             onSave={salvar}
             onCancel={() => setModal(null)}
             opcoes={opcoes}
+            hierarquia={hierarquiaApi.hierarquia}
             registros={registros}
             turnosConfig={turnosConfig}
           />

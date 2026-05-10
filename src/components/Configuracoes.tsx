@@ -1,10 +1,12 @@
 import type { Registro, Opcoes } from "@/types/attendance";
 import type { WhatsAppTemplate } from "@/lib/format-utils";
 import type { TurnoCapacidade } from "@/lib/fechamento-utils";
+import type { HierarquiaApi } from "@/hooks/useHierarquia";
 import { useI18n } from "@/hooks/use-i18n";
 import { BlockHeader } from "@/components/atoms";
 import { ConfigOpcoesSection } from "@/components/configuracoes/ConfigOpcoesSection";
-import { ConfigNomesSection } from "@/components/configuracoes/ConfigNomesSection";
+import { ConfigHierarquiaSection } from "@/components/configuracoes/ConfigHierarquiaSection";
+import { ConfigPessoasSection } from "@/components/configuracoes/ConfigPessoasSection";
 import { ConfigTurnosDiariasSection } from "@/components/configuracoes/ConfigTurnosDiariasSection";
 import { ConfigCapacidadeSection } from "@/components/configuracoes/ConfigCapacidadeSection";
 import { ConfigWhatsAppSection } from "@/components/configuracoes/ConfigWhatsAppSection";
@@ -22,6 +24,7 @@ interface ConfiguracoesProps {
   setWaTemplate: (t: WhatsAppTemplate) => void;
   capacidadeConfig: TurnoCapacidade[];
   setCapacidadeConfig: (val: TurnoCapacidade[]) => void;
+  hierarquiaApi: HierarquiaApi;
 }
 
 export const Configuracoes = ({
@@ -34,6 +37,7 @@ export const Configuracoes = ({
   setWaTemplate,
   capacidadeConfig,
   setCapacidadeConfig,
+  hierarquiaApi,
 }: ConfiguracoesProps) => {
   const { t } = useI18n();
 
@@ -44,14 +48,19 @@ export const Configuracoes = ({
         <div style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>{t("cfg_desc")}</div>
       </div>
 
-      <ConfigOpcoesSection
-        opcoes={opcoes}
-        setOpcoes={setOpcoes}
-        registros={registros}
-        setRegistros={setRegistros}
+      <ConfigHierarquiaSection
+        hierarquia={hierarquiaApi.hierarquia}
+        api={hierarquiaApi}
         isAdminOrMod={isAdminOrMod}
       />
-      <ConfigNomesSection
+      <ConfigPessoasSection
+        pessoas={hierarquiaApi.hierarquia.pessoas}
+        cargos={opcoes.cargos}
+        fornecedores={opcoes.fornecedores}
+        api={hierarquiaApi}
+        isAdminOrMod={isAdminOrMod}
+      />
+      <ConfigOpcoesSection
         opcoes={opcoes}
         setOpcoes={setOpcoes}
         registros={registros}

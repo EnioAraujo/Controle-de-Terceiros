@@ -31,13 +31,13 @@ export interface Opcoes {
   nomes:        string[];
 }
 
+// Catálogos GLOBAIS planos (gerenciados em ConfigOpcoesSection).
+// Os campos hierárquicos (unidades/ccList/motivos) saíram daqui e passaram
+// a ser gerenciados em ConfigHierarquiaSection via tabelas dedicadas.
 export const OPCOES_CONFIG: { key: keyof Omit<Opcoes, "nomes">; label: string; cor: string }[] = [
-  { key: "turnos",       label: "Turnos",          cor: "#1A56DB" },
-  { key: "unidades",     label: "Unidades",         cor: "#0E9F6E" },
-  { key: "fornecedores", label: "Fornecedores",     cor: "#D97706" },
-  { key: "motivos",      label: "Motivos",          cor: "#6C63FF" },
-  { key: "cargos",       label: "Cargos",           cor: "#E02424" },
-  { key: "ccList",       label: "Centros de Custo", cor: "#0891B2" },
+  { key: "turnos",       label: "Turnos",       cor: "#1A56DB" },
+  { key: "fornecedores", label: "Fornecedores", cor: "#D97706" },
+  { key: "cargos",       label: "Cargos",       cor: "#E02424" },
 ];
 
 // Sem defaults hardcoded — fonte de verdade é a tabela opcoes no Supabase.

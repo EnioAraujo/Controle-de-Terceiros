@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Registro } from "@/types/attendance";
 import type { Opcoes } from "@/types/attendance";
+import type { Hierarquia } from "@/types/hierarquia";
 import { uuid, sanitize } from "@/lib/audit";
 import { hoje, fmt, calcHoras } from "@/lib/format-utils";
 import type { TurnoConfig } from "@/lib/fechamento-utils";
@@ -14,15 +15,22 @@ export interface FormLancamentoProps {
   onSave: (registros: Registro[]) => void;
   onCancel: () => void;
   opcoes: Opcoes;
+  hierarquia: Hierarquia;
   registros?: Registro[];
   turnosConfig?: TurnoConfig[];
 }
 
-export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, registros: todosRegistros = [], turnosConfig = [] }: FormLancamentoProps) => {
+export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes, hierarquia, registros: todosRegistros = [], turnosConfig = [] }: FormLancamentoProps) => {
   const { t } = useI18n();
   const isEdit = !!inicial && !loteInicial?.length;
   const isLoteEdit = !!loteInicial?.length;
   const base = loteInicial?.[0] ?? inicial;
+
+  const unidadeInicial = base?.unidade || hierarquia.unidades[0]?.nome || "";
+  const unidadeObjInicial = hierarquia.unidades.find(u => u.nome === unidadeInicial);
+  const ccInicial = base?.cc || unidadeObjInicial?.ccs[0]?.codigo || "";
+  const ccObjInicial = unidadeObjInicial?.ccs.find(c => c.codigo === ccInicial);
+  const motivoInicial = base?.motivo || ccObjInicial?.operacoes[0]?.nome || "";
 
   const [comum, setComum] = useState({
     data:        base?.data        || hoje(),
@@ -31,12 +39,30 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
     horaSaida:   base?.horaSaida   || "13:20",
     cargo:       base?.cargo       || opcoes.cargos[0]       || "",
     setor:       base?.setor       || "",
-    unidade:     base?.unidade     || opcoes.unidades[0]     || "",
-    cc:          base?.cc          || opcoes.ccList[0]       || "",
-    motivo:      base?.motivo      || opcoes.motivos[0]      || "",
+    unidade:     unidadeInicial,
+    cc:          ccInicial,
+    motivo:      motivoInicial,
     fornecedor:  base?.fornecedor  || opcoes.fornecedores[0] || "",
     obs:         isLoteEdit ? "" : (base?.obs || ""),
   });
+
+  // Cascata: CCs da unidade atual, operações do CC atual
+  const ccsDisponiveis = useMemo(
+    () => hierarquia.unidades.find(u => u.nome === comum.unidade)?.ccs ?? [],
+    [hierarquia.unidades, comum.unidade],
+  );
+  const opsDisponiveis = useMemo(
+    () => ccsDisponiveis.find(c => c.codigo === comum.cc)?.operacoes ?? [],
+    [ccsDisponiveis, comum.cc],
+  );
+
+  // Mapa de Pessoa por nome (uppercase) para auto-preencher cargo
+  const pessoasPorNome = useMemo(() => {
+    const m = new Map<string, { cargo: string; fornecedor: string }>();
+    hierarquia.pessoas.forEach(p => m.set(p.nome.toUpperCase(), { cargo: p.cargo, fornecedor: p.fornecedor }));
+    return m;
+  }, [hierarquia.pessoas]);
+  const nomesSugeridos = useMemo(() => hierarquia.pessoas.map(p => p.nome), [hierarquia.pessoas]);
 
   const [pessoas, setPessoas] = useState<PessoaRow[]>(
     isLoteEdit
@@ -56,7 +82,31 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
         return;
       }
     }
+    if (k === "unidade") {
+      const u = hierarquia.unidades.find(x => x.nome === val);
+      const firstCC = u?.ccs[0];
+      const firstOp = firstCC?.operacoes[0]?.nome ?? "";
+      setComum(prev => ({ ...prev, unidade: val, cc: firstCC?.codigo ?? "", motivo: firstOp }));
+      return;
+    }
+    if (k === "cc") {
+      const cc = ccsDisponiveis.find(c => c.codigo === val);
+      const firstOp = cc?.operacoes[0]?.nome ?? "";
+      setComum(prev => ({ ...prev, cc: val, motivo: firstOp }));
+      return;
+    }
     setComum(prev => ({ ...prev, [k]: val }));
+  };
+
+  const setPNome = (i: number, v: string) => {
+    const valUpper = v.toUpperCase();
+    const pessoa = pessoasPorNome.get(valUpper);
+    setPessoas(ps => ps.map((p, idx) =>
+      idx === i ? { ...p, nome: valUpper, cargo: pessoa?.cargo || p.cargo } : p
+    ));
+    if (pessoa?.fornecedor && !isEdit && !isLoteEdit && i === 0) {
+      setComum(prev => ({ ...prev, fornecedor: pessoa.fornecedor }));
+    }
   };
 
   const handleQtd = (n: number) => {
@@ -183,9 +233,21 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
         </div>
         <G cols={4}>
           <Select label={t("form_label_forn")} value={comum.fornecedor} onChange={e => setC("fornecedor", e.target.value)}>{opcoes.fornecedores.map(c => <option key={c}>{c}</option>)}</Select>
-          <Select label={t("form_label_unidade")} value={comum.unidade} onChange={e => setC("unidade", e.target.value)}>{opcoes.unidades.map(c => <option key={c}>{c}</option>)}</Select>
-          <Select label={t("form_label_motivo")} value={comum.motivo} onChange={e => setC("motivo", e.target.value)}>{opcoes.motivos.map(c => <option key={c}>{c}</option>)}</Select>
-          <Select label={t("form_label_cc")} value={comum.cc} onChange={e => setC("cc", e.target.value)}>{opcoes.ccList.map(c => <option key={c}>{c}</option>)}</Select>
+          <Select label={t("form_label_unidade")} value={comum.unidade} onChange={e => setC("unidade", e.target.value)}>
+            {hierarquia.unidades.length === 0 && <option value="">—</option>}
+            {!hierarquia.unidades.some(u => u.nome === comum.unidade) && comum.unidade && <option value={comum.unidade}>{comum.unidade}</option>}
+            {hierarquia.unidades.map(u => <option key={u.id} value={u.nome}>{u.nome}</option>)}
+          </Select>
+          <Select label={t("form_label_cc")} value={comum.cc} onChange={e => setC("cc", e.target.value)}>
+            {ccsDisponiveis.length === 0 && <option value="">—</option>}
+            {!ccsDisponiveis.some(c => c.codigo === comum.cc) && comum.cc && <option value={comum.cc}>{comum.cc}</option>}
+            {ccsDisponiveis.map(c => <option key={c.id} value={c.codigo}>{c.codigo}</option>)}
+          </Select>
+          <Select label={t("form_label_motivo")} value={comum.motivo} onChange={e => setC("motivo", e.target.value)}>
+            {opsDisponiveis.length === 0 && <option value="">—</option>}
+            {!opsDisponiveis.some(o => o.nome === comum.motivo) && comum.motivo && <option value={comum.motivo}>{comum.motivo}</option>}
+            {opsDisponiveis.map(o => <option key={o.id} value={o.nome}>{o.nome}</option>)}
+          </Select>
         </G>
       </div>
 
@@ -206,8 +268,8 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
         </div>
         <div style={{ border:"1px solid #E2E6EC", borderRadius:10, overflow:"hidden" }}>
           <div style={{ overflowX:"auto" }}>
-          <div className="mobile-form-worker-outer" style={{ minWidth:560 }}>
-          <div className="mobile-form-worker-header" style={{ display:"grid", gridTemplateColumns:"36px 130px 1fr 110px 110px 62px", background:"#F8FAFC", borderBottom:"1px solid #E2E6EC", padding:"9px 14px", gap:8 }}>
+          <div className="mobile-form-worker-outer" style={{ minWidth:610 }}>
+          <div className="mobile-form-worker-header" style={{ display:"grid", gridTemplateColumns:"36px 180px 1fr 110px 110px 62px", background:"#F8FAFC", borderBottom:"1px solid #E2E6EC", padding:"9px 14px", gap:8 }}>
             {[t("form_col_num"), t("form_label_cargo"), t("form_col_nome"), t("form_col_entrada"), t("form_col_saida"), t("form_col_total")].map(h => (
               <div key={h} style={{ fontSize:10, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:.6 }}>{h}</div>
             ))}
@@ -218,16 +280,16 @@ export const FormLancamento = ({ inicial, loteInicial, onSave, onCancel, opcoes,
             const notLast = i < pessoas.length - 1;
             return (
               <div key={i}>
-                <div className="mobile-form-worker-grid" style={{ display:"grid", gridTemplateColumns:"36px 130px 1fr 110px 110px 62px", gap:8, padding:"8px 14px", borderBottom: isEdit && notLast ? "1px solid #F1F5F9" : "none", alignItems:"center", background: bgRow }}>
+                <div className="mobile-form-worker-grid" style={{ display:"grid", gridTemplateColumns:"36px 180px 1fr 110px 110px 62px", gap:8, padding:"8px 14px", borderBottom: isEdit && notLast ? "1px solid #F1F5F9" : "none", alignItems:"center", background: bgRow }}>
                   <div style={{ fontSize:11, fontWeight:700, color:"#94A3B8", textAlign:"center" }}>{i + 1}</div>
                   <select value={p.cargo} onChange={e => setP(i, "cargo", e.target.value)}
-                    style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:12, background:"#FAFBFC", width:"100%", outline:"none", fontFamily:"inherit" }}>
+                    style={{ border:"1.5px solid #E2E6EC", borderRadius:7, padding:"7px 8px", fontSize:10, background:"#FAFBFC", width:"100%", outline:"none", fontFamily:"inherit" }}>
                     {opcoes.cargos.map(c => <option key={c}>{c}</option>)}
                   </select>
                   <AutocompleteNome
                     value={p.nome}
-                    onChange={v => setP(i, "nome", v)}
-                    suggestions={opcoes.nomes}
+                    onChange={v => setPNome(i, v)}
+                    suggestions={nomesSugeridos}
                     placeholder={t("form_placeholder_nome")}
                   />
                   <input type="time" value={p.horaEntrada} onChange={e => setP(i, "horaEntrada", e.target.value)}
