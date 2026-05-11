@@ -3,17 +3,15 @@ import type { Registro } from "@/types/attendance";
 import type { Opcoes } from "@/types/attendance";
 import { supabase, authReady } from "@/lib/supabase";
 import { logAudit, sanitize } from "@/lib/audit";
-import type { TranslationKey } from "@/lib/i18n-translations";
 import { fmt, mesAtual } from "@/lib/format-utils";
 import {
   type TurnoConfig, type DiariaConfig, type FechamentoItem, type Fechamento,
-  type FechamentoStatus, type ResumoPessoa, type TurnoCapacidade,
+  type ResumoPessoa, type TurnoCapacidade,
   dbToTurnoConfig, dbToDiariaConfig,
   dbToFechamento, fechamentoToDb,
   dbToFechamentoItem, fechamentoItemToDb,
   gerarItensFechamento, calcularTotal, agruparPorPessoa,
   periodosPadrao,
-  STATUS_COLORS, NEXT_STATUS,
 } from "@/lib/fechamento-utils";
 import {
   dividirItensPorFornecedor,
@@ -26,13 +24,6 @@ import { useI18n } from "@/hooks/use-i18n";
 import { BlockHeader } from "@/components/atoms";
 import { FornecedoresMultiSelect } from "@/components/fechamento/FornecedoresMultiSelect";
 import { FechamentoItensTable } from "@/components/fechamento/FechamentoItensTable";
-
-const STATUS_LABEL_KEY: Record<FechamentoStatus, TranslationKey> = {
-  rascunho: "fech_status_rascunho",
-  enviado:  "fech_status_enviado",
-  revisao:  "fech_status_revisao",
-  aprovado: "fech_status_aprovado",
-};
 
 export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registros: Registro[]; opcoes: Opcoes; capacidadeConfig: TurnoCapacidade[] }) => {
   const { t, lang } = useI18n();
@@ -142,7 +133,6 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
       fornecedor: fornecedorAlvo,
       dataInicio: intervalo.inicio,
       dataFim: intervalo.fim,
-      status: "rascunho",
       valorTotal: totalAlvo,
     };
 
@@ -233,29 +223,6 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
     }, 3000);
   };
 
-  const avancarStatus = async () => {
-    if (!fechamento?.id) return;
-    const next = NEXT_STATUS[fechamento.status];
-    if (!next) return;
-    const { error } = await supabase.from("fechamentos").update({ status: next }).eq("id", fechamento.id);
-    if (!error) {
-      const updated = { ...fechamento, status: next };
-      setFechamento(updated);
-      logAudit("UPDATE", "fechamentos", fechamento.id, { status: next });
-      setHistorico(prev => prev.map(h => h.id === fechamento.id ? updated : h));
-    }
-  };
-
-  const voltarRevisao = async () => {
-    if (!fechamento?.id || fechamento.status !== "enviado") return;
-    const { error } = await supabase.from("fechamentos").update({ status: "revisao" }).eq("id", fechamento.id);
-    if (!error) {
-      const updated = { ...fechamento, status: "revisao" as FechamentoStatus };
-      setFechamento(updated);
-      logAudit("UPDATE", "fechamentos", fechamento.id, { status: "revisao" });
-      setHistorico(prev => prev.map(h => h.id === fechamento.id ? updated : h));
-    }
-  };
 
   const abrirFechamento = async (f: Fechamento) => {
     if (!f.id) return;
@@ -468,14 +435,6 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
               <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: .6, marginBottom: 4 }}>{t("fech_total")}</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: "#0E9F6E" }}>{fmtCurrency(total)}</div>
             </div>
-            {fechamento && (
-              <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 20px", flex: 1, minWidth: 120, textAlign: "center" }}>
-                <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: .6, marginBottom: 4 }}>{t("fech_status")}</div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: STATUS_COLORS[fechamento.status] }}>
-                  {t(STATUS_LABEL_KEY[fechamento.status])}
-                </div>
-              </div>
-            )}
           </div>
 
           {itens.length === 0 ? (
@@ -509,16 +468,6 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
                 <button onClick={salvar} style={{ background: "#1A56DB", border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
                   {fornecedores.length > 1 ? t("fech_salvar_lote") : t("fech_salvar")}
                 </button>
-                {fechamento && NEXT_STATUS[fechamento.status] && (
-                  <button onClick={avancarStatus} style={{ background: STATUS_COLORS[NEXT_STATUS[fechamento.status]!], border: "none", borderRadius: 8, padding: "8px 20px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
-                    {t("fech_avancar_status")}
-                  </button>
-                )}
-                {fechamento?.status === "enviado" && (
-                  <button onClick={voltarRevisao} style={{ background: "#E02424", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
-                    {t("fech_voltar_revisao")}
-                  </button>
-                )}
                 <button onClick={exportarXlsx} style={{ background: "#0E9F6E", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
                   {t("fech_exportar_xlsx")}
                 </button>
@@ -553,9 +502,6 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
                   <span style={{ fontWeight: 700, color: "#0F1C2E" }}>{h.fornecedor}</span>
                   <span style={{ color: "#64748B", fontFamily: "monospace" }}>{fmt(h.dataInicio, lang)} → {fmt(h.dataFim, lang)}</span>
-                  <span style={{ fontWeight: 700, color: STATUS_COLORS[h.status], fontSize: 11, background: `${STATUS_COLORS[h.status]}18`, borderRadius: 99, padding: "2px 8px" }}>
-                    {t(STATUS_LABEL_KEY[h.status])}
-                  </span>
                   <span style={{ fontWeight: 700, color: "#0E9F6E" }}>{fmtCurrency(h.valorTotal)}</span>
                 </div>
                 <div style={{ display: "flex", gap: 6 }}>

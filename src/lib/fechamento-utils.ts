@@ -371,18 +371,3 @@ export const turnoCapacidadeToDb = (c: TurnoCapacidade) => ({
   vigencia_inicio: c.vigenciaInicio,
   vigencia_fim:    c.vigenciaFim,
 });
-
-// ─── STATUS LABELS ──────────────────────────────────────────
-
-export const STATUS_COLORS: Record<FechamentoStatus, string> = {
-  rascunho: "#64748B",
-  enviado:  "#D97706",
-  revisao:  "#E02424",
-  aprovado: "#0E9F6E",
-};
-
-export const NEXT_STATUS: Partial<Record<FechamentoStatus, FechamentoStatus>> = {
-  rascunho: "enviado",
-  enviado:  "aprovado",
-  revisao:  "enviado",
-};

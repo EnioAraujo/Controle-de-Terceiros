@@ -14,8 +14,6 @@ import {
   dbToFechamentoItem,
   dbToDiariaConfig,
   dbToTurnoConfig,
-  STATUS_COLORS,
-  NEXT_STATUS,
   type DiariaConfig,
   type TurnoConfig,
 } from "./fechamento-utils";
@@ -351,7 +349,6 @@ describe("dbToFechamento / fechamentoToDb", () => {
       fornecedor: "JSS",
       data_inicio: "2026-03-01",
       data_fim: "2026-03-10",
-      status: "rascunho",
       valor_total: "1500.50",
       created_at: "2026-03-14T10:00:00Z",
       updated_at: "2026-03-14T10:00:00Z",
@@ -409,19 +406,3 @@ describe("dbToDiariaConfig / dbToTurnoConfig", () => {
   });
 });
 
-// ─── Constantes ──────────────────────────────────────────────
-
-describe("constantes", () => {
-  it("STATUS_COLORS tem 4 status", () => {
-    expect(Object.keys(STATUS_COLORS)).toHaveLength(4);
-  });
-  it("NEXT_STATUS: rascunho → enviado", () => {
-    expect(NEXT_STATUS.rascunho).toBe("enviado");
-  });
-  it("NEXT_STATUS: enviado → aprovado", () => {
-    expect(NEXT_STATUS.enviado).toBe("aprovado");
-  });
-  it("NEXT_STATUS: revisao → enviado", () => {
-    expect(NEXT_STATUS.revisao).toBe("enviado");
-  });
-});

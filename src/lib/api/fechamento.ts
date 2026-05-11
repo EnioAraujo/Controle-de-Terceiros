@@ -15,8 +15,6 @@ import type { Registro } from "@/types/attendance";
 // TIPOS
 // ═══════════════════════════════════════════════════════════════
 
-export type FechamentoStatus = "rascunho" | "enviado" | "revisao" | "aprovado";
-
 export interface FechamentoItem {
   registro_id: string;
   nome: string;
@@ -34,7 +32,6 @@ export interface FechamentoInput {
   fornecedor: string;
   data_inicio: string;
   data_fim: string;
-  status: FechamentoStatus;
   valor_total: number;
   itens: FechamentoItem[];
 }
@@ -44,7 +41,6 @@ export interface FechamentoOutput {
   fornecedor: string;
   data_inicio: string;
   data_fim: string;
-  status: FechamentoStatus;
   valor_total: number;
   created_at: string;
   updated_at: string;
@@ -96,7 +92,6 @@ export async function criarFechamento(
       p_fornecedor: input.fornecedor,
       p_data_inicio: input.data_inicio,
       p_data_fim: input.data_fim,
-      p_status: input.status,
       p_valor_total: input.valor_total,
       p_created_by: session.user.id,
       p_itens: input.itens.map(item => ({
@@ -156,12 +151,11 @@ export async function atualizarFechamento(
     }
 
     // Atualizar cabeçalho
-    if (input.status || input.valor_total) {
+    if (input.valor_total !== undefined) {
       const updateData: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
       };
-      
-      if (input.status) updateData.status = input.status;
+
       if (input.valor_total !== undefined) updateData.valor_total = input.valor_total;
 
       const { error } = await supabase
