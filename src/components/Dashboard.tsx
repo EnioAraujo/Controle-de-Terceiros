@@ -149,7 +149,7 @@ export const Dashboard = ({
   // ── Tooltip customizado para gráfico diário ───────────────────────────────
   const TooltipDiario = ({ active, payload, label }: { active?: boolean; payload?: { dataKey: string; value: number; color: string }[]; label?: number }) => {
     if (!active || !payload?.length) return null;
-    const bars = payload.filter(p => p.dataKey !== "_avg");
+    const bars = payload.filter(p => p.dataKey !== "_avg" && p.dataKey !== "_total");
     const total = bars.reduce((s, p) => s + (p.value || 0), 0);
     return (
       <div style={{ background:"#212B36", borderRadius:8, padding:"10px 14px", fontSize:12, minWidth:130 }}>

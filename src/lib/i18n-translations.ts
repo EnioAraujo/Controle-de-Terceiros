@@ -231,6 +231,7 @@ export const translations = {
     imp_csv_invalid:    "{n} linhas rejeitadas",
     imp_csv_apply:      "Importar válidas",
     imp_csv_cancel:     "Cancelar",
+    imp_csv_modelo:     "Baixar modelo (.csv)",
 
     // Detail field labels
     detail_data:        "Data",
@@ -712,6 +713,7 @@ export const translations = {
     imp_csv_invalid:    "{n} rejected rows",
     imp_csv_apply:      "Import valid rows",
     imp_csv_cancel:     "Cancel",
+    imp_csv_modelo:     "Download template (.csv)",
 
     // Detail field labels
     detail_data:        "Date",

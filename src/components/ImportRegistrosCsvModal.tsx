@@ -18,6 +18,16 @@ export const ImportRegistrosCsvModal = ({ onClose, registros, setRegistros, onIm
   const [preview, setPreview] = useState<ImportCsvResult | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
 
+  const baixarModelo = () => {
+    const header = "Data Presença;Turno;Hora Entrada;Hora Saida;Total Horas;Nome Completo Terceiro;Cargo;Unidade;Centro Custo;Motivo;Fornecedor;Observacao";
+    const exemplo = "01/01/2026;1° TURNO;07:00;16:00;09:00;JOSE DA SILVA;OPERADOR;UNIDADE 01;CC-001;MANUTENCAO;FORNECEDOR EXEMPLO;";
+    const blob = new Blob(["﻿" + header + "\n" + exemplo], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "modelo_importacao.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const analisarArquivo = async (file: File) => {
     setErrorMsg("");
     setPreview(null);
@@ -54,6 +64,9 @@ export const ImportRegistrosCsvModal = ({ onClose, registros, setRegistros, onIm
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ background: "#F8FAFC", border: "1px solid #E2E6EC", borderRadius: 10, padding: "12px 14px" }}>
           <div style={{ fontSize: 12, color: "#64748B", marginBottom: 8 }}>{t("imp_csv_help")}</div>
+          <Btn variant="ghost" small onClick={baixarModelo} style={{ marginBottom: 10 }}>
+            {t("imp_csv_modelo")}
+          </Btn>
           <input
             type="file"
             accept=".csv,text/csv"
