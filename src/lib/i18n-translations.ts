@@ -232,6 +232,7 @@ export const translations = {
     imp_csv_apply:      "Importar válidas",
     imp_csv_cancel:     "Cancelar",
     imp_csv_modelo:     "Baixar modelo (.csv)",
+    imp_csv_choose:     "Escolher arquivo",
 
     // Detail field labels
     detail_data:        "Data",
@@ -707,6 +708,7 @@ export const translations = {
     imp_csv_apply:      "Import valid rows",
     imp_csv_cancel:     "Cancel",
     imp_csv_modelo:     "Download template (.csv)",
+    imp_csv_choose:     "Choose file",
 
     // Detail field labels
     detail_data:        "Date",

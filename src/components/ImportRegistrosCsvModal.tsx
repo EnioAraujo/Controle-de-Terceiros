@@ -20,7 +20,7 @@ export const ImportRegistrosCsvModal = ({ onClose, registros, setRegistros, onIm
 
   const baixarModelo = () => {
     const header = "Data Presença;Turno;Hora Entrada;Hora Saida;Total Horas;Nome Completo Terceiro;Cargo;Unidade;Centro Custo;Motivo;Fornecedor;Observacao";
-    const exemplo = "01/01/2026;1° TURNO;07:00;16:00;09:00;JOSE DA SILVA;OPERADOR;UNIDADE 01;CC-001;MANUTENCAO;FORNECEDOR EXEMPLO;";
+    const exemplo = "01/01/2026;1ª TURNO;07:00;16:00;09:00;JOSE DA SILVA;OPERADOR;UNIDADE 01;CC-001;MANUTENCAO;FORNECEDOR EXEMPLO;";
     const blob = new Blob(["﻿" + header + "\n" + exemplo], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -50,7 +50,7 @@ export const ImportRegistrosCsvModal = ({ onClose, registros, setRegistros, onIm
       rejeitados: preview.invalid.length,
       fonte: fileName,
     });
-    logAudit("IMPORT", "registros", undefined, {
+    logAudit("INSERT", "registros", undefined, {
       fonte: fileName,
       total_linhas: preview.totalRows,
       importados: preview.valid.length,
@@ -64,17 +64,26 @@ export const ImportRegistrosCsvModal = ({ onClose, registros, setRegistros, onIm
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ background: "#F8FAFC", border: "1px solid #E2E6EC", borderRadius: 10, padding: "12px 14px" }}>
           <div style={{ fontSize: 12, color: "#64748B", marginBottom: 8 }}>{t("imp_csv_help")}</div>
-          <Btn variant="ghost" small onClick={baixarModelo} style={{ marginBottom: 10 }}>
-            {t("imp_csv_modelo")}
-          </Btn>
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            onChange={e => {
-              const file = e.target.files?.[0];
-              if (file) void analisarArquivo(file);
-            }}
-          />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <Btn variant="ghost" onClick={baixarModelo}>{t("imp_csv_modelo")}</Btn>
+            <label
+              htmlFor="csv-file-input"
+              style={{ background: "#F4F3F5", color: "#212B36", padding: "9px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer", userSelect: "none" }}
+            >
+              {t("imp_csv_choose")}
+            </label>
+            <input
+              id="csv-file-input"
+              type="file"
+              accept=".csv,text/csv"
+              style={{ display: "none" }}
+              onChange={e => {
+                const file = e.target.files?.[0];
+                if (file) void analisarArquivo(file);
+              }}
+            />
+            {fileName && <span style={{ fontSize: 12, color: "#64748B" }}>{fileName}</span>}
+          </div>
         </div>
 
         {errorMsg && (
