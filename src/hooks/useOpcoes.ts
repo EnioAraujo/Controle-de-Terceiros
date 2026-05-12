@@ -3,6 +3,7 @@ import { Opcoes, OPCOES_DEFAULT } from "@/types/attendance";
 import { supabase, authReady } from "@/lib/supabase";
 
 const CHUNK = 100;
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
 /** Aplica diff entre prevList e nextList usando upsert/remove fornecidos. */
 async function syncList(
@@ -27,51 +28,79 @@ async function syncList(
   }
 }
 
-export const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
+export const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean, string | null] => {
   const [data, setData]       = useState<Opcoes>(OPCOES_DEFAULT);
   const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState<string | null>(null);
   const prevRef               = useRef<Opcoes>(OPCOES_DEFAULT);
 
   useEffect(() => {
-    authReady.then(async () => {
+    let cancelled = false;
+
+    const loadOnce = async () => {
       // Carrega opções (sem nomes) e nomes em paralelo
       const [opcoesRes, nomesRes] = await Promise.all([
         supabase.from("opcoes").select("chave, valor").neq("chave", "nomes").order("id", { ascending: true }),
         supabase.from("terceiros").select("nome").order("nome", { ascending: true }),
       ]);
+      if (opcoesRes.error) throw new Error(opcoesRes.error.message);
+      if (nomesRes.error) throw new Error(nomesRes.error.message);
+      return { opcoesRes, nomesRes };
+    };
 
-      // Limpeza: remove nomes residuais da tabela opcoes (devem estar apenas em terceiros)
-      supabase.from("opcoes").delete().eq("chave", "nomes")
-        .then(({ error }) => { if (error) if (import.meta.env.DEV) console.error("Erro ao limpar nomes residuais:", error.message); })
-        .catch((err: unknown) => { if (import.meta.env.DEV) console.error("Erro ao limpar nomes residuais:", err); });
+    authReady.then(async () => {
+      // Retry com backoff exponencial 500ms / 1s / 2s — 3 tentativas.
+      let lastErr: unknown = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const { opcoesRes, nomesRes } = await loadOnce();
+          if (cancelled) return;
 
-      if (opcoesRes.error) if (import.meta.env.DEV) console.error("Erro ao carregar opções:", opcoesRes.error.message);
-      if (nomesRes.error)  if (import.meta.env.DEV) console.error("Erro ao carregar nomes:", nomesRes.error.message);
+          // Limpeza: remove nomes residuais da tabela opcoes (não bloqueia)
+          supabase.from("opcoes").delete().eq("chave", "nomes")
+            .then(({ error }) => { if (error) if (import.meta.env.DEV) console.error("Erro ao limpar nomes residuais:", error.message); })
+            .catch((err: unknown) => { if (import.meta.env.DEV) console.error("Erro ao limpar nomes residuais:", err); });
 
-      const rows  = opcoesRes.data ?? [];
-      const nomes = (nomesRes.data ?? []).map((r: { nome: string }) => r.nome);
+          const rows  = opcoesRes.data ?? [];
+          const nomes = (nomesRes.data ?? []).map((r: { nome: string }) => r.nome);
 
-      const byKey = new Map<string, string[]>();
-      (rows as { chave: string; valor: string }[]).forEach(row => {
-        if (!byKey.has(row.chave)) byKey.set(row.chave, []);
-        byKey.get(row.chave)!.push(row.valor);
-      });
+          const byKey = new Map<string, string[]>();
+          (rows as { chave: string; valor: string }[]).forEach(row => {
+            if (!byKey.has(row.chave)) byKey.set(row.chave, []);
+            byKey.get(row.chave)!.push(row.valor);
+          });
 
-      const built: Opcoes = { turnos: [], unidades: [], fornecedores: [], motivos: [], cargos: [], ccList: [], nomes: [] };
-      byKey.forEach((vals, k) => {
-        if (k !== "nomes" && k in built) {
-          Object.assign(built, { [k]: vals });
+          const built: Opcoes = { turnos: [], unidades: [], fornecedores: [], motivos: [], cargos: [], ccList: [], nomes: [] };
+          byKey.forEach((vals, k) => {
+            if (k !== "nomes" && k in built) {
+              Object.assign(built, { [k]: vals });
+            }
+          });
+          built.nomes = nomes;
+
+          setData(built);
+          prevRef.current = built;
+          setError(null);
+          setLoading(false);
+          return;
+        } catch (err: unknown) {
+          lastErr = err;
+          if (import.meta.env.DEV) console.error(`[useOpcoes] tentativa ${attempt}:`, err);
+          if (attempt < 3) await sleep(500 * 2 ** (attempt - 1));
         }
-      });
-      built.nomes = nomes;
-
-      setData(built);
-      prevRef.current = built;
+      }
+      if (cancelled) return;
+      // 3 tentativas falharam — mantém OPCOES_DEFAULT e expõe erro.
+      setError(lastErr instanceof Error ? lastErr.message : String(lastErr ?? "Falha ao carregar opções."));
       setLoading(false);
     }).catch((err: unknown) => {
+      if (cancelled) return;
       if (import.meta.env.DEV) console.error("Erro ao carregar opções:", err);
+      setError(err instanceof Error ? err.message : String(err));
       setLoading(false);
     });
+
+    return () => { cancelled = true; };
   }, []);
 
   const save = useCallback((newVal: Opcoes) => {
@@ -101,5 +130,5 @@ export const useOpcoes = (): [Opcoes, (val: Opcoes) => void, boolean] => {
     ).catch((err: unknown) => { if (import.meta.env.DEV) console.error("Erro ao sincronizar nomes:", err); });
   }, []);
 
-  return [data, save, loading];
+  return [data, save, loading, error];
 };

@@ -2,15 +2,17 @@ import { FornecedorShell } from "@/components/layout/FornecedorShell";
 import { ContadorPessoas } from "@/components/fornecedor/ContadorPessoas";
 import { ImportPessoasSection } from "@/components/fornecedor/ImportPessoasSection";
 import { CrudPessoasSection } from "@/components/fornecedor/CrudPessoasSection";
+import { FornecedorErrorBanner } from "@/components/fornecedor/FornecedorErrorBanner";
 import { useFornecedorAtual } from "@/hooks/useFornecedorAtual";
 import { useTerceirosDoFornecedor } from "@/hooks/useTerceirosDoFornecedor";
 import { useOpcoes } from "@/hooks/useOpcoes";
 
 export default function FornecedorPage() {
   const { fornecedor, isFornecedorUser, loading: fornLoading } = useFornecedorAtual();
-  const { pessoas, loading: pessoasLoading, addPessoa, updatePessoa, deletePessoa, upsertMany } =
+  const { pessoas, loading: pessoasLoading, error: pessoasError, retry: retryPessoas, addPessoa, updatePessoa, deletePessoa, upsertMany } =
     useTerceirosDoFornecedor();
-  const [opcoes] = useOpcoes();
+  const [opcoes, , , opcoesError] = useOpcoes();
+  const erroCarga = pessoasError ?? opcoesError;
 
   const cargos = (opcoes.cargos ?? []).slice().sort((a, b) => a.localeCompare(b, "pt-BR"));
 
@@ -36,6 +38,9 @@ export default function FornecedorPage() {
   return (
     <FornecedorShell fornecedor={fornecedor}>
       <div style={{ display: "grid", gap: 20, maxWidth: 1100, margin: "0 auto" }}>
+        {erroCarga && (
+          <FornecedorErrorBanner mensagem={erroCarga} onRetry={retryPessoas} />
+        )}
         <ContadorPessoas pessoas={pessoas} />
         <ImportPessoasSection cargosValidos={cargos} onConfirm={upsertMany} />
         <CrudPessoasSection

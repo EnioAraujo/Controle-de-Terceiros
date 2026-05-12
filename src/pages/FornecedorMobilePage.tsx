@@ -6,14 +6,16 @@ import { useAuthStatus } from "@/hooks/useAuthStatus";
 import { PessoaMobileCard } from "@/components/fornecedor/mobile/PessoaMobileCard";
 import { AddPessoaSheet } from "@/components/fornecedor/mobile/AddPessoaSheet";
 import { AddPessoasBatchSheet } from "@/components/fornecedor/mobile/AddPessoasBatchSheet";
+import { FornecedorErrorBanner } from "@/components/fornecedor/FornecedorErrorBanner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { Pessoa } from "@/types/hierarquia";
 
 export default function FornecedorMobilePage() {
   const { fornecedor, isFornecedorUser, loading: fornLoading } = useFornecedorAtual();
-  const { pessoas, loading, addPessoa, updatePessoa, deletePessoa, upsertMany } = useTerceirosDoFornecedor();
-  const [opcoes] = useOpcoes();
+  const { pessoas, loading, error: pessoasError, retry: retryPessoas, addPessoa, updatePessoa, deletePessoa, upsertMany } = useTerceirosDoFornecedor();
+  const [opcoes, , , opcoesError] = useOpcoes();
   const { signOut } = useAuthStatus();
+  const erroCarga = pessoasError ?? opcoesError;
   const cargos = (opcoes.cargos ?? []).slice().sort((a, b) => a.localeCompare(b, "pt-BR"));
 
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -71,6 +73,9 @@ export default function FornecedorMobilePage() {
 
       {/* List */}
       <div style={{ flex: 1, overflowY: "auto", padding: "8px 16px 120px", display: "flex", flexDirection: "column", gap: 10 }}>
+        {erroCarga && (
+          <FornecedorErrorBanner mensagem={erroCarga} onRetry={retryPessoas} />
+        )}
         {pessoas.length === 0 && !loading && (
           <p style={{ color: "#9CA3AF", fontSize: 13, textAlign: "center", marginTop: 40 }}>Nenhum funcionário cadastrado. Toque + para adicionar.</p>
         )}
