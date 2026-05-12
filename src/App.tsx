@@ -10,7 +10,7 @@ import { I18nProvider } from "@/lib/i18n";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AdminRoute } from "@/components/AdminRoute";
 import { RedirectFornecedor, FornecedorRoute } from "@/components/FornecedorGuard";
-import { useAuthStatus } from "@/hooks/useAuthStatus";
+import { useAuthStatus, AuthProvider } from "@/hooks/useAuthStatus";
 
 const queryClient = new QueryClient();
 
@@ -256,15 +256,17 @@ const AppRoutes = () => {
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <I18nProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </TooltipProvider>
-      </I18nProvider>
+      <AuthProvider>
+        <I18nProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </TooltipProvider>
+        </I18nProvider>
+      </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>
 );

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, createContext, useContext, type ReactNode, createElement } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Session, User } from "@supabase/supabase-js";
 
@@ -48,7 +48,13 @@ export interface AuthStatus {
  * return <Dashboard user={user} />;
  * ```
  */
-export const useAuthStatus = (): AuthStatus => {
+/**
+ * Implementação interna — NÃO USE diretamente em componentes.
+ * Chamada uma única vez dentro do AuthProvider para evitar múltiplas
+ * subscriptions a onAuthStateChange e cascatas de fetch em /profiles.
+ * Exportada apenas para uso em testes unitários do próprio hook.
+ */
+export const useAuthStatusImpl = (): AuthStatus => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -246,4 +252,29 @@ export const useAuthStatus = (): AuthStatus => {
     refreshSession,
     signOut,
   };
+};
+
+// ─────────────────────────────────────────────────────────────────
+// AuthContext: singleton para o estado de auth.
+//
+// Problema resolvido: cada chamada de useAuthStatus criava sua própria
+// subscription a onAuthStateChange + loadSession + fetch em /profiles.
+// Com 4–5 instâncias na árvore (App, FornecedorRoute, FornecedorPage,
+// useTerceirosDoFornecedor, ...), cada evento auth disparava N fetches
+// simultâneos, saturando o browser (ERR_INSUFFICIENT_RESOURCES).
+//
+// O Provider chama a implementação UMA vez; consumidores leem do contexto.
+// ─────────────────────────────────────────────────────────────────
+
+const AuthContext = createContext<AuthStatus | null>(null);
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const value = useAuthStatusImpl();
+  return createElement(AuthContext.Provider, { value }, children);
+};
+
+export const useAuthStatus = (): AuthStatus => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuthStatus deve ser usado dentro de <AuthProvider>");
+  return ctx;
 };

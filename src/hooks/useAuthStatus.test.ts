@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
-import { useAuthStatus } from "./useAuthStatus";
+import { useAuthStatusImpl } from "./useAuthStatus";
 import { supabase } from "@/lib/supabase";
 
 // Mock do supabase
@@ -67,7 +67,7 @@ describe("useAuthStatus", () => {
       const mockSession = createMockSession();
       mockGetSession.mockResolvedValue({ data: { session: mockSession }, error: null });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
 
       // Estado inicial
       expect(result.current.loading).toBe(true);
@@ -86,7 +86,7 @@ describe("useAuthStatus", () => {
         error: { message: "Erro de conexão" },
       });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -98,7 +98,7 @@ describe("useAuthStatus", () => {
     it("deve lidar com sessão nula (usuário não logado)", async () => {
       mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -115,7 +115,7 @@ describe("useAuthStatus", () => {
       });
       mockGetSession.mockResolvedValue({ data: { session: mockSession }, error: null });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -128,7 +128,7 @@ describe("useAuthStatus", () => {
       });
       mockGetSession.mockResolvedValue({ data: { session: mockSession }, error: null });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -149,7 +149,7 @@ describe("useAuthStatus", () => {
         return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
       });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -171,7 +171,7 @@ describe("useAuthStatus", () => {
         error: null,
       });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -192,7 +192,7 @@ describe("useAuthStatus", () => {
         error: { message: "Token inválido" },
       });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -212,7 +212,7 @@ describe("useAuthStatus", () => {
       mockGetSession.mockResolvedValue({ data: { session: mockSession }, error: null });
       mockSignOut.mockResolvedValue();
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
 
       await waitFor(() => expect(result.current.loading).toBe(false));
       expect(result.current.isAuthenticated).toBe(true);
@@ -234,7 +234,7 @@ describe("useAuthStatus", () => {
       const mockSession = createMockSession();
       mockGetSession.mockResolvedValue({ data: { session: mockSession }, error: null });
 
-      const { result, unmount } = renderHook(() => useAuthStatus());
+      const { result, unmount } = renderHook(() => useAuthStatusImpl());
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -255,7 +255,7 @@ describe("useAuthStatus", () => {
         return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
       });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -278,7 +278,7 @@ describe("useAuthStatus", () => {
         return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
       });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
 
       await waitFor(() => expect(result.current.loading).toBe(false));
       expect(result.current.isAuthenticated).toBe(true);
@@ -302,7 +302,7 @@ describe("useAuthStatus", () => {
         return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
       });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
       await waitFor(() => expect(result.current.loading).toBe(false));
 
       await act(async () => {
@@ -324,7 +324,7 @@ describe("useAuthStatus", () => {
         return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
       });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
       await waitFor(() => expect(result.current.loading).toBe(false));
 
       await act(async () => {
@@ -347,7 +347,7 @@ describe("useAuthStatus", () => {
         return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
       });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
       await waitFor(() => expect(result.current.loading).toBe(false));
 
       await act(async () => {
@@ -370,7 +370,7 @@ describe("useAuthStatus", () => {
         return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
       });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
       await waitFor(() => expect(result.current.loading).toBe(false));
 
       await act(async () => {
@@ -394,7 +394,7 @@ describe("useAuthStatus", () => {
         return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
       });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
       await waitFor(() => expect(result.current.loading).toBe(false));
       expect(result.current.tokenExpired).toBe(true); // token quase expirado
 
@@ -421,7 +421,7 @@ describe("useAuthStatus", () => {
       const mockSelect = vi.fn(() => ({ eq: mockEq }));
       mockFrom.mockReturnValue({ select: mockSelect } as ReturnType<typeof supabase.from>);
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
       await waitFor(() => expect(result.current.loading).toBe(false));
 
       expect(result.current.isApproved).toBe(false);
@@ -431,7 +431,7 @@ describe("useAuthStatus", () => {
       const mockSession = createMockSession();
       mockGetSession.mockResolvedValue({ data: { session: mockSession }, error: null });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
       await waitFor(() => expect(result.current.loading).toBe(false));
 
       expect(result.current.isApproved).toBe(true);
@@ -455,7 +455,7 @@ describe("useAuthStatus", () => {
         return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
       });
 
-      const { result } = renderHook(() => useAuthStatus());
+      const { result } = renderHook(() => useAuthStatusImpl());
       await waitFor(() => expect(result.current.isApproved).toBe(false));
 
       await act(async () => {
