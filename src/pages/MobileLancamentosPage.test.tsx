@@ -5,16 +5,37 @@ import MobileLancamentosPage from "./MobileLancamentosPage";
 
 // ── Mocks ─────────────────────────────────────────────────────────
 vi.mock("@/lib/supabase", () => {
-  const chain = (result = { data: [], error: null }) => ({
-    select: () => chain(result),
-    order: () => Promise.resolve(result),
-    neq: () => chain(result),
-    eq: () => chain(result),
-    lt: () => chain(result),
-    single: () => Promise.resolve(result),
-  });
+  const chain = (result = { data: [], error: null }): Record<string, unknown> => {
+    const p = Promise.resolve(result);
+    return {
+      select: () => chain(result),
+      order: () => p,
+      neq: () => chain(result),
+      eq: () => chain(result),
+      lt: () => chain(result),
+      gte: () => chain(result),
+      lte: () => chain(result),
+      in: () => chain(result),
+      single: () => p,
+      maybeSingle: () => p,
+      delete: () => chain(result),
+      insert: () => chain(result),
+      update: () => chain(result),
+      upsert: () => chain(result),
+      then: p.then.bind(p),
+      catch: p.catch.bind(p),
+    };
+  };
   return {
-    supabase: { from: () => chain(), auth: { getSession: vi.fn() } },
+    supabase: {
+      from: () => chain(),
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
+        onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
+        refreshSession: vi.fn(),
+        signOut: vi.fn(),
+      },
+    },
     authReady: Promise.resolve(),
   };
 });
@@ -49,16 +70,15 @@ describe("MobileLancamentosPage (smoke)", () => {
         <MobileLancamentosPage />
       </MemoryRouter>,
     );
-    expect(screen.getByText("Controle de")).toBeInTheDocument();
-    expect(screen.getByText("Terceiros")).toBeInTheDocument();
+    expect(screen.getByAltText("Controle de Terceiros")).toBeInTheDocument();
   });
 
-  it("exibe badge Mobile", () => {
+  it("exibe status bar conectado", () => {
     render(
       <MemoryRouter>
         <MobileLancamentosPage />
       </MemoryRouter>,
     );
-    expect(screen.getByText("Mobile")).toBeInTheDocument();
+    expect(screen.getByText("Conectado")).toBeInTheDocument();
   });
 });
