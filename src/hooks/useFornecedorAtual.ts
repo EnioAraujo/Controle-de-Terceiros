@@ -17,6 +17,7 @@ export const useFornecedorAtual = (): FornecedorAtual => {
 
   useEffect(() => {
     let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
     if (!isAuthenticated || !user) {
       setFornecedor(null);
@@ -31,21 +32,38 @@ export const useFornecedorAtual = (): FornecedorAtual => {
     }
 
     setLoading(true);
-    supabase
-      .from("profiles")
-      .select("fornecedor")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
-        if (cancelled) return;
-        const value = (data?.fornecedor as string | null) ?? null;
-        cache.set(user.id, value);
-        setFornecedor(value);
-        setLoading(false);
-      });
+
+    const doFetch = (attempt: number) => {
+      supabase
+        .from("profiles")
+        .select("fornecedor")
+        .eq("id", user.id)
+        .single()
+        .then(({ data, error: fetchErr }) => {
+          if (cancelled) return;
+          if (fetchErr) {
+            if (attempt < 3) {
+              // Backoff: 1s, 2s, 3s — keeps loading=true to evitar redirect prematuro
+              retryTimer = setTimeout(() => doFetch(attempt + 1), attempt * 1000);
+              return;
+            }
+            // 3 tentativas falharam — resolve sem cache para não bloquear forever
+            setFornecedor(null);
+            setLoading(false);
+            return;
+          }
+          const value = (data?.fornecedor as string | null) ?? null;
+          cache.set(user.id, value);
+          setFornecedor(value);
+          setLoading(false);
+        });
+    };
+
+    doFetch(1);
 
     return () => {
       cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
     };
   }, [isAuthenticated, user]);
 
