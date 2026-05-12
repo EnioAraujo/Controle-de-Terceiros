@@ -65,7 +65,8 @@ function parseCsv(text: string): string[][] {
 
 // ── XLSX ─────────────────────────────────────────────────────
 async function parseXlsx(file: File): Promise<string[][]> {
-  const ExcelJS = await import("exceljs");
+  const mod = await import("exceljs");
+  const ExcelJS = (mod as { default?: typeof mod }).default ?? mod;
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(await file.arrayBuffer());
   const ws = wb.worksheets[0];

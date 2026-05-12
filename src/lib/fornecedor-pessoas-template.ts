@@ -2,7 +2,10 @@
 // Colunas: "Nome Completo" e "Cargo". Inclui 1 linha de exemplo.
 
 export async function exportTemplate(): Promise<Blob> {
-  const ExcelJS = await import("exceljs");
+  // exceljs está em optimizeDeps.exclude — em dev vem como CJS-interop
+  // (Workbook em .default); em build/test vem como ESM (named). Cobre ambos.
+  const mod = await import("exceljs");
+  const ExcelJS = (mod as { default?: typeof mod }).default ?? mod;
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Funcionarios");
   ws.columns = [
