@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { I18nProvider } from "@/lib/i18n";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AdminRoute } from "@/components/AdminRoute";
+import { RedirectFornecedor, FornecedorRoute } from "@/components/FornecedorGuard";
 import { useAuthStatus } from "@/hooks/useAuthStatus";
 
 const queryClient = new QueryClient();
@@ -20,6 +21,8 @@ const AdminPage = lazy(() => import("./pages/AdminPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const MobileLancamentosPage = lazy(() => import("./pages/MobileLancamentosPage"));
 const MfaSetupPage = lazy(() => import("./pages/MfaSetupPage"));
+const FornecedorPage = lazy(() => import("./pages/FornecedorPage"));
+const FornecedorMobilePage = lazy(() => import("./pages/FornecedorMobilePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Loading fallback component
@@ -194,19 +197,37 @@ const AppRoutes = () => {
       } />
       <Route path="/" element={
         <Suspense fallback={<PageLoading />}>
-          {session && !hasMfaPending(session) ? <Index /> : <Navigate to="/login" replace />}
+          {session && !hasMfaPending(session)
+            ? <RedirectFornecedor><Index /></RedirectFornecedor>
+            : <Navigate to="/login" replace />}
         </Suspense>
       } />
       <Route path="/admin" element={
         <Suspense fallback={<PageLoading />}>
           {session && !hasMfaPending(session)
-            ? <AdminRoute><AdminPage /></AdminRoute>
+            ? <RedirectFornecedor><AdminRoute><AdminPage /></AdminRoute></RedirectFornecedor>
             : <Navigate to="/login" replace />}
         </Suspense>
       } />
       <Route path="/mobile" element={
         <Suspense fallback={<PageLoading />}>
-          {session && !hasMfaPending(session) ? <MobileLancamentosPage /> : <Navigate to="/login" replace />}
+          {session && !hasMfaPending(session)
+            ? <RedirectFornecedor><MobileLancamentosPage /></RedirectFornecedor>
+            : <Navigate to="/login" replace />}
+        </Suspense>
+      } />
+      <Route path="/fornecedor" element={
+        <Suspense fallback={<PageLoading />}>
+          {session && !hasMfaPending(session)
+            ? <FornecedorRoute><FornecedorPage /></FornecedorRoute>
+            : <Navigate to="/login" replace />}
+        </Suspense>
+      } />
+      <Route path="/fornecedor/mobile" element={
+        <Suspense fallback={<PageLoading />}>
+          {session && !hasMfaPending(session)
+            ? <FornecedorRoute><FornecedorMobilePage /></FornecedorRoute>
+            : <Navigate to="/login" replace />}
         </Suspense>
       } />
       <Route path="/mfa-setup" element={

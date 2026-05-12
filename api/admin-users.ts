@@ -7,9 +7,12 @@
 //   SUPABASE_SERVICE_ROLE_KEY = chave service_role (secreta, nunca exposta no frontend)
 //
 // Ações suportadas:
-//   { action: "create", email, password, is_admin? }
+//   { action: "create", email, password, is_admin?, fornecedor? }
 //   { action: "update", userId, email?, password? }
 //   { action: "delete", userId }
+//   { action: "set_fornecedor", userId, fornecedor }   // fornecedor: string|null
+//
+// Invariante: is_admin=true e fornecedor não-nulo são mutuamente exclusivos.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
@@ -108,13 +111,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     password?: string;
     userId?: string;
     is_admin?: boolean;
+    fornecedor?: string | null;
   };
   const { action } = body;
 
   try {
     // CREATE
     if (action === "create") {
-      const { email, password, is_admin = false } = body;
+      const { email, password, is_admin = false, fornecedor = null } = body;
       if (!email || !password)
         return res
           .status(400)
@@ -128,6 +132,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res
           .status(400)
           .json({ error: "Senha fraca. Mínimo: 8 caracteres, 1 maiúscula, 1 número, 1 símbolo." });
+      if (is_admin && fornecedor)
+        return res
+          .status(400)
+          .json({ error: "Um usuário não pode ser admin e fornecedor simultaneamente." });
+      const fornecedorClean = fornecedor && fornecedor.trim().length > 0 ? fornecedor.trim() : null;
 
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -139,7 +148,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (data.user) {
         await supabaseAdmin
           .from("profiles")
-          .upsert({ id: data.user.id, email, is_admin, is_approved: true })
+          .upsert({ id: data.user.id, email, is_admin, is_approved: true, fornecedor: fornecedorClean })
           .eq("id", data.user.id);
 
         const role = is_admin ? "admin" : "user";
@@ -151,6 +160,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res
         .status(200)
         .json({ data: { id: data.user?.id, email: data.user?.email } });
+    }
+
+    // SET_FORNECEDOR — atribui/remove fornecedor de usuário existente.
+    // Força is_admin=false quando fornecedor != null (CHECK constraint).
+    if (action === "set_fornecedor") {
+      const { userId, fornecedor = null } = body;
+      if (!userId)
+        return res.status(400).json({ error: "userId é obrigatório." });
+
+      const fornecedorClean = fornecedor && fornecedor.trim().length > 0 ? fornecedor.trim() : null;
+
+      if (fornecedorClean) {
+        // Rebaixa para user e remove admin antes de atribuir fornecedor,
+        // satisfazendo profiles_admin_xor_fornecedor.
+        await supabaseAdmin
+          .from("user_roles")
+          .upsert({ user_id: userId, role: "user" }, { onConflict: "user_id" });
+        const { error: upErr } = await supabaseAdmin
+          .from("profiles")
+          .update({ is_admin: false, fornecedor: fornecedorClean })
+          .eq("id", userId);
+        if (upErr) return res.status(400).json({ error: upErr.message });
+      } else {
+        const { error: upErr } = await supabaseAdmin
+          .from("profiles")
+          .update({ fornecedor: null })
+          .eq("id", userId);
+        if (upErr) return res.status(400).json({ error: upErr.message });
+      }
+
+      return res.status(200).json({ success: true });
     }
 
     // UPDATE

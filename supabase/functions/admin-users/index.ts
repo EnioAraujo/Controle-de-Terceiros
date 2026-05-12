@@ -3,9 +3,12 @@
 // (que fica armazenada como secret no Supabase, nunca exposta no frontend).
 //
 // Ações suportadas:
-//   { action: "create", email, password, is_admin? }
+//   { action: "create", email, password, is_admin?, fornecedor? }
 //   { action: "update", userId, email?, password? }
 //   { action: "delete", userId }
+//   { action: "set_fornecedor", userId, fornecedor }   // fornecedor: string|null
+//
+// Invariante: is_admin=true e fornecedor não-nulo são mutuamente exclusivos.
 //
 // Requer: chamador autenticado com is_admin = true no profiles.
 
@@ -124,9 +127,11 @@ Deno.serve(async (req) => {
 
     // CREATE
     if (action === "create") {
-      const { email, password, is_admin = false } = body;
+      const { email, password, is_admin = false, fornecedor = null } = body;
       if (!email || !password) return json({ error: "E-mail e senha são obrigatórios." }, 400, corsHeaders);
       if (password.length < 8) return json({ error: "A senha deve ter no mínimo 8 caracteres." }, 400, corsHeaders);
+      if (is_admin && fornecedor) return json({ error: "Um usuário não pode ser admin e fornecedor simultaneamente." }, 400, corsHeaders);
+      const fornecedorClean = fornecedor && fornecedor.trim().length > 0 ? fornecedor.trim() : null;
 
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -139,7 +144,7 @@ Deno.serve(async (req) => {
         // Garante que o profile existe e está aprovado
         await supabaseAdmin
           .from("profiles")
-          .upsert({ id: data.user.id, email, is_admin, is_approved: true })
+          .upsert({ id: data.user.id, email, is_admin, is_approved: true, fornecedor: fornecedorClean })
           .eq("id", data.user.id);
 
         // Insere role em user_roles (o trigger sync_is_admin_from_role cuida do profiles.is_admin)
@@ -149,6 +154,32 @@ Deno.serve(async (req) => {
           .upsert({ user_id: data.user.id, role }, { onConflict: "user_id" });
       }
       return json({ data: { id: data.user?.id, email: data.user?.email } }, 200, corsHeaders);
+    }
+
+    // SET_FORNECEDOR
+    if (action === "set_fornecedor") {
+      const { userId, fornecedor = null } = body;
+      if (!userId) return json({ error: "userId é obrigatório." }, 400, corsHeaders);
+      const fornecedorClean = fornecedor && fornecedor.trim().length > 0 ? fornecedor.trim() : null;
+
+      if (fornecedorClean) {
+        await supabaseAdmin
+          .from("user_roles")
+          .upsert({ user_id: userId, role: "user" }, { onConflict: "user_id" });
+        const { error: upErr } = await supabaseAdmin
+          .from("profiles")
+          .update({ is_admin: false, fornecedor: fornecedorClean })
+          .eq("id", userId);
+        if (upErr) return json({ error: upErr.message }, 400, corsHeaders);
+      } else {
+        const { error: upErr } = await supabaseAdmin
+          .from("profiles")
+          .update({ fornecedor: null })
+          .eq("id", userId);
+        if (upErr) return json({ error: upErr.message }, 400, corsHeaders);
+      }
+
+      return json({ success: true }, 200, corsHeaders);
     }
 
     // UPDATE

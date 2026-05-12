@@ -36,6 +36,7 @@ import { ActivityBar, type ActivityItem } from "@/components/layout/ActivityBar"
 import { TabBar } from "@/components/layout/TabBar";
 import { StatusBar } from "@/components/layout/StatusBar";
 import { useTabManager } from "@/hooks/useTabManager";
+import { AdminFornecedoresTab } from "@/components/admin/AdminFornecedoresTab";
 
 // ── Tipos ──────────────────────────────────────────────────────────
 type AppRole = "admin" | "moderator" | "user";
@@ -53,7 +54,7 @@ type UserWithRole = {
 };
 
 type ModalMode = "create" | "edit" | "delete" | null;
-type AdminTab = "usuarios" | "permissoes" | "conta";
+type AdminTab = "usuarios" | "permissoes" | "fornecedores" | "conta";
 
 // Centraliza o tamanho mínimo de senha para consistência entre criação e troca de senha
 const MIN_PASSWORD_LENGTH = 8;
@@ -508,6 +509,7 @@ export default function AdminPage() {
   const adminNav: ActivityItem[] = [
     { id: "usuarios", label: t("admin_tab_users"), icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
     { id: "permissoes", label: "Permissões", icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
+    { id: "fornecedores", label: "Fornecedores", icon: "M20 7h-3V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H4a1 1 0 0 0-1 1v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1zM9 5h6v2H9V5z" },
     { id: "conta", label: t("admin_tab_account"), icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
   ];
   const navById = Object.fromEntries(adminNav.map(n => [n.id, n])) as Record<AdminTab, ActivityItem>;
@@ -818,6 +820,11 @@ export default function AdminPage() {
               </Card>
             </div>
           </div>
+          )}
+
+          {/* ── TAB: FORNECEDORES ── */}
+          {activeTab === "fornecedores" && (
+            <AdminFornecedoresTab />
           )}
 
           {/* ── TAB: MINHA CONTA ── */}
