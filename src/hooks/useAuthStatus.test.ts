@@ -382,6 +382,68 @@ describe("useAuthStatus", () => {
       expect(result.current.loading).toBe(false);
     });
 
+    // Regressão: loadSession() + INITIAL_SESSION duplicavam fetch a /profiles no boot.
+    it("dedup: apenas 1 fetch a profiles quando loadSession e INITIAL_SESSION recebem a mesma sessão", async () => {
+      const mockSession = createMockSession();
+      mockGetSession.mockResolvedValue({ data: { session: mockSession }, error: null });
+
+      // Reseta o mock e instrumenta single() para contar chamadas
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: { is_blocked: false, is_approved: true },
+        error: null,
+      });
+      const mockEq = vi.fn(() => ({ single: mockSingle }));
+      const mockSelect = vi.fn(() => ({ eq: mockEq }));
+      mockFrom.mockReturnValue({ select: mockSelect } as ReturnType<typeof supabase.from>);
+
+      let authChangeCallback: ((event: string, session: unknown) => Promise<void>) | null = null;
+      mockOnAuthStateChange.mockImplementation((callback) => {
+        authChangeCallback = callback as typeof authChangeCallback;
+        return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
+      });
+
+      const { result } = renderHook(() => useAuthStatusImpl());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      // Dispara INITIAL_SESSION com a MESMA sessão que loadSession já tratou
+      await act(async () => {
+        await authChangeCallback?.("INITIAL_SESSION", mockSession);
+      });
+
+      // loadSession já chamou single uma vez; INITIAL_SESSION com mesma sessão deve ser deduplicada.
+      expect(mockSingle).toHaveBeenCalledTimes(1);
+    });
+
+    it("dedup: refaz fetch a profiles quando expires_at muda (token refresh legítimo)", async () => {
+      const session1 = createMockSession();
+      const session2 = createMockSession({ expires_at: (session1.expires_at as number) + 3600 });
+      mockGetSession.mockResolvedValue({ data: { session: session1 }, error: null });
+
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: { is_blocked: false, is_approved: true },
+        error: null,
+      });
+      const mockEq = vi.fn(() => ({ single: mockSingle }));
+      const mockSelect = vi.fn(() => ({ eq: mockEq }));
+      mockFrom.mockReturnValue({ select: mockSelect } as ReturnType<typeof supabase.from>);
+
+      let authChangeCallback: ((event: string, session: unknown) => Promise<void>) | null = null;
+      mockOnAuthStateChange.mockImplementation((callback) => {
+        authChangeCallback = callback as typeof authChangeCallback;
+        return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
+      });
+
+      const { result } = renderHook(() => useAuthStatusImpl());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      await act(async () => {
+        await authChangeCallback?.("TOKEN_REFRESHED", session2);
+      });
+
+      // 1 fetch do loadSession + 1 fetch do TOKEN_REFRESHED com expires_at diferente
+      expect(mockSingle).toHaveBeenCalledTimes(2);
+    });
+
     it("SIGNED_OUT limpa tokenExpired além de isAuthenticated", async () => {
       const expiringSession = createMockSession({
         expires_at: Math.floor(Date.now() / 1000) + 60, // expira em 1 minuto

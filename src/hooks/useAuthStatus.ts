@@ -63,6 +63,10 @@ export const useAuthStatusImpl = (): AuthStatus => {
   const [isApproved, setIsApproved] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Dedup do fetch a /profiles no boot: loadSession() e o evento
+  // INITIAL_SESSION ambos chamam handleAuthChange com a mesma sessão.
+  // Guardamos último (user.id, expires_at) processado para evitar 2x query.
+  const lastHandledRef = useRef<{ userId: string; expiresAt: number } | null>(null);
 
   /**
    * Handler para mudanças de estado de autenticação
@@ -77,6 +81,7 @@ export const useAuthStatusImpl = (): AuthStatus => {
       setIsBlocked(false);
       setIsApproved(true);
       setError(null);
+      lastHandledRef.current = null;
       return;
     }
 
@@ -92,6 +97,14 @@ export const useAuthStatusImpl = (): AuthStatus => {
     } else {
       setTokenExpired(false);
     }
+
+    // Skip do fetch se já processamos esta exata sessão (user + expires_at).
+    // Mantém duas chamadas (loadSession + INITIAL_SESSION) — apenas evita query duplicada.
+    const last = lastHandledRef.current;
+    if (last && last.userId === newSession.user.id && last.expiresAt === expiresAt) {
+      return;
+    }
+    lastHandledRef.current = { userId: newSession.user.id, expiresAt };
 
     // Verifica bloqueio no banco (não confia em estado local)
     try {
