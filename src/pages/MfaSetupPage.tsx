@@ -65,6 +65,14 @@ export default function MfaSetupPage() {
       // Novo enrollment TOTP
       const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp" });
       if (error || !data) {
+        // 422 = já existe um fator não verificado que listFactors() não retornou (JWT stale / race)
+        const { data: retry } = await supabase.auth.mfa.listFactors();
+        const fallback = retry?.totp?.[0];
+        if (fallback) {
+          setFactorId(fallback.id);
+          if (!cancelled) setStep("verify");
+          return;
+        }
         if (!cancelled) setStep("error");
         return;
       }
