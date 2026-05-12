@@ -51,12 +51,15 @@ function checkRateLimit(userId: string): { allowed: boolean; retryAfter?: number
   return { allowed: true };
 }
 
+const LOCAL_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get("Origin") ?? "";
-  // Se ALLOWED_ORIGIN está configurado, valida; senão aceita qualquer (dev local)
-  const allowedOrigin = ALLOWED_ORIGIN
-    ? (origin === ALLOWED_ORIGIN ? origin : ALLOWED_ORIGIN)
-    : origin;
+  const isAllowed =
+    !ALLOWED_ORIGIN ||
+    origin === ALLOWED_ORIGIN ||
+    LOCAL_ORIGIN.test(origin);
+  const allowedOrigin = isAllowed ? origin : (ALLOWED_ORIGIN || "*");
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
