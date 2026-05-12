@@ -101,6 +101,9 @@ export default defineConfig(() => ({
   // Otimizações para desenvolvimento
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom'],
-    exclude: ['jspdf', 'exceljs'], // Bibliotecas pesadas não pré-otimizar
+    // exceljs é UMD: sem pré-bundle, o dist browser apenas define
+    // window.ExcelJS sem exports ESM → "Workbook is not a constructor".
+    // jspdf segue o mesmo padrão, mas já era servido funcionando antes do issue.
+    exclude: ['jspdf'],
   },
 }));

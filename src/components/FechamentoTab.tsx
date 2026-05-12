@@ -286,7 +286,8 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
 
   const exportarXlsx = async () => {
     try {
-      const ExcelJS = await import("exceljs");
+      const mod = await import("exceljs");
+      const ExcelJS = (mod as { default?: typeof mod }).default ?? mod;
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet("Fechamento");
       const headers = [
@@ -322,7 +323,8 @@ export const FechamentoTab = ({ registros, opcoes, capacidadeConfig }: { registr
       );
       const linhas = gerarDadosRelatorioExcedentes(regs, capacidadeConfig);
       if (linhas.length === 0) return;
-      const ExcelJS = await import("exceljs");
+      const mod = await import("exceljs");
+      const ExcelJS = (mod as { default?: typeof mod }).default ?? mod;
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet("Excedentes");
       ws.columns = [

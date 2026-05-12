@@ -1,12 +1,31 @@
 // Gera o template XLSX para importação de funcionários do fornecedor.
 // Colunas: "Nome Completo" e "Cargo". Inclui 1 linha de exemplo.
 
+type WorkbookCtor = new () => {
+  addWorksheet: (name: string) => {
+    columns: { header: string; key: string; width: number }[];
+    getRow: (n: number) => { font: { bold: boolean } };
+    addRow: (row: Record<string, string>) => void;
+  };
+  xlsx: { writeBuffer: () => Promise<ArrayBuffer> };
+};
+
+// exceljs é UMD. Com pré-bundle do Vite (sem optimizeDeps.exclude), o módulo
+// chega como: mod.Workbook (ESM-named) OU mod.default.Workbook (CJS-interop).
+// Como fallback, também busca em window.ExcelJS (UMD global).
+function resolveWorkbookCtor(mod: unknown): WorkbookCtor {
+  const m = mod as Record<string, unknown> & { default?: Record<string, unknown> };
+  const fromMod = (m.Workbook ?? m.default?.Workbook) as unknown;
+  if (typeof fromMod === "function") return fromMod as WorkbookCtor;
+  const fromGlobal = (globalThis as { ExcelJS?: { Workbook?: unknown } }).ExcelJS?.Workbook;
+  if (typeof fromGlobal === "function") return fromGlobal as WorkbookCtor;
+  throw new Error("ExcelJS: Workbook não encontrado no módulo carregado");
+}
+
 export async function exportTemplate(): Promise<Blob> {
-  // exceljs está em optimizeDeps.exclude — em dev vem como CJS-interop
-  // (Workbook em .default); em build/test vem como ESM (named). Cobre ambos.
   const mod = await import("exceljs");
-  const ExcelJS = (mod as { default?: typeof mod }).default ?? mod;
-  const wb = new ExcelJS.Workbook();
+  const Workbook = resolveWorkbookCtor(mod);
+  const wb = new Workbook();
   const ws = wb.addWorksheet("Funcionarios");
   ws.columns = [
     { header: "Nome Completo", key: "nome",  width: 36 },
