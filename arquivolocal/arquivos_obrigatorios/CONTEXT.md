@@ -460,15 +460,15 @@ const { lang, setLang, t } = useI18n();
 
 ## 13. Dívida Técnica Identificada (atualizado 2026-05-17)
 
-Itens da varredura de 2026-03-26 marcados como resolvidos foram migrados para o histórico (§14). A tabela abaixo reflete apenas o que segue pendente após o ciclo de revitalização de 2026-05-17 (plano `crystalline-locket`).
+Ciclo `crystalline-locket` (commits d302d34..7b7e3aa) e `PLANO_PONTOS_DE_ATENCAO_2026-05` (commits 0d43a06..) resolveram todas as dívidas estruturais identificadas até 2026-05-17. Histórico dos resolvidos em §14.
+
+**Pendente:**
 
 | Prioridade | Localização | Problema | Ação Recomendada |
 |---|---|---|---|
-| 🟠 Média | `MobileLancamentosPage.tsx` (975L + 87 inline-hex) | Monolith mistura helpers (`Chip`, `SheetBtn`), 5 sub-componentes inline (`RegistroCard`, `BottomSheet`, `ConfirmDialog`, `MobileModal`), filtros, FAB e configurações no mesmo arquivo | Dividir em hook `useMobileLancamentos` + 7 componentes em `src/components/mobile/` (Etapa 4 do plano `crystalline-locket`) |
-| 🟡 Baixa | `Lancamentos.tsx` (61 inline-hex) / `ProjecaoPage.tsx` (52 inline-hex) | Cores hex repetidas em `style={{}}` divergem do DESIGN.md | Criar `src/lib/design-tokens.ts` + classes utilitárias em `globals.css` e tokenizar hex (Etapa 5) |
-| 🟢 Resolvida (2026-05-17) | ~~Tipografia DM Sans~~ | Consolidado em Space Grotesk + Plus Jakarta Sans + Inter via `var(--font-body/display/label)`; `tailwind.config.ts` ganhou `fontFamily` tokens; `body { font-family: var(--font-body) }` em `globals.css`; 14 arquivos com inline DM Sans + 4 `<style>@import url(...DM+Sans...)</style>` + classe `font-dm-sans` removidos | — |
-| 🟡 Baixa | Smoke tests ausentes | `AdminPage.tsx` e `LoginPage.tsx` sem teste de render mínimo | Adicionar `AdminPage.test.tsx` e `LoginPage.test.tsx` (Etapa 6) |
-| 🟡 Baixa | Auditoria formal | Sem registro datado de varredura de segurança após bumps de 2026-05-14 | Executar `pnpm audit`, grep `logAudit`/`sanitize`/`as any`, gerar `arquivolocal/AUDIT-2026-05.md` (Etapa 7) |
+| 🟡 Baixa | `src/components/GuidedTour.tsx` (217L) | Componente já modernizado em TSX mas sem consumer (sem `TOUR_STEPS` em uso); backup morto em `arquivolocal/GuidedTour.jsx` | Integrar (definir TOUR_STEPS em `src/lib/tour-steps.ts`, wire em Index) + deletar backup .jsx (Etapa 5 de `PLANO_PONTOS_DE_ATENCAO_2026-05`) |
+| 🔵 Info | Cobertura e2e | Specs cobrem auth/MFA/navegação (~70 casos), gap em CRUD lançamentos / fechamento / import | Expandir Playwright (próximo ciclo) — base sólida em `tests/e2e/{login,mfa,main-page}.spec.ts` |
+| 🔵 Info | Plano red-team | `PLANO_TESTES_ADVERSARIAIS.md` aprovado mas não implementado (3 camadas: Vitest fuzz + Playwright client-side + real-Supabase) | Implementar em ciclo dedicado |
 
 ---
 
@@ -564,3 +564,6 @@ Itens da varredura de 2026-03-26 marcados como resolvidos foram migrados para o 
 | 2026-05-17 | Plano `crystalline-locket` substitui `PLANO_REVITALIZACAO_SAUDE.md` original (que ficou obsoleto após mudanças de 14/05). Etapas 1–3 concluídas neste commit; pendentes Etapas 4 (dividir MobileLancamentosPage), 5 (design-tokens + tokenização hex), 6 (smoke tests AdminPage/LoginPage), 7 (auditoria formal) |
 | 2026-05-17 | docs: AUDIT-2026-05 §5 atualizado para refletir cobertura e2e existente — `tests/e2e/{login,mfa,main-page}.spec.ts` cobrem ~70 casos (auth, MFA, navegação) via mocks Supabase. Gap identificado: CRUD lançamentos, fechamento financeiro, import CSV. Próximos planos: PLANO_PONTOS_DE_ATENCAO_2026-05 (dívida residual + sync de branch + CVE yaml) e PLANO_TESTES_ADVERSARIAIS (red team) |
 | 2026-05-17 | feat(typography): consolidação DM Sans → Space Grotesk + Plus Jakarta Sans + Inter (Etapa 4 de PONTOS_DE_ATENCAO). `tailwind.config.ts` agora declara `fontFamily.display/body/label` apontando para `var(--font-*)`; `globals.css` body usa `font-family: var(--font-body)`; index.html já tinha o `<link>` correto. Removidos: 14 ocorrências de `fontFamily:"'DM Sans',system-ui,sans-serif"` (substituídas por `var(--font-body)`), 4 blocos `<style>@import url('...DM+Sans...')</style>` (AdminPage, MfaSetupPage, Index, ResetPasswordPage), classe `font-dm-sans` no LoginPage (3 ocorrências → `font-body`). DM Mono mantida para colunas numéricas (não conflita com DESIGN.md). 233/233 testes verdes, build OK |
+| 2026-05-17 | refactor(lancamentos): `Lancamentos.tsx` 551L → 227L (orquestrador) via extração de hook `useLancamentos` (195L) + 3 sub-componentes em `src/components/lancamentos/` (`LancamentosTable` 115L, `LancamentosDetailModal` 106L, `LancamentosConflictModal` 71L) + `src/lib/csv-export.ts` (15L, função pura `csvSafe`). Etapa 6 de `PLANO_PONTOS_DE_ATENCAO_2026-05` substitui Etapa 1 de `PLANO_TESTES_ADVERSARIAIS` (csvSafe extraction). 233/233 testes verdes |
+| 2026-05-17 | chore(deps): override `yaml@<2.8.3 -> ^2.8.3` em `package.json` resolve GHSA-48c2-rrv3-qjmp (yaml stack overflow). `pnpm audit --prod` agora retorna 0 vulnerabilidades. Vem via Vite 6.4.2 (não tailwindcss-animate como inicialmente reportado em AUDIT-2026-05) |
+| 2026-05-17 | chore(git): branch `Main-terceiros` rebased em cima de `origin/Main-terceiros` (commit 142a319 — atualização do README). Backup local em `backup-pre-rebase`. Push adiado para fim do ciclo |

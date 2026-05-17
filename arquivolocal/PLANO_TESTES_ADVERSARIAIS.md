@@ -1,5 +1,7 @@
 # Plano — Bateria de Testes Adversariais (Red-Team)
 
+> **Status 2026-05-17:** Etapa 1 (extração de `csvSafe` para `src/lib/csv-export.ts`) foi **coberta pelo PLANO_PONTOS_DE_ATENCAO_2026-05 Etapa 6** (commit c6d9993). Pular Etapa 1 abaixo; demais etapas (Camadas A/B/C) seguem pendentes.
+
 ## Context
 
 A base atual tem 233 testes em 21 suítes, mas todos cobrem **caminho feliz** — escritos pela mesma pessoa que implementou o código, dando vantagem ao defensor. Este plano cria testes "estilo invasão", simulando atacante usando devtools do navegador (manipulação de localStorage/sessionStorage, JWT tampering, payloads OWASP).
