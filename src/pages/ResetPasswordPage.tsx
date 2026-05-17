@@ -46,7 +46,7 @@ export default function ResetPasswordPage() {
 
   if (hasSession === null) {
     return (
-      <div style={{ minHeight: "100vh", background: "#FAF9FB", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif" }}>
+      <div style={{ minHeight: "100vh", background: "#FAF9FB", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-body)" }}>
         <div style={{ fontSize: 14, color: "#9898B0", fontWeight: 600 }}>{t("reset_checking")}</div>
       </div>
     );
@@ -54,7 +54,7 @@ export default function ResetPasswordPage() {
 
   if (!hasSession) {
     return (
-      <div style={{ minHeight: "100vh", background: "#FAF9FB", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif", padding: 24 }}>
+      <div style={{ minHeight: "100vh", background: "#FAF9FB", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-body)", padding: 24 }}>
         <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", boxShadow: "0 4px 24px rgba(0,0,0,.08)", maxWidth: 420, width: "100%", textAlign: "center" }}>
           <div style={{ fontSize: 14, color: "#E02424", fontWeight: 600 }}>{t("reset_invalid_link")}</div>
           <div style={{ fontSize: 13, color: "#9898B0", marginTop: 8 }}>{t("reset_redirecting")}</div>
@@ -64,9 +64,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#FAF9FB", fontFamily: "'DM Sans',system-ui,sans-serif", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');`}</style>
-
+    <div style={{ minHeight: "100vh", background: "#FAF9FB", fontFamily: "var(--font-body)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div style={{ width: "100%", maxWidth: 420 }}>
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 32 }}>

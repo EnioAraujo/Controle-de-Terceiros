@@ -17,7 +17,7 @@ export function FornecedorShell({ fornecedor, children, tabs }: Props) {
   const { signOut } = useAuthStatus();
 
   return (
-    <div style={{ minHeight: "100vh", background: "#FAF9FB", fontFamily: "'DM Sans',system-ui,sans-serif", display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", background: "#FAF9FB", fontFamily: "var(--font-body)", display: "flex", flexDirection: "column" }}>
       <header
         style={{
           background: "#212B36",

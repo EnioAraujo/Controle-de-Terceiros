@@ -294,7 +294,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center p-6 font-dm-sans">
+    <div className="min-h-screen bg-surface flex items-center justify-center p-6 font-body">
       {/* Language selector */}
       <div className="absolute top-4 right-4 flex gap-2">
         {LANGS.map(l => (
@@ -332,7 +332,7 @@ export default function LoginPage() {
                 {/* Mobile Card */}
                 <button
                   onClick={() => chooseDevice("mobile")}
-                  className="flex-1 flex flex-col items-center gap-2 p-6 rounded-xl border-2 border-orange-200 bg-orange-50 cursor-pointer transition-all hover:border-orange-400 hover:shadow-md font-dm-sans"
+                  className="flex-1 flex flex-col items-center gap-2 p-6 rounded-xl border-2 border-orange-200 bg-orange-50 cursor-pointer transition-all hover:border-orange-400 hover:shadow-md font-body"
                 >
                   <span className="text-[34px] leading-none">📱</span>
                   <div className="font-black text-base text-orange-600">Mobile</div>
@@ -346,7 +346,7 @@ export default function LoginPage() {
                 {/* Desktop Card */}
                 <button
                   onClick={() => chooseDevice("desktop")}
-                  className="flex-1 flex flex-col items-center gap-2 p-6 rounded-xl border-2 border-gray-200 bg-slate-50 cursor-pointer transition-all hover:border-slate-400 hover:shadow-md font-dm-sans"
+                  className="flex-1 flex flex-col items-center gap-2 p-6 rounded-xl border-2 border-gray-200 bg-slate-50 cursor-pointer transition-all hover:border-slate-400 hover:shadow-md font-body"
                 >
                   <span className="text-[34px] leading-none">💻</span>
                   <div className="font-black text-base text-slate-800">Desktop</div>

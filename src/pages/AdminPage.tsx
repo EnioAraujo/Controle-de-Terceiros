@@ -65,8 +65,7 @@ export default function AdminPage() {
   const tabBarItems = openTabs.map(id => navById[id]);
 
   return (
-    <div style={{ minHeight:"100vh", background:"#FAF9FB", fontFamily:"'DM Sans',system-ui,sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');`}</style>
+    <div style={{ minHeight:"100vh", background:"#FAF9FB", fontFamily:"var(--font-body)" }}>
       <AppShell
         activityBar={(
           <ActivityBar

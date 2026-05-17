@@ -23,7 +23,7 @@ export default function FornecedorPage() {
 
   if (fornLoading) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FAF9FB", fontFamily: "'DM Sans',system-ui,sans-serif" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FAF9FB", fontFamily: "var(--font-body)" }}>
         <span style={{ fontSize: 14, color: "#64748B" }}>Carregando…</span>
       </div>
     );

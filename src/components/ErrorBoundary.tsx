@@ -22,7 +22,7 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif" }}>
+        <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-body)" }}>
           <div style={{ textAlign: "center" }}>
             <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1E293B", marginBottom: 8 }}>Algo deu errado</h1>
             <p style={{ fontSize: 14, color: "#64748B", marginBottom: 16 }}>Ocorreu um erro inesperado.</p>

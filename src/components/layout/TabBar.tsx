@@ -48,7 +48,7 @@ export function TabBar({ tabs, activeId, onActivate, onClose, closable = true }:
               borderBottom: active ? "2px solid #F37E38" : "2px solid transparent",
               color: active ? "#FFFFFF" : "#9898B0",
               fontSize: 12,
-              fontFamily: "'Inter','DM Sans',system-ui,sans-serif",
+              fontFamily: "'Inter',var(--font-body)",
               fontWeight: 500,
               userSelect: "none",
               whiteSpace: "nowrap",

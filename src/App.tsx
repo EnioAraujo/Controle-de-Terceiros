@@ -133,7 +133,7 @@ const AppRoutes = () => {
   // Loading state
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif" }}>
+      <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-body)" }}>
         <div style={{ fontSize: 14, color: "#64748B", fontWeight: 600 }}>Carregando…</div>
       </div>
     );
@@ -142,7 +142,7 @@ const AppRoutes = () => {
   // Token expirado - exibe mensagem
   if (tokenExpired && !session) {
     return (
-      <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif", flexDirection: "column", gap: 16 }}>
+      <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-body)", flexDirection: "column", gap: 16 }}>
         <div style={{ fontSize: 16, color: "#EF4444", fontWeight: 700 }}>Sessão expirada</div>
         <div style={{ fontSize: 14, color: "#64748B" }}>Redirecionando para login…</div>
       </div>
@@ -152,7 +152,7 @@ const AppRoutes = () => {
   // Usuário bloqueado — bloqueia todas as rotas autenticadas
   if (session && isBlocked) {
     return (
-      <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif", padding: 24 }}>
+      <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-body)", padding: 24 }}>
         <div style={{ textAlign: "center", maxWidth: 360 }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🚫</div>
           <div style={{ fontSize: 20, color: "#EF4444", fontWeight: 800, marginBottom: 8 }}>Usuário bloqueado</div>
@@ -171,7 +171,7 @@ const AppRoutes = () => {
   // Conta aguardando aprovação do administrador
   if (session && !isApproved) {
     return (
-      <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',system-ui,sans-serif", padding: 24 }}>
+      <div style={{ minHeight: "100vh", background: "#F0F2F5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-body)", padding: 24 }}>
         <div style={{ textAlign: "center", maxWidth: 360 }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
           <div style={{ fontSize: 20, color: "#F37E38", fontWeight: 800, marginBottom: 8 }}>Aguardando aprovação</div>

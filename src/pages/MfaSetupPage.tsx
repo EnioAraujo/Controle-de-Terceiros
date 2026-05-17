@@ -134,7 +134,7 @@ export default function MfaSetupPage() {
   const containerStyle: React.CSSProperties = {
     minHeight: "100vh",
     background: "#FAF9FB",
-    fontFamily: "'DM Sans',system-ui,sans-serif",
+    fontFamily: "var(--font-body)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -225,8 +225,6 @@ export default function MfaSetupPage() {
 
   return (
     <div style={containerStyle}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');`}</style>
-
       <div style={{ width: "100%", maxWidth: 440 }}>
         <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,.08)", overflow: "hidden" }}>
 
