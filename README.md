@@ -35,7 +35,7 @@
 - **Importação** de histórico via planilha Excel (.xlsx)
 - **Compartilhamento via WhatsApp** com template de mensagem configurável, campos ordenáveis
 - **Projeção de demanda futura** com distribuição proporcional por turno
-- **Fechamento financeiro** por fornecedor/período com status (rascunho → enviado → revisão → aprovado)
+- **Fechamento financeiro** por fornecedor/período
 - **Painel Admin** com RBAC, aprovação de usuários, MFA (TOTP), reset de senha
 - **Internacionalização** pt-BR / en-US com troca em tempo real
 - **Modo Mobile** com interface otimizada (FAB, cards, bottom sheet)
@@ -49,7 +49,7 @@
 - **Import** history from Excel spreadsheets (.xlsx)
 - **WhatsApp sharing** with configurable message template and draggable field order
 - **Future demand projection** with proportional distribution per shift
-- **Financial closing** per supplier/period with status workflow
+- **Financial closing** per supplier/period
 - **Admin panel** with RBAC, user approval, MFA (TOTP), password reset
 - **Internationalization** pt-BR / en-US with real-time switching
 - **Mobile mode** with optimized UI (FAB, cards, bottom sheet)
