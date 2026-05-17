@@ -18,6 +18,7 @@ import { Icon, Chip, Btn, Modal, Input, Select, BlockHeader } from "@/components
 import { FormLancamento } from "@/components/FormLancamento";
 import { ImportRegistrosCsvModal } from "@/components/ImportRegistrosCsvModal";
 import { LancamentosPeriodoFilters } from "@/components/LancamentosPeriodoFilters";
+import { tk } from "@/lib/design-tokens";
 
 /** Retorna o registro existente que conflita com `r` em turno na mesma data. */
 const findConflitoDeTurno = (
@@ -200,7 +201,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
   const exportCSV = () => {
     const h = ["Data","Turno","Hora Entrada","Hora Saída","Total Horas","Nome","Cargo","Unidade","CC","Operação","Fornecedor","Obs"];
     const rows = filtered.map(r => [r.data,r.turno,r.horaEntrada,r.horaSaida,r.totalHoras,r.nome,r.cargo,r.unidade,r.cc,r.motivo,r.fornecedor,r.obs].map(csvSafe).join(";"));
-    const blob = new Blob(["\uFEFF" + [h.join(";"), ...rows].join("\n")], { type:"text/csv;charset=utf-8;" });
+    const blob = new Blob(["﻿" + [h.join(";"), ...rows].join("\n")], { type:"text/csv;charset=utf-8;" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `terceiros_${filtros.data || "todos"}.csv`; a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -208,7 +209,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
       {syncError && (
-        <div style={{ background: "#FEE2E2", color: "#B91C1C", border: "1px solid #FCA5A5", borderRadius: 8, padding: "8px 12px", marginBottom: 8, fontSize: 13 }}>
+        <div style={{ background: tk.redLight, color: tk.redDark, border: `1px solid ${tk.redBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8, fontSize: 13 }}>
           {syncError}
         </div>
       )}
@@ -235,8 +236,8 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
       )}
 
       {importFeedback && (
-        <div style={{ background:"#EFF6FF", border:"1px solid #BFDBFE", borderRadius:10, padding:"10px 12px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
-          <div style={{ fontSize:12, color:"#1E3A8A" }}>
+        <div style={{ background:tk.blueBg, border:`1px solid ${tk.blueBorder}`, borderRadius:10, padding:"10px 12px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
+          <div style={{ fontSize:12, color:tk.blueDark }}>
             Importação "{importFeedback.fonte || "arquivo"}": {importFeedback.importados} incluídos, {importFeedback.rejeitados} rejeitados.
             {importadosOcultos > 0 ? ` ${importadosOcultos} fora do filtro atual.` : " Todos os importados estão visíveis."}
           </div>
@@ -258,7 +259,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
         </div>
       )}
 
-      <div id="tour-filtros" style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, padding:"14px 18px", display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
+      <div id="tour-filtros" style={{ background:tk.white, border:`1px solid ${tk.border}`, borderRadius:12, padding:"14px 18px", display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
         <LancamentosPeriodoFilters filtroPeriodo={filtroPeriodo} onChange={setFiltroPeriodo} />
         <Input label={t("form_label_data")} type="date" value={filtros.data} onChange={e => set("data", e.target.value)} style={{ width:150 }} />
         <Select label={t("form_label_turno")} value={filtros.turno} onChange={e => set("turno", e.target.value)} style={{ width:150 }}>
@@ -286,7 +287,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
       </div>
 
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", paddingLeft:2 }}>
-        <span style={{ fontSize:12, color:"#94A3B8" }}>
+        <span style={{ fontSize:12, color:tk.textMuted }}>
           {t("lanc_showing").replace("{n}", String(filtered.length)).replace("{total}", String(registros.length))}
         </span>
         {selectedIds.length > 0 && (
@@ -301,11 +302,11 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
         )}
       </div>
 
-      <div id="tour-tabela" style={{ background:"#fff", border:"1px solid #E2E6EC", borderRadius:12, overflow:"hidden" }}>
+      <div id="tour-tabela" style={{ background:tk.white, border:`1px solid ${tk.border}`, borderRadius:12, overflow:"hidden" }}>
         <div style={{ overflowX:"auto" }}>
           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
             <thead>
-              <tr style={{ background:"#F8FAFC" }}>
+              <tr style={{ background:tk.surfaceLight }}>
                 <th style={{ padding:"10px 12px", textAlign:"center", width:32 }}>
                   <input type="checkbox"
                     checked={filtered.length > 0 && selectedIds.length === filtered.length}
@@ -313,13 +314,13 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
                   />
                 </th>
                 {[t("lanc_col_data"),t("lanc_col_turno"),t("lanc_col_nome"),"Excedente",t("lanc_col_forn"),t("lanc_col_unidade"),t("lanc_col_entrada"),t("lanc_col_saida"),t("lanc_col_horas"),t("lanc_col_motivo"),t("lanc_col_acoes")].map(h => (
-                  <th key={h} style={{ padding:"10px 12px", textAlign:"left", color:"#64748B", fontWeight:700, fontSize:10, textTransform:"uppercase", letterSpacing:.7, whiteSpace:"nowrap", borderBottom:"2px solid #E2E6EC" }}>{h}</th>
+                  <th key={h} style={{ padding:"10px 12px", textAlign:"left", color:tk.textSecondary, fontWeight:700, fontSize:10, textTransform:"uppercase", letterSpacing:.7, whiteSpace:"nowrap", borderBottom:`2px solid ${tk.border}` }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {grupos.length === 0 && (
-                <tr><td colSpan={12} style={{ textAlign:"center", padding:48, color:"#94A3B8" }}>
+                <tr><td colSpan={12} style={{ textAlign:"center", padding:48, color:tk.textMuted }}>
                   <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
                   {t("lanc_empty")}
                 </td></tr>
@@ -329,14 +330,14 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
                 const r = isLote ? item[0] : item;
                 const count = isLote ? item.length : 1;
                 const allIds = isLote ? item.map(x => x.id) : [r.id];
-                const bgBase = i % 2 === 0 ? "#fff" : "#FAFBFC";
+                const bgBase = i % 2 === 0 ? tk.white : tk.surfaceNearly;
                 const isChecked = allIds.every(id => selectedIds.includes(id));
                 return (
                   <tr key={isLote ? r.loteId : r.id}
-                    style={{ borderBottom:"1px solid #F1F5F9", background: bgBase, cursor:"pointer",
-                      borderLeft: isLote ? "3px solid #1A56DB" : "3px solid transparent" }}
+                    style={{ borderBottom:`1px solid ${tk.surfaceAlt}`, background: bgBase, cursor:"pointer",
+                      borderLeft: isLote ? `3px solid ${tk.blue}` : "3px solid transparent" }}
                     onClick={() => setDetalhe(item)}
-                    onMouseEnter={e => (e.currentTarget.style.background = "#F0F6FF")}
+                    onMouseEnter={e => (e.currentTarget.style.background = tk.blueHover)}
                     onMouseLeave={e => (e.currentTarget.style.background = bgBase)}>
                     <td style={{ padding:"10px 12px", textAlign:"center" }} onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={isChecked} onChange={e => {
@@ -344,36 +345,36 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
                         setSelectedIds(val => e.target.checked ? [...new Set([...val, ...allIds])] : val.filter(id => !allIds.includes(id)));
                       }} />
                     </td>
-                    <td style={{ padding:"10px 12px", fontFamily:"monospace", fontSize:11, color:"#64748B" }}>{fmt(r.data, lang)}</td>
-                    <td style={{ padding:"10px 12px" }}><Chip label={r.turno} color="#1A56DB" /></td>
+                    <td style={{ padding:"10px 12px", fontFamily:"monospace", fontSize:11, color:tk.textSecondary }}>{fmt(r.data, lang)}</td>
+                    <td style={{ padding:"10px 12px" }}><Chip label={r.turno} color={tk.blue} /></td>
                     <td style={{ padding:"10px 12px" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                        <div style={{ fontWeight:700, color:"#0F1C2E", whiteSpace:"nowrap" }}>{r.nome}</div>
-                        {isLote && <span style={{ background:"#1A56DB", color:"#fff", borderRadius:99, padding:"1px 7px", fontSize:10, fontWeight:800, flexShrink:0 }}>{count}×</span>}
+                        <div style={{ fontWeight:700, color:tk.textPrimary, whiteSpace:"nowrap" }}>{r.nome}</div>
+                        {isLote && <span style={{ background:tk.blue, color:tk.white, borderRadius:99, padding:"1px 7px", fontSize:10, fontWeight:800, flexShrink:0 }}>{count}×</span>}
                       </div>
-                      {isLote && <div style={{ fontSize:10, color:"#94A3B8", marginTop:2 }}>{item.slice(1, 3).map(x => x.nome).join(", ")}{count > 3 ? ` +${count - 3}` : ""}</div>}
+                      {isLote && <div style={{ fontSize:10, color:tk.textMuted, marginTop:2 }}>{item.slice(1, 3).map(x => x.nome).join(", ")}{count > 3 ? ` +${count - 3}` : ""}</div>}
                     </td>
                     <td style={{ padding:"10px 12px", textAlign:"center" }}>
                       {(() => {
                         const info = excedenteMap.get(`${r.data}|${r.turno}`);
-                        if (!info || info.limite === null) return <span style={{ color:"#CBD5E1", fontSize:11 }}>—</span>;
+                        if (!info || info.limite === null) return <span style={{ color:tk.borderMuted, fontSize:11 }}>—</span>;
                         if (info.excedente > 0) return (
-                          <span style={{ background:"#FEE2E2", color:"#E02424", borderRadius:99, padding:"2px 8px", fontSize:11, fontWeight:800 }}>+{info.excedente}</span>
+                          <span style={{ background:tk.redLight, color:tk.red, borderRadius:99, padding:"2px 8px", fontSize:11, fontWeight:800 }}>+{info.excedente}</span>
                         );
-                        return <span style={{ color:"#0E9F6E", fontSize:11, fontWeight:700 }}>✓</span>;
+                        return <span style={{ color:tk.green, fontSize:11, fontWeight:700 }}>✓</span>;
                       })()}
                     </td>
                     <td style={{ padding:"10px 12px" }}><Chip label={r.fornecedor} color={fornCor(r.fornecedor, opcoes.fornecedores)} /></td>
-                    <td style={{ padding:"10px 12px" }}><Chip label={r.unidade} color="#0E9F6E" /></td>
-                    <td style={{ padding:"10px 12px", fontFamily:"monospace", color:"#475569" }}>{r.horaEntrada}</td>
-                    <td style={{ padding:"10px 12px", fontFamily:"monospace", color:"#475569" }}>{r.horaSaida}</td>
-                    <td style={{ padding:"10px 12px", fontFamily:"monospace", fontWeight:800, color:"#0E9F6E" }}>{r.totalHoras}</td>
-                    <td style={{ padding:"10px 12px", color:"#64748B", maxWidth:150, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.motivo}</td>
+                    <td style={{ padding:"10px 12px" }}><Chip label={r.unidade} color={tk.green} /></td>
+                    <td style={{ padding:"10px 12px", fontFamily:"monospace", color:tk.textBody }}>{r.horaEntrada}</td>
+                    <td style={{ padding:"10px 12px", fontFamily:"monospace", color:tk.textBody }}>{r.horaSaida}</td>
+                    <td style={{ padding:"10px 12px", fontFamily:"monospace", fontWeight:800, color:tk.green }}>{r.totalHoras}</td>
+                    <td style={{ padding:"10px 12px", color:tk.textSecondary, maxWidth:150, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.motivo}</td>
                     <td style={{ padding:"10px 12px" }} onClick={e => e.stopPropagation()}>
                       <div style={{ display:"flex", gap:5 }}>
-                        <button onClick={() => setDetalhe(item)} title="Ver detalhes" style={{ background:"#F1F5F9", border:"none", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:"#64748B", display:"flex" }}><Icon d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" size={14} /></button>
-                        <button onClick={() => setModal(item)} title="Editar" style={{ background:"#EBF0FD", border:"none", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:"#1A56DB", display:"flex" }}><Icon d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" size={14} /></button>
-                        <button onClick={() => setConfirm(isLote ? item.map(x => x.id) : [r.id])} title="Excluir" style={{ background:"#FDE8E8", border:"none", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:"#E02424", display:"flex" }}><Icon d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" size={14} /></button>
+                        <button onClick={() => setDetalhe(item)} title="Ver detalhes" style={{ background:tk.surfaceAlt, border:"none", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:tk.textSecondary, display:"flex" }}><Icon d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" size={14} /></button>
+                        <button onClick={() => setModal(item)} title="Editar" style={{ background:tk.blueAccent, border:"none", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:tk.blue, display:"flex" }}><Icon d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" size={14} /></button>
+                        <button onClick={() => setConfirm(isLote ? item.map(x => x.id) : [r.id])} title="Excluir" style={{ background:tk.redBg, border:"none", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:tk.red, display:"flex" }}><Icon d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" size={14} /></button>
                       </div>
                     </td>
                   </tr>
@@ -409,26 +410,26 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
                   [t("detail_unidade"), detalhe[0].unidade],
                   [t("detail_cc"), detalhe[0].cc], [t("detail_motivo"), detalhe[0].motivo],
                 ] as [string, string][]).map(([k, v]) => (
-                  <div key={k} style={{ background:"#F8FAFC", borderRadius:8, padding:"10px 14px" }}>
-                    <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{k}</div>
-                    <div style={{ fontSize:13, fontWeight:600, color:"#0F1C2E" }}>{v || "—"}</div>
+                  <div key={k} style={{ background:tk.surfaceLight, borderRadius:8, padding:"10px 14px" }}>
+                    <div style={{ fontSize:10, color:tk.textMuted, fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{k}</div>
+                    <div style={{ fontSize:13, fontWeight:600, color:tk.textPrimary }}>{v || "—"}</div>
                   </div>
                 ))}
               </div>
               <div>
-                <div style={{ fontSize:11, fontWeight:700, color:"#64748B", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>{t("lanc_detail_cols")} ({detalhe.length})</div>
-                <div style={{ border:"1px solid #E2E6EC", borderRadius:8, overflow:"hidden" }}>
+                <div style={{ fontSize:11, fontWeight:700, color:tk.textSecondary, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>{t("lanc_detail_cols")} ({detalhe.length})</div>
+                <div style={{ border:`1px solid ${tk.border}`, borderRadius:8, overflow:"hidden" }}>
                   <div style={{ overflowX:"auto" }}>
                   <div style={{ minWidth:380 }}>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 96px 96px 72px", background:"#F8FAFC", padding:"8px 14px", gap:8, borderBottom:"1px solid #E2E6EC" }}>
-                    {[t("detail_col_nome"),t("detail_col_entrada"),t("detail_col_saida"),t("detail_col_total")].map(h => <div key={h} style={{ fontSize:10, fontWeight:700, color:"#64748B", textTransform:"uppercase" }}>{h}</div>)}
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 96px 96px 72px", background:tk.surfaceLight, padding:"8px 14px", gap:8, borderBottom:`1px solid ${tk.border}` }}>
+                    {[t("detail_col_nome"),t("detail_col_entrada"),t("detail_col_saida"),t("detail_col_total")].map(h => <div key={h} style={{ fontSize:10, fontWeight:700, color:tk.textSecondary, textTransform:"uppercase" }}>{h}</div>)}
                   </div>
                   {detalhe.map((rec, idx) => (
-                    <div key={rec.id} style={{ display:"grid", gridTemplateColumns:"1fr 96px 96px 72px", gap:8, padding:"8px 14px", background: idx%2===0?"#fff":"#FAFBFC", borderTop: idx > 0 ? "1px solid #F1F5F9" : "none" }}>
-                      <span style={{ fontWeight:600, color:"#0F1C2E", fontSize:12 }}>{rec.nome}</span>
-                      <span style={{ fontFamily:"monospace", color:"#475569", fontSize:12 }}>{rec.horaEntrada}</span>
-                      <span style={{ fontFamily:"monospace", color:"#475569", fontSize:12 }}>{rec.horaSaida}</span>
-                      <span style={{ fontFamily:"monospace", fontWeight:700, color:"#0E9F6E", fontSize:12 }}>{rec.totalHoras}</span>
+                    <div key={rec.id} style={{ display:"grid", gridTemplateColumns:"1fr 96px 96px 72px", gap:8, padding:"8px 14px", background: idx%2===0?tk.white:tk.surfaceNearly, borderTop: idx > 0 ? `1px solid ${tk.surfaceAlt}` : "none" }}>
+                      <span style={{ fontWeight:600, color:tk.textPrimary, fontSize:12 }}>{rec.nome}</span>
+                      <span style={{ fontFamily:"monospace", color:tk.textBody, fontSize:12 }}>{rec.horaEntrada}</span>
+                      <span style={{ fontFamily:"monospace", color:tk.textBody, fontSize:12 }}>{rec.horaSaida}</span>
+                      <span style={{ fontFamily:"monospace", fontWeight:700, color:tk.green, fontSize:12 }}>{rec.totalHoras}</span>
                     </div>
                   ))}
                   </div>
@@ -436,9 +437,9 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
                 </div>
               </div>
               {detalhe[0].obs && (
-                <div style={{ background:"#FEF3C7", borderRadius:8, padding:"10px 14px" }}>
-                  <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{t("lanc_detail_obs")}</div>
-                  <div style={{ fontSize:13, color:"#0F1C2E" }}>{detalhe[0].obs}</div>
+                <div style={{ background:tk.amberBg, borderRadius:8, padding:"10px 14px" }}>
+                  <div style={{ fontSize:10, color:tk.textMuted, fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{t("lanc_detail_obs")}</div>
+                  <div style={{ fontSize:13, color:tk.textPrimary }}>{detalhe[0].obs}</div>
                 </div>
               )}
             </div>
@@ -451,20 +452,20 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
                   [t("detail_entrada"), detalhe.horaEntrada], [t("detail_saida"), detalhe.horaSaida],
                   [t("detail_total_horas"), detalhe.totalHoras], [t("detail_motivo"), detalhe.motivo],
               ] as [string, string][]).map(([k, v]) => (
-                <div key={k} style={{ background:"#F8FAFC", borderRadius:8, padding:"10px 14px" }}>
-                  <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{k}</div>
-                  <div style={{ fontSize:13, fontWeight:600, color:"#0F1C2E" }}>{v || "—"}</div>
+                <div key={k} style={{ background:tk.surfaceLight, borderRadius:8, padding:"10px 14px" }}>
+                  <div style={{ fontSize:10, color:tk.textMuted, fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{k}</div>
+                  <div style={{ fontSize:13, fontWeight:600, color:tk.textPrimary }}>{v || "—"}</div>
                 </div>
               ))}
               {detalhe.obs && (
-                <div style={{ gridColumn:"span 2", background:"#FEF3C7", borderRadius:8, padding:"10px 14px" }}>
-                  <div style={{ fontSize:10, color:"#94A3B8", fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{t("lanc_detail_obs")}</div>
-                  <div style={{ fontSize:13, color:"#0F1C2E" }}>{detalhe.obs}</div>
+                <div style={{ gridColumn:"span 2", background:tk.amberBg, borderRadius:8, padding:"10px 14px" }}>
+                  <div style={{ fontSize:10, color:tk.textMuted, fontWeight:600, textTransform:"uppercase", letterSpacing:.7, marginBottom:4 }}>{t("lanc_detail_obs")}</div>
+                  <div style={{ fontSize:13, color:tk.textPrimary }}>{detalhe.obs}</div>
                 </div>
               )}
             </div>
           )}
-          <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:16, paddingTop:16, borderTop:"1px solid #F1F5F9" }}>
+          <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:16, paddingTop:16, borderTop:`1px solid ${tk.surfaceAlt}` }}>
             <Btn variant="ghost" onClick={() => setDetalhe(null)}>{t("lanc_detail_close")}</Btn>
             <button
               onClick={() => {
@@ -472,8 +473,8 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
                 const msg = buildWhatsAppMessage(regs, waTemplate);
                 window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
               }}
-              style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#25D366", border:"none", borderRadius:8, padding:"8px 18px", cursor:"pointer", color:"#fff", fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
-              <svg width={16} height={16} viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              style={{ display:"inline-flex", alignItems:"center", gap:6, background:tk.whatsapp, border:"none", borderRadius:8, padding:"8px 18px", cursor:"pointer", color:tk.white, fontWeight:700, fontSize:13, fontFamily:"inherit" }}>
+              <svg width={16} height={16} viewBox="0 0 24 24" fill={tk.white}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
               WhatsApp
             </button>
             <Btn onClick={() => { setModal(detalhe); setDetalhe(null); }}>{t("lanc_detail_edit")}</Btn>
@@ -483,7 +484,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
 
       {confirm && (
         <Modal title={t("lanc_confirm_title")} onClose={() => setConfirm(null)}>
-          <p style={{ color:"#475569", fontSize:13, lineHeight:1.6 }}>
+          <p style={{ color:tk.textBody, fontSize:13, lineHeight:1.6 }}>
             {confirm.length > 1
               ? t("lanc_confirm_lote").replace("{n}", String(confirm.length))
               : t("lanc_confirm_single")}
@@ -498,19 +499,19 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
       {conflito && (
         <Modal title="⚠️ Colaborador já lançado em outro turno" onClose={() => setConflito(null)} wide>
           <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-            <div style={{ background:"#FFFBEB", border:"1.5px solid #FCD34D", borderRadius:10, padding:"14px 18px" }}>
-              <div style={{ fontWeight:700, color:"#D97706", fontSize:13, marginBottom:8 }}>
+            <div style={{ background:tk.amberSurface, border:`1.5px solid ${tk.amberAccent}`, borderRadius:10, padding:"14px 18px" }}>
+              <div style={{ fontWeight:700, color:tk.amber, fontSize:13, marginBottom:8 }}>
                 {conflito.nomes.length === 1
                   ? `${conflito.nomes[0]} já tem registro em outro turno nesta data.`
                   : `${conflito.nomes.length} colaboradores já têm registro em outro turno nesta data:`}
               </div>
               {conflito.nomes.length > 1 && (
-                <ul style={{ margin:0, paddingLeft:18, fontSize:12, color:"#92400E" }}>
+                <ul style={{ margin:0, paddingLeft:18, fontSize:12, color:tk.amberDeep }}>
                   {conflito.nomes.map(n => <li key={n}>{n}</li>)}
                 </ul>
               )}
             </div>
-            <div style={{ fontSize:12, color:"#374151" }}>
+            <div style={{ fontSize:12, color:tk.textGray }}>
               Para registrar em dois turnos no mesmo dia, informe o motivo abaixo. A justificativa será salva no campo Obs do registro.
             </div>
             <textarea
@@ -519,9 +520,9 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
               placeholder="Ex: horas extras autorizadas, cobertura de falta emergencial, dobra de turno..."
               rows={3}
               style={{
-                border:`1.5px solid ${conflito.justificativa.trim().length > 0 ? "#FCD34D" : "#E2E6EC"}`,
+                border:`1.5px solid ${conflito.justificativa.trim().length > 0 ? tk.amberAccent : tk.border}`,
                 borderRadius:8, padding:"10px 12px", fontSize:12, fontFamily:"inherit",
-                resize:"vertical", outline:"none", width:"100%", boxSizing:"border-box", background:"#FAFBFC"
+                resize:"vertical", outline:"none", width:"100%", boxSizing:"border-box", background:tk.surfaceNearly
               }}
             />
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
@@ -536,7 +537,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
                 }}
                 disabled={conflito.justificativa.trim().length === 0}
                 style={{
-                  background: conflito.justificativa.trim().length > 0 ? "#D97706" : undefined,
+                  background: conflito.justificativa.trim().length > 0 ? tk.amber : undefined,
                   opacity: conflito.justificativa.trim().length === 0 ? 0.45 : 1
                 }}>
                 Confirmar com justificativa
@@ -548,5 +549,3 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
     </div>
   );
 };
-
-
