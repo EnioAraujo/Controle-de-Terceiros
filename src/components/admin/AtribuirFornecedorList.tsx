@@ -6,7 +6,6 @@ import { callAdminFn } from "@/lib/admin-api";
 interface UserRow {
   id: string;
   email: string;
-  is_admin: boolean;
   fornecedor: string | null;
 }
 
@@ -41,7 +40,8 @@ export function AtribuirFornecedorList({ fornecedores }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, email, is_admin, fornecedor")
+        .select("id, email, fornecedor")
+        .eq("is_admin", false)
         .order("email", { ascending: true });
       if (error) throw error;
       return (data ?? []) as UserRow[];
@@ -111,9 +111,7 @@ export function AtribuirFornecedorList({ fornecedores }: Props) {
                   <tr key={u.id} style={{ borderBottom: "1px solid #F3F4F6" }}>
                     <td style={{ padding: "10px 8px", color: "#212B36" }}>{u.email}</td>
                     <td style={{ padding: "10px 8px" }}>
-                      {u.is_admin ? (
-                        <span style={{ background: "#F37E3815", color: "#F37E38", padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600 }}>admin</span>
-                      ) : u.fornecedor ? (
+                      {u.fornecedor ? (
                         <span style={{ background: "#0E9F6E15", color: "#0E9F6E", padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600 }}>fornecedor</span>
                       ) : (
                         <span style={{ color: "#9CA3AF", fontSize: 12 }}>—</span>
@@ -125,7 +123,6 @@ export function AtribuirFornecedorList({ fornecedores }: Props) {
                         value={u.fornecedor ?? ""}
                         onChange={e => onChange(e.target.value)}
                         disabled={isPending}
-                        title={u.is_admin ? "Atribuir fornecedor rebaixará este usuário de admin." : undefined}
                       >
                         <option value="">— sem fornecedor —</option>
                         {fornecedores.map(f => <option key={f} value={f}>{f}</option>)}
