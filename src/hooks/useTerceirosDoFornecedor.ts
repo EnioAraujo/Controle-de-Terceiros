@@ -21,14 +21,19 @@ export interface TerceirosDoFornecedorApi {
 
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
-export const useTerceirosDoFornecedor = (): TerceirosDoFornecedorApi => {
-  const { fornecedor, isFornecedorUser, loading: fornLoading } = useFornecedorAtual();
+export const useTerceirosDoFornecedor = (
+  fornecedorOverride?: string,
+): TerceirosDoFornecedorApi => {
+  const { fornecedor: fornAtual, loading: fornLoadingCtx } = useFornecedorAtual();
+  const fornecedor = fornecedorOverride ?? fornAtual;
+  // Se override foi fornecido, não dependemos do loading do contexto.
+  const fornLoading = fornecedorOverride !== undefined ? false : fornLoadingCtx;
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    if (!isFornecedorUser || !fornecedor) {
+    if (!fornecedor) {
       setPessoas([]);
       setLoading(false);
       setError(null);
@@ -58,7 +63,7 @@ export const useTerceirosDoFornecedor = (): TerceirosDoFornecedorApi => {
     // 3 tentativas falharam — preserva último snapshot (NÃO zera pessoas) e expõe erro.
     setError(lastErr ?? "Falha ao carregar funcionários.");
     setLoading(false);
-  }, [fornecedor, isFornecedorUser]);
+  }, [fornecedor]);
 
   useEffect(() => {
     if (fornLoading) return;

@@ -1,4 +1,4 @@
-import { FornecedorShell } from "@/components/layout/FornecedorShell";
+import { FornecedorShell, type FornecedorShellTab } from "@/components/layout/FornecedorShell";
 import { ContadorPessoas } from "@/components/fornecedor/ContadorPessoas";
 import { ImportPessoasSection } from "@/components/fornecedor/ImportPessoasSection";
 import { CrudPessoasSection } from "@/components/fornecedor/CrudPessoasSection";
@@ -6,6 +6,11 @@ import { FornecedorErrorBanner } from "@/components/fornecedor/FornecedorErrorBa
 import { useFornecedorAtual } from "@/hooks/useFornecedorAtual";
 import { useTerceirosDoFornecedor } from "@/hooks/useTerceirosDoFornecedor";
 import { useOpcoes } from "@/hooks/useOpcoes";
+
+const tabs: FornecedorShellTab[] = [
+  { label: "Funcionários", to: "/fornecedor" },
+  { label: "Resumo", to: "/fornecedor/resumo" },
+];
 
 export default function FornecedorPage() {
   const { fornecedor, isFornecedorUser, loading: fornLoading } = useFornecedorAtual();
@@ -27,7 +32,7 @@ export default function FornecedorPage() {
   // Admin acessando sem fornecedor próprio: mostra aviso (admin pode entrar em qualquer rota).
   if (!isFornecedorUser || !fornecedor) {
     return (
-      <FornecedorShell fornecedor="—">
+      <FornecedorShell fornecedor="—" tabs={tabs}>
         <div style={{ background: "#FEF3C7", border: "1px solid #FCD34D", borderRadius: 12, padding: 20, color: "#92400E", fontSize: 14 }}>
           Você está acessando esta página como administrador. Para gerenciar funcionários, faça login com um usuário vinculado a um fornecedor.
         </div>
@@ -36,7 +41,7 @@ export default function FornecedorPage() {
   }
 
   return (
-    <FornecedorShell fornecedor={fornecedor}>
+    <FornecedorShell fornecedor={fornecedor} tabs={tabs}>
       <div style={{ display: "grid", gap: 20, maxWidth: 1100, margin: "0 auto" }}>
         {erroCarga && (
           <FornecedorErrorBanner mensagem={erroCarga} onRetry={retryPessoas} />

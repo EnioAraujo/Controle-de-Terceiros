@@ -23,6 +23,7 @@ const MobileLancamentosPage = lazy(() => import("./pages/MobileLancamentosPage")
 const MfaSetupPage = lazy(() => import("./pages/MfaSetupPage"));
 const FornecedorPage = lazy(() => import("./pages/FornecedorPage"));
 const FornecedorMobilePage = lazy(() => import("./pages/FornecedorMobilePage"));
+const ResumoAcumuladoPage = lazy(() => import("./pages/ResumoAcumuladoPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Loading fallback component
@@ -220,6 +221,13 @@ const AppRoutes = () => {
         <Suspense fallback={<PageLoading />}>
           {session && !hasMfaPending(session)
             ? <FornecedorRoute><FornecedorPage /></FornecedorRoute>
+            : <Navigate to="/login" replace />}
+        </Suspense>
+      } />
+      <Route path="/fornecedor/resumo" element={
+        <Suspense fallback={<PageLoading />}>
+          {session && !hasMfaPending(session)
+            ? <FornecedorRoute><ResumoAcumuladoPage /></FornecedorRoute>
             : <Navigate to="/login" replace />}
         </Suspense>
       } />

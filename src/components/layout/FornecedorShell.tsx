@@ -1,12 +1,19 @@
 import { ReactNode } from "react";
+import { NavLink } from "react-router-dom";
 import { useAuthStatus } from "@/hooks/useAuthStatus";
+
+export interface FornecedorShellTab {
+  label: string;
+  to: string;
+}
 
 interface Props {
   fornecedor: string;
   children: ReactNode;
+  tabs?: FornecedorShellTab[];
 }
 
-export function FornecedorShell({ fornecedor, children }: Props) {
+export function FornecedorShell({ fornecedor, children, tabs }: Props) {
   const { signOut } = useAuthStatus();
 
   return (
@@ -71,6 +78,39 @@ export function FornecedorShell({ fornecedor, children }: Props) {
           Sair
         </button>
       </header>
+      {tabs && tabs.length > 0 && (
+        <nav
+          style={{
+            background: "#FFFFFF",
+            borderBottom: "1px solid #E5E7EB",
+            padding: "0 24px",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            overflowX: "auto",
+          }}
+          aria-label="Navegação do fornecedor"
+        >
+          {tabs.map(tab => (
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              end
+              style={({ isActive }) => ({
+                padding: "12px 14px",
+                fontSize: 13,
+                fontWeight: 600,
+                color: isActive ? "#F37E38" : "#6B7280",
+                borderBottom: `2px solid ${isActive ? "#F37E38" : "transparent"}`,
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+              })}
+            >
+              {tab.label}
+            </NavLink>
+          ))}
+        </nav>
+      )}
       <main style={{ flex: 1, padding: 24 }}>{children}</main>
     </div>
   );
