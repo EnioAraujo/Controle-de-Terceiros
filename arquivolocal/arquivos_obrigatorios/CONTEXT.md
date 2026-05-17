@@ -458,21 +458,17 @@ const { lang, setLang, t } = useI18n();
 
 ---
 
-## 13. Dívida Técnica Identificada (2026-03-26)
+## 13. Dívida Técnica Identificada (atualizado 2026-05-17)
 
-Resultado da varredura de verbosidade e over-engineering realizada em 2026-03-26. Os itens abaixo estão classificados por prioridade e devem ser tratados antes de implementar novas funcionalidades.
+Itens da varredura de 2026-03-26 marcados como resolvidos foram migrados para o histórico (§14). A tabela abaixo reflete apenas o que segue pendente após o ciclo de revitalização de 2026-05-17 (plano `crystalline-locket`).
 
 | Prioridade | Localização | Problema | Ação Recomendada |
-|---|---|---|---------|
-| 🔴 Alta | `Index.tsx` (inteiro) | Monolith ~2700 linhas — hooks, UI e lógica de negócio no mesmo arquivo | Extrair `useStorage` e `useOpcoes` para `src/hooks/`; sub-componentes (`Lancamentos`, `Dashboard`, `FechamentoTab`, `Configuracoes`) para `src/components/` |
-| 🟠 Média | `Index.tsx`: `useOpcoes.save()` | Lógica diff `toAdd`/`toRemove` duplicada para options e names | Extrair helper genérico `diffSyncItems(prev, next)` |
-| 🟠 Média | `App.tsx` | `QueryClientProvider` configurado mas zero `useQuery`/`useMutation` em todo o projeto | Remover `QueryClientProvider` e dependência `@tanstack/react-query` |
-| 🟠 Média | `Index.tsx`: `salvar()` | `registros.some()` com a mesma condição executado duas vezes | Extrair resultado para variável e reutilizar |
-| 🟡 Baixa | `Index.tsx`: `FormLancamento` | `<G cols={1}>` — wrapper de grid de 1 coluna desnecessário | Remover `G` e usar o elemento filho diretamente |
-| 🟡 Baixa | `Index.tsx` (~30 ocorrências) | Inline label styles com os mesmos 5 atributos repetidos | Extrair constante `labelStyle` |
-| 🟡 Baixa | `Index.tsx` (4 ocorrências) | Block header badge (div numerada) duplicada 4× | Extrair componente `BlockHeader` |
-| 🟡 Baixa | `Index.tsx`: `Btn` component | Variante `outline` definida mas nunca usada em lugar nenhum | Remover variante ou aplicá-la onde fizer sentido |
-| 🟡 Baixa | `src/lib/format-utils.ts`: `fmtMes` | Array manual de meses pt-BR em vez de API nativa | Substituir por `Intl.DateTimeFormat` com `{ month: 'long' }` |
+|---|---|---|---|
+| 🟠 Média | `MobileLancamentosPage.tsx` (975L + 87 inline-hex) | Monolith mistura helpers (`Chip`, `SheetBtn`), 5 sub-componentes inline (`RegistroCard`, `BottomSheet`, `ConfirmDialog`, `MobileModal`), filtros, FAB e configurações no mesmo arquivo | Dividir em hook `useMobileLancamentos` + 7 componentes em `src/components/mobile/` (Etapa 4 do plano `crystalline-locket`) |
+| 🟡 Baixa | `Lancamentos.tsx` (61 inline-hex) / `ProjecaoPage.tsx` (52 inline-hex) | Cores hex repetidas em `style={{}}` divergem do DESIGN.md | Criar `src/lib/design-tokens.ts` + classes utilitárias em `globals.css` e tokenizar hex (Etapa 5) |
+| 🟡 Baixa | Tipografia | App carrega `DM Sans` + `DM Mono` via `<style>@import>` em AdminPage/Login/etc., mas DESIGN.md prescreve Space Grotesk + Plus Jakarta Sans + Inter | **Postergada conscientemente**: alinhamento exige revisão visual em todas as páginas; decisão registrada em 2026-05-17 |
+| 🟡 Baixa | Smoke tests ausentes | `AdminPage.tsx` e `LoginPage.tsx` sem teste de render mínimo | Adicionar `AdminPage.test.tsx` e `LoginPage.test.tsx` (Etapa 6) |
+| 🟡 Baixa | Auditoria formal | Sem registro datado de varredura de segurança após bumps de 2026-05-14 | Executar `pnpm audit`, grep `logAudit`/`sanitize`/`as any`, gerar `arquivolocal/AUDIT-2026-05.md` (Etapa 7) |
 
 ---
 
@@ -560,3 +556,9 @@ Resultado da varredura de verbosidade e over-engineering realizada em 2026-03-26
 | 2026-04-25 | Importação de presença via CSV em Lançamentos: modal isolado (ImportRegistrosCsvModal), parser puro em src/lib/import-registros-csv.ts com validação/deduplicação/conflito de turno, integração admin-only no botão "Importar CSV" e testes unitários da importação |
 | 2026-04-25 | Lançamentos: adicionados filtros de Mês + Período (1º/2º/3º/personalizado) no padrão do Fechamento, mantendo coexistência com filtro de data exata; lógica de intervalo extraída para src/lib/lancamentos-filtros-utils.ts e controles isolados em src/components/LancamentosPeriodoFilters.tsx |
 | 2026-04-25 | Correção do filtro de Mês em Lançamentos: quando nenhum período é selecionado, o sistema agora aplica intervalo do mês inteiro (01 até último dia) em src/lib/lancamentos-filtros-utils.ts; testes unitários atualizados |
+| 2026-05-14 | Bumps de segurança para 21 CVEs HIGH: recharts 2.12→2.15, eslint 9.9→9.39, typescript-eslint 8.0→8.59, vite-plugin-pwa 1.2→1.3 + workbox-build 7.4.1, vitest 4.1→4.1.6, @vercel/node 5.6→5.8; `pnpm.overrides` condicionais para undici/glob/minimatch/brace-expansion/flatted/rollup/fast-uri/serialize-javascript/picomatch/@babel patches; `pnpm audit --audit-level=high` agora exit 0; detalhes em `docs/SECURITY-AUDIT-2026-05.md` |
+| 2026-05-17 | feat(fornecedor): página `/fornecedor/resumo` com filtros (data + categoria) e tabela agregada por terceiro; `FornecedorShell` ganha prop `tabs` para navegação Funcionários/Resumo; `useTerceirosDoFornecedor` aceita `fornecedorOverride` para reuso fora do contexto do `FornecedorRoute`; componentes novos `ResumoAcumuladoFilters`, `ResumoAcumuladoTable`; hook `useResumoAcumulado` |
+| 2026-05-17 | feat(admin): aba Terceiros para gestão por fornecedor (`AdminTerceirosTab.tsx`) seguindo padrão de `AdminFornecedoresTab` |
+| 2026-05-17 | refactor(admin): AdminPage.tsx 1077L → 138L (orquestrador). Extração em hook `useAdminUsers` (query profiles+user_roles + 6 mutations + reset password) e 7 componentes isolados em `src/components/admin/`: AdminUsuariosTab, AdminUserListing, AdminUserBadges, AdminPermissoesTab, AdminContaTab, AdminMfaSection. Comportamento preservado: tsc limpo, 226/226 testes verdes, build OK |
+| 2026-05-17 | chore(repo): `test-results/` e `playwright-report/` movidos para `.gitignore` — saídas regeradas a cada run não pertencem ao histórico; `TEST-FAILURES.md` removido (suite 100% verde desde 2504578) |
+| 2026-05-17 | Plano `crystalline-locket` substitui `PLANO_REVITALIZACAO_SAUDE.md` original (que ficou obsoleto após mudanças de 14/05). Etapas 1–3 concluídas neste commit; pendentes Etapas 4 (dividir MobileLancamentosPage), 5 (design-tokens + tokenização hex), 6 (smoke tests AdminPage/LoginPage), 7 (auditoria formal) |
