@@ -24,10 +24,11 @@ interface LancamentosProps {
   capacidadeConfig: TurnoCapacidade[];
   isAdmin: boolean;
   waTemplate: WhatsAppTemplate;
+  syncError?: string | null;
 }
 
-export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turnosConfig, capacidadeConfig, isAdmin, waTemplate }: LancamentosProps) => {
-  const { t, lang } = useI18n();
+export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turnosConfig, capacidadeConfig, isAdmin, waTemplate, syncError }: LancamentosProps) => {
+  const { t } = useI18n();
   const [importModalOpen, setImportModalOpen] = useState(false);
 
   const {
@@ -39,7 +40,6 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
     detalhe, setDetalhe,
     conflito, setConflito,
     importFeedback, setImportFeedback,
-    syncError,
     excedenteMap,
     filtered,
     importadosOcultos,
@@ -68,7 +68,7 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {syncError && (
-        <div style={{ background: tk.redLight, color: tk.redDark, border: `1px solid ${tk.redBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8, fontSize: 13 }}>
+        <div role="alert" style={{ background: tk.redLight, color: tk.redDark, border: `1px solid ${tk.redBorder}`, borderRadius: 8, padding: "8px 12px", fontSize: 13 }}>
           {syncError}
         </div>
       )}
@@ -168,11 +168,9 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
         setSelectedIds={setSelectedIds}
         excedenteMap={excedenteMap}
         fornecedores={opcoes.fornecedores}
-        lang={lang}
         onDetalhe={setDetalhe}
         onEditar={setModal}
         onConfirmDelete={setConfirm}
-        t={t}
       />
 
       {modal && (
@@ -194,10 +192,8 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
         <LancamentosDetailModal
           detalhe={detalhe}
           waTemplate={waTemplate}
-          lang={lang}
           onClose={() => setDetalhe(null)}
           onEdit={() => { setModal(detalhe); setDetalhe(null); }}
-          t={t}
         />
       )}
 

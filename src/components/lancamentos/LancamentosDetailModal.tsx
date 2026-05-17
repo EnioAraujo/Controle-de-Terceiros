@@ -3,14 +3,13 @@ import { fmt, buildWhatsAppMessage } from "@/lib/format-utils";
 import type { WhatsAppTemplate } from "@/lib/format-utils";
 import { Modal, Btn } from "@/components/atoms";
 import { tk } from "@/lib/design-tokens";
+import { useI18n } from "@/hooks/use-i18n";
 
 interface Props {
   detalhe: Registro | Registro[];
   waTemplate: WhatsAppTemplate;
-  lang: string;
   onClose: () => void;
   onEdit: () => void;
-  t: (key: string) => string;
 }
 
 const fieldCard = (k: string, v: string) => (
@@ -20,7 +19,8 @@ const fieldCard = (k: string, v: string) => (
   </div>
 );
 
-export function LancamentosDetailModal({ detalhe, waTemplate, lang, onClose, onEdit, t }: Props) {
+export function LancamentosDetailModal({ detalhe, waTemplate, onClose, onEdit }: Props) {
+  const { t, lang } = useI18n();
   const isLote = Array.isArray(detalhe);
   const title = isLote
     ? `${t("lanc_detail_lote")} — ${detalhe.length} ${detalhe.length !== 1 ? t("form_persons") : t("form_person")}`

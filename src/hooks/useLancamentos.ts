@@ -71,7 +71,6 @@ export function useLancamentos({ registros, setRegistros, capacidadeConfig }: Us
   const [detalhe, setDetalhe] = useState<Registro | Registro[] | null>(null);
   const [conflito, setConflito] = useState<ConflitoState | null>(null);
   const [importFeedback, setImportFeedback] = useState<ImportFeedbackState | null>(null);
-  const [syncError, setSyncError] = useState<string | null>(null);
 
   const setFiltro = (k: keyof Filtros, v: string) => setFiltros(f => ({ ...f, [k]: v }));
 
@@ -163,15 +162,10 @@ export function useLancamentos({ registros, setRegistros, capacidadeConfig }: Us
     setConflito(null);
   };
 
-  const excluir = async (ids: string[]) => {
-    setSyncError(null);
-    try {
-      await setRegistros(registros.filter(r => !ids.includes(r.id)));
-      setSelectedIds([]);
-      setConfirm(null);
-    } catch {
-      setSyncError("Erro ao excluir: operação não persistida no banco. Verifique sua conexão ou permissões.");
-    }
+  const excluir = (ids: string[]) => {
+    setRegistros(registros.filter(r => !ids.includes(r.id)));
+    setSelectedIds([]);
+    setConfirm(null);
   };
 
   return {
@@ -183,7 +177,6 @@ export function useLancamentos({ registros, setRegistros, capacidadeConfig }: Us
     detalhe, setDetalhe,
     conflito, setConflito,
     importFeedback, setImportFeedback,
-    syncError,
     intervaloPeriodo,
     excedenteMap,
     filtered,

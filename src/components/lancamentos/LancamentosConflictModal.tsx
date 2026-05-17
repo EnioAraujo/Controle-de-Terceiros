@@ -2,12 +2,7 @@ import type { Registro } from "@/types/attendance";
 import { sanitize } from "@/lib/audit";
 import { Modal, Btn } from "@/components/atoms";
 import { tk } from "@/lib/design-tokens";
-
-export interface ConflitoState {
-  novos: Registro[];
-  nomes: string[];
-  justificativa: string;
-}
+import type { ConflitoState } from "@/hooks/useLancamentos";
 
 interface Props {
   conflito: ConflitoState;

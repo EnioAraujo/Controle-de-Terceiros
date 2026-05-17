@@ -3,6 +3,7 @@ import { fmt, fornCor } from "@/lib/format-utils";
 import type { ExcedenteInfo } from "@/lib/excedente-utils";
 import { Icon, Chip } from "@/components/atoms";
 import { tk } from "@/lib/design-tokens";
+import { useI18n } from "@/hooks/use-i18n";
 
 interface Props {
   filtered: Registro[];
@@ -11,17 +12,16 @@ interface Props {
   setSelectedIds: (val: string[] | ((v: string[]) => string[])) => void;
   excedenteMap: Map<string, ExcedenteInfo>;
   fornecedores: string[];
-  lang: string;
   onDetalhe: (item: Registro | Registro[]) => void;
   onEditar: (item: Registro | Registro[]) => void;
   onConfirmDelete: (ids: string[]) => void;
-  t: (key: string) => string;
 }
 
 export function LancamentosTable({
   filtered, grupos, selectedIds, setSelectedIds, excedenteMap,
-  fornecedores, lang, onDetalhe, onEditar, onConfirmDelete, t,
+  fornecedores, onDetalhe, onEditar, onConfirmDelete,
 }: Props) {
+  const { t, lang } = useI18n();
   const cols = [
     t("lanc_col_data"), t("lanc_col_turno"), t("lanc_col_nome"), "Excedente",
     t("lanc_col_forn"), t("lanc_col_unidade"), t("lanc_col_entrada"), t("lanc_col_saida"),
