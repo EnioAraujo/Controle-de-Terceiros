@@ -466,7 +466,6 @@ Ciclo `crystalline-locket` (commits d302d34..7b7e3aa) e `PLANO_PONTOS_DE_ATENCAO
 
 | Prioridade | Localização | Problema | Ação Recomendada |
 |---|---|---|---|
-| 🟡 Baixa | `src/components/GuidedTour.tsx` (217L) | Componente já modernizado em TSX mas sem consumer (sem `TOUR_STEPS` em uso); backup morto em `arquivolocal/GuidedTour.jsx` | Integrar (definir TOUR_STEPS em `src/lib/tour-steps.ts`, wire em Index) + deletar backup .jsx (Etapa 5 de `PLANO_PONTOS_DE_ATENCAO_2026-05`) |
 | 🔵 Info | Cobertura e2e | Specs cobrem auth/MFA/navegação (~70 casos), gap em CRUD lançamentos / fechamento / import | Expandir Playwright (próximo ciclo) — base sólida em `tests/e2e/{login,mfa,main-page}.spec.ts` |
 | 🔵 Info | Plano red-team | `PLANO_TESTES_ADVERSARIAIS.md` aprovado mas não implementado (3 camadas: Vitest fuzz + Playwright client-side + real-Supabase) | Implementar em ciclo dedicado |
 
@@ -567,3 +566,4 @@ Ciclo `crystalline-locket` (commits d302d34..7b7e3aa) e `PLANO_PONTOS_DE_ATENCAO
 | 2026-05-17 | refactor(lancamentos): `Lancamentos.tsx` 551L → 227L (orquestrador) via extração de hook `useLancamentos` (195L) + 3 sub-componentes em `src/components/lancamentos/` (`LancamentosTable` 115L, `LancamentosDetailModal` 106L, `LancamentosConflictModal` 71L) + `src/lib/csv-export.ts` (15L, função pura `csvSafe`). Etapa 6 de `PLANO_PONTOS_DE_ATENCAO_2026-05` substitui Etapa 1 de `PLANO_TESTES_ADVERSARIAIS` (csvSafe extraction). 233/233 testes verdes |
 | 2026-05-17 | chore(deps): override `yaml@<2.8.3 -> ^2.8.3` em `package.json` resolve GHSA-48c2-rrv3-qjmp (yaml stack overflow). `pnpm audit --prod` agora retorna 0 vulnerabilidades. Vem via Vite 6.4.2 (não tailwindcss-animate como inicialmente reportado em AUDIT-2026-05) |
 | 2026-05-17 | chore(git): branch `Main-terceiros` rebased em cima de `origin/Main-terceiros` (commit 142a319 — atualização do README). Backup local em `backup-pre-rebase`. Push adiado para fim do ciclo |
+| 2026-05-17 | feat(tour): integra GuidedTour com tour da aba Lançamentos. Criados `src/lib/tour-steps.ts` (4 steps usando ids `tour-btn-novo`, `tour-filtros`, `tour-tabela`, `tour-btn-export`) e `src/components/TourButton.tsx` (FAB "?" fixed bottom-right, dispara `useTour` com storageKey `tour_lancamentos_done`). Wire em `Index.tsx` somente quando `activeTab === "lancamentos"`. Backup morto `arquivolocal/GuidedTour.jsx` (362L) deletado. Etapa 5 final de `PLANO_PONTOS_DE_ATENCAO_2026-05` |

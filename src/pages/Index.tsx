@@ -21,6 +21,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ActivityBar } from "@/components/layout/ActivityBar";
 import { TabBar } from "@/components/layout/TabBar";
 import { StatusBar } from "@/components/layout/StatusBar";
+import { TourButton } from "@/components/TourButton";
+import { TOUR_STEPS_LANCAMENTOS } from "@/lib/tour-steps";
 
 type TabId = "dashboard" | "lancamentos" | "projecao" | "fechamento" | "configuracoes";
 interface NavItem { id: TabId; label: string; icon: string; }
@@ -181,6 +183,12 @@ const Index = () => {
           </div>
         </AppShell>
       </div>
+      {activeTab === "lancamentos" && (
+        <TourButton
+          steps={TOUR_STEPS_LANCAMENTOS}
+          onBeforeStart={s => { if (s.tabBefore) setActiveTab(s.tabBefore as TabId); }}
+        />
+      )}
     </>
   );
 };
