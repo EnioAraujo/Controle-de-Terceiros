@@ -31,3 +31,7 @@ dist-ssr
 # Supabase CLI — arquivos temporários e de sessão
 supabase/.temp/
 supabase/.branches/
+
+# Playwright — resultados de execução (regerados a cada run)
+test-results/
+playwright-report/
