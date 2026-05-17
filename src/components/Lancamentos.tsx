@@ -19,6 +19,7 @@ import { FormLancamento } from "@/components/FormLancamento";
 import { ImportRegistrosCsvModal } from "@/components/ImportRegistrosCsvModal";
 import { LancamentosPeriodoFilters } from "@/components/LancamentosPeriodoFilters";
 import { tk } from "@/lib/design-tokens";
+import { csvSafe } from "@/lib/csv-export";
 
 /** Retorna o registro existente que conflita com `r` em turno na mesma data. */
 const findConflitoDeTurno = (
@@ -186,16 +187,6 @@ export const Lancamentos = ({ registros, setRegistros, opcoes, hierarquia, turno
     } finally {
       setExcluindo(false);
     }
-  };
-
-  const csvSafe = (val: string) => {
-    if (!val) return val;
-    const escaped = val.replace(/"/g, '""');
-    if (/^[=+\-@|\t`]/.test(escaped) || escaped.includes(";") || escaped.includes("\n") || escaped.includes("\r")) {
-      return `"'${escaped}"`;
-    }
-    if (escaped !== val || /[\s,"]/.test(escaped)) return `"${escaped}"`;
-    return escaped;
   };
 
   const exportCSV = () => {
